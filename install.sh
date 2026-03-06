@@ -2,7 +2,7 @@
 set -e
 
 REPO="lambda-brahman/pramana"
-INSTALL_DIR="${PRAMANA_INSTALL:-/usr/local/bin}"
+INSTALL_DIR="${PRAMANA_INSTALL:-$HOME/.local/bin}"
 
 # Detect platform
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -45,12 +45,12 @@ else
 fi
 
 chmod +x "$TMPFILE"
-
-if [ -w "$INSTALL_DIR" ]; then
-  mv "$TMPFILE" "$INSTALL_DIR/pramana"
-else
-  echo "Installing to ${INSTALL_DIR} (requires sudo)..."
-  sudo mv "$TMPFILE" "$INSTALL_DIR/pramana"
-fi
+mkdir -p "$INSTALL_DIR"
+mv "$TMPFILE" "$INSTALL_DIR/pramana"
 
 echo "Installed pramana to ${INSTALL_DIR}/pramana"
+
+case ":$PATH:" in
+  *":$INSTALL_DIR:"*) ;;
+  *) echo "Add ${INSTALL_DIR} to your PATH:"; echo "  export PATH=\"${INSTALL_DIR}:\$PATH\"" ;;
+esac
