@@ -3,7 +3,7 @@
   "description": "Query, author, and manage knowledge graphs built from Markdown files",
   "version": "0.2.0",
   "author": { "name": "Lambda Brahman" },
-  "homepage": "https://knowledgeengineering.substack.com/p/knowledge-engineering-the-future",
+  "homepage": "https://github.com/lambda-brahman/pramana",
   "repository": "https://github.com/lambda-brahman/pramana",
   "license": "MIT",
   "keywords": ["knowledge", "graph", "markdown", "multi-tenant", "authoring"]
