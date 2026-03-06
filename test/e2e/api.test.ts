@@ -2,10 +2,12 @@ import { test, expect, describe, beforeAll, afterAll } from "bun:test";
 import { SqlitePlugin } from "../../src/storage/sqlite/index.ts";
 import { Builder } from "../../src/engine/builder.ts";
 import { Reader } from "../../src/engine/reader.ts";
+import { TenantManager } from "../../src/engine/tenant.ts";
 import { createServer } from "../../src/api/server.ts";
 import path from "node:path";
 
 const FIXTURES_DIR = path.join(import.meta.dir, "../fixtures");
+const FIXTURES_ALT_DIR = path.join(import.meta.dir, "../fixtures-alt");
 
 describe("API endpoints", () => {
   let server: ReturnType<typeof createServer>;
@@ -100,5 +102,142 @@ describe("API endpoints", () => {
   test("unknown route returns 404", async () => {
     const res = await fetch(`${baseUrl}/v1/unknown`);
     expect(res.status).toBe(404);
+  });
+});
+
+describe("Multi-tenant API", () => {
+  let server: ReturnType<typeof createServer>;
+  let baseUrl: string;
+  let tm: TenantManager;
+
+  beforeAll(async () => {
+    tm = new TenantManager();
+    await tm.mount({ name: "commerce", sourceDir: FIXTURES_DIR });
+    await tm.mount({ name: "notes", sourceDir: FIXTURES_ALT_DIR });
+
+    server = createServer({ port: 0, tenantManager: tm });
+    baseUrl = `http://localhost:${server.port}`;
+  });
+
+  afterAll(() => {
+    server.stop();
+    tm.close();
+  });
+
+  test("GET /v1/tenants returns all tenants", async () => {
+    const res = await fetch(`${baseUrl}/v1/tenants`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as Array<{ name: string; artifactCount: number }>;
+    expect(data.length).toBe(2);
+    expect(data.find((t) => t.name === "commerce")).toBeDefined();
+    expect(data.find((t) => t.name === "notes")).toBeDefined();
+  });
+
+  test("GET /v1/:tenant/get/:slug returns tenant-scoped artifact", async () => {
+    const res = await fetch(`${baseUrl}/v1/commerce/get/order`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as Record<string, unknown>;
+    expect(data.slug).toBe("order");
+  });
+
+  test("GET /v1/:tenant/get/:slug returns 404 for wrong tenant", async () => {
+    // "note" exists in notes tenant, not commerce
+    const res = await fetch(`${baseUrl}/v1/commerce/get/note`);
+    expect(res.status).toBe(404);
+  });
+
+  test("GET /v1/:tenant/search works per-tenant", async () => {
+    const res = await fetch(`${baseUrl}/v1/notes/search?q=category`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as Array<{ slug: string }>;
+    expect(data.some((r) => r.slug === "category")).toBe(true);
+  });
+
+  test("GET /v1/:tenant/list returns tenant artifacts", async () => {
+    const res = await fetch(`${baseUrl}/v1/notes/list`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as Array<{ slug: string }>;
+    const slugs = data.map((a) => a.slug);
+    expect(slugs).toContain("note");
+    expect(slugs).toContain("category");
+    expect(slugs).not.toContain("order");
+  });
+
+  test("GET /v1/:tenant/traverse works per-tenant", async () => {
+    const res = await fetch(`${baseUrl}/v1/commerce/traverse/order?type=depends-on`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as Array<{ slug: string }>;
+    expect(data.some((a) => a.slug === "customer")).toBe(true);
+  });
+
+  test("GET /v1/:tenant/get/:slug/:section returns section focus", async () => {
+    const res = await fetch(`${baseUrl}/v1/notes/get/note/content`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as Record<string, any>;
+    expect(data.focusedSection).toBeDefined();
+    expect(data.focusedSection.heading).toBe("Content");
+  });
+
+  test("default tenant fallthrough for /v1/get/:slug", async () => {
+    // Default tenant is "commerce" (first mounted)
+    const res = await fetch(`${baseUrl}/v1/get/order`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as Record<string, unknown>;
+    expect(data.slug).toBe("order");
+  });
+
+  test("default tenant fallthrough for /v1/list", async () => {
+    const res = await fetch(`${baseUrl}/v1/list`);
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as Array<{ slug: string }>;
+    // Default tenant is "commerce" — should have order
+    expect(data.some((a) => a.slug === "order")).toBe(true);
+  });
+
+  test("POST /v1/:tenant/reload rebuilds tenant", async () => {
+    const res = await fetch(`${baseUrl}/v1/commerce/reload`, { method: "POST" });
+    expect(res.status).toBe(200);
+
+    const data = (await res.json()) as { status: string; report: { succeeded: number } };
+    expect(data.status).toBe("ok");
+    expect(data.report.succeeded).toBeGreaterThan(0);
+
+    // Verify tenant still works after reload
+    const getRes = await fetch(`${baseUrl}/v1/commerce/get/order`);
+    expect(getRes.status).toBe(200);
+  });
+
+  test("POST /v1/reload reloads default tenant", async () => {
+    const res = await fetch(`${baseUrl}/v1/reload`, { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+
+  test("tenant isolation — commerce cannot see notes artifacts", async () => {
+    const res = await fetch(`${baseUrl}/v1/commerce/get/note`);
+    expect(res.status).toBe(404);
+  });
+
+  test("tenant isolation — notes cannot see commerce artifacts", async () => {
+    const res = await fetch(`${baseUrl}/v1/notes/get/order`);
+    expect(res.status).toBe(404);
+  });
+
+  test("CORS includes POST method", async () => {
+    const res = await fetch(`${baseUrl}/v1/tenants`);
+    const methods = res.headers.get("Access-Control-Allow-Methods");
+    expect(methods).toContain("POST");
+  });
+
+  test("OPTIONS returns 204 preflight", async () => {
+    const res = await fetch(`${baseUrl}/v1/tenants`, { method: "OPTIONS" });
+    expect(res.status).toBe(204);
   });
 });

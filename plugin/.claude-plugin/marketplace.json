@@ -1,0 +1,12 @@
+{
+  "name": "lambda-brahman",
+  "owner": { "name": "Lambda Brahman" },
+  "plugins": [
+    {
+      "name": "pramana",
+      "source": "./",
+      "description": "Query knowledge graphs built from Markdown files",
+      "version": "1.0.0"
+    }
+  ]
+}

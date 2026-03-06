@@ -1,0 +1,101 @@
+---
+name: setup
+description: Start a Pramana daemon, monitor ingestion, and diagnose errors
+args: source_dirs
+user_invocable: true
+---
+
+# Pramana Setup
+
+You are setting up a Pramana knowledge engine daemon. Guide the user through starting the daemon, monitoring ingestion, and fixing any errors.
+
+## Arguments
+
+The user provides one or more knowledge directories: **$ARGUMENTS**
+
+## Step 1: Start the daemon
+
+Determine the correct command based on the number of sources:
+
+**Single source:**
+```bash
+pramana serve --source <dir> --port 3000
+```
+
+**Multiple sources (multi-tenant):**
+Help the user name each tenant. Names must be lowercase, start with a letter, and contain only `a-z`, `0-9`, `-`. Reserved names that cannot be used: `get`, `search`, `traverse`, `list`, `tenants`, `reload`.
+
+```bash
+pramana serve --source <dir1>:<name1> --source <dir2>:<name2> --port 3000
+```
+
+Run the command in the background and capture stderr for the ingestion report.
+
+## Step 2: Parse ingestion report
+
+The daemon prints ingestion summaries to stderr:
+
+```
+[tenant-name] Ingested 42/45 files (3 failed)
+  ✗ /path/to/file.md: error message
+```
+
+For single-tenant mode:
+```
+Ingested 42/45 files (3 failed)
+```
+
+Check for:
+- **All succeeded**: Report success, move to verification
+- **Some failed**: Examine each failed file to diagnose
+
+## Step 3: Diagnose failures
+
+For each failed file:
+
+1. Read the file content
+2. Common issues:
+   - **Missing frontmatter**: File needs `---` delimiters with at least a `slug` field
+   - **Missing slug**: Frontmatter exists but no `slug` key
+   - **Invalid YAML**: Check for tabs (use spaces), unclosed quotes, malformed arrays
+   - **Invalid relationship type**: Only `depends-on` and `relates-to` are valid
+   - **Duplicate slug**: Two files declare the same slug
+3. Show the user the problem and suggest a fix
+4. After fixes, reload: `pramana reload --tenant <name>` or `pramana reload`
+
+## Step 4: Verify
+
+Run verification commands:
+
+```bash
+# Single tenant
+pramana list
+
+# Multi-tenant
+pramana list --tenant <name>
+```
+
+Report:
+- Number of artifacts ingested per tenant
+- Any remaining issues
+- Confirm the daemon is serving
+
+## Multi-tenant guidance
+
+When helping users set up multi-tenant:
+- Suggest meaningful tenant names that reflect the knowledge domain
+- Each source directory is independently ingested with its own SQLite database
+- Tenants are fully isolated — no cross-tenant queries
+- The first mounted tenant becomes the default (used when no `--tenant` is specified)
+- Use `pramana reload --tenant <name>` to re-ingest a single tenant without restarting
+
+## Success message
+
+Once everything is running:
+```
+Pramana daemon is running on port 3000.
+- Tenants: <list of tenant names with artifact counts>
+- Query with: pramana get <slug> [--tenant <name>]
+- Use /pramana:query to search the knowledge base
+- Use /pramana:author to create new artifacts
+```

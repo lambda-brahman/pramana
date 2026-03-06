@@ -3,14 +3,14 @@ slug: engine
 title: Engine
 tags: [engine, module]
 relationships:
-  depends-on: [pramana, parser, storage, result-type]
+  depends-on: [pramana, parser, storage, result-type, multi-tenant]
 ---
 
 # Engine
 
 ## Specification
 
-Two components: Builder (write path) and Reader (read path).
+Three components: Builder (write path), Reader (read path), and TenantManager (multi-tenant orchestration).
 
 ### Builder
 
@@ -27,7 +27,7 @@ BuildReport = { total: nat, succeeded: nat,
 2. For each file: `parseDocumentFile(path)` → on Ok: `writer.store(artifact)` → on Err: collect in `failed`
 3. Return report
 
-Laws L13–L14 from [[programming-model]] apply.
+Laws L13-L14 from [[programming-model]] apply.
 
 ### Reader
 
@@ -45,7 +45,7 @@ list     : { tags?: string[] }? → Result<ArtifactView[], EngineError>
 1. Split input on `#` → (slug, sectionId?)
 2. `storage.get(slug)` → if null return Ok(null)
 3. `storage.getInverse(slug)` → attach as inverseRelationships
-4. If sectionId: find matching section, extract content between this heading and next heading of ≤ level → attach as focusedSection
+4. If sectionId: find matching section, extract content between this heading and next heading of <= level → attach as focusedSection
 
 #### search
 
@@ -57,18 +57,18 @@ BFS over the relationship graph:
 
 ```
 traverse(from, relType, depth):
-  visited = ∅
+  visited = {}
   queue = [(from, 0)]
   results = []
-  while queue ≠ ∅:
+  while queue != []:
     (slug, d) = dequeue
-    if slug ∈ visited ∨ d ≥ depth: continue
-    visited = visited ∪ {slug}
+    if slug in visited or d >= depth: continue
+    visited = visited + {slug}
     rels = storage.getRelationships(slug)
-    if relType: rels = rels.filter(r → r.type = relType)
+    if relType: rels = rels.filter(r -> r.type = relType)
     for rel in rels:
       target = rel.target.split("#")[0]
-      if target ∈ visited: continue
+      if target in visited: continue
       artifact = storage.get(target)
       if artifact = null: continue
       results.append(toView(artifact))
@@ -76,7 +76,7 @@ traverse(from, relType, depth):
   return Ok(results)
 ```
 
-Laws L8–L11 from [[programming-model]] apply.
+Laws L8-L11 from [[programming-model]] apply.
 
 #### list
 
@@ -87,9 +87,9 @@ Laws L8–L11 from [[programming-model]] apply.
 ```
 toView(artifact, storage, sectionId?):
   inverse = storage.getInverse(artifact.slug)
-  view = artifact ∧ { inverseRelationships: inverse }
+  view = artifact + { inverseRelationships: inverse }
   if sectionId:
-    section = artifact.sections.find(s → s.id = sectionId)
+    section = artifact.sections.find(s -> s.id = sectionId)
     if section:
       content = extractBetween(artifact.content, section, nextSectionOfEqualOrLesserLevel)
       view.focusedSection = { id: section.id, heading: section.heading, content }
@@ -100,6 +100,31 @@ toView(artifact, storage, sectionId?):
 
 All StorageErrors are mapped to EngineErrors: `{ type: "engine", message: storageError.message }`. Consumers of the Reader see a uniform error type.
 
+### TenantManager
+
+Orchestrates multiple independent knowledge bases. See [[multi-tenant]] for full specification.
+
+```
+TenantManager
+  mount(config: { name, sourceDir })  → Result<BuildReport, TenantError>
+  reload(name)                         → Result<BuildReport, TenantError>
+  getReader(name)                      → Result<Reader, TenantError>
+  getDefaultReader()                   → Result<Reader, TenantError>
+  defaultTenantName()                  → string | null
+  listTenants()                        → TenantInfo[]
+  hasTenant(name)                      → boolean
+  close()                              → void
+```
+
+Each tenant gets:
+- Its own in-memory SqlitePlugin
+- Its own Builder (used during mount and reload)
+- Its own Reader (used for queries)
+
+TenantManager validates names against a strict regex and reserved word list before mounting. First mounted tenant becomes the default.
+
+Reload creates new storage + builder + reader, builds, and only swaps on success (atomic). The old reader continues serving during rebuild.
+
 ## Design rationale
 
 **Why builder/reader split?** Build is sequential and fallible (parse errors). Read is concurrent and only fails on storage errors. CQRS-like separation — see established literature.
@@ -107,3 +132,5 @@ All StorageErrors are mapped to EngineErrors: `{ type: "engine", message: storag
 **Why BFS, not DFS?** BFS returns closer nodes first (depth 1 before depth 2), matching the intuition "most directly related."
 
 **Why compute inverse relationships at query time?** Storing inverses would duplicate data and require sync on re-ingest. A single indexed query is fast and always consistent.
+
+**Why TenantManager over per-tenant server processes?** A single process with shared port is simpler to manage, especially from Claude skills. One `pramana serve` command handles all knowledge bases.
