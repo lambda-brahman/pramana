@@ -1,15 +1,14 @@
 ---
 slug: storage-interface
 title: Storage Interface
-tags: [module, storage]
+tags: [storage, interface]
 relationships:
-  part-of: pramana
-  implemented-by: sqlite-storage
+  of: pramana
 ---
 
 # Storage Interface
 
-Defines the contract between the [[engine]] and the storage layer. Composed of four interfaces:
+Defines the contract between the [[engine]] and the storage layer. Composed of four interfaces.
 
 ## StorageWriter
 

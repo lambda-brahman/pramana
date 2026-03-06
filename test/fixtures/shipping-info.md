@@ -2,7 +2,7 @@
 slug: shipping-info
 tags: [value-object, commerce]
 relationships:
-  part-of: order
+  of: order
 ---
 
 # Shipping Info

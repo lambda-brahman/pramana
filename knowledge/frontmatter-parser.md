@@ -1,10 +1,11 @@
 ---
 slug: frontmatter-parser
 title: Frontmatter Parser
-tags: [module, parser]
+tags: [parser, module]
 relationships:
-  part-of: parser
+  of: parser
   produces: [relationship, knowledge-artifact]
+  needs: result-type
 ---
 
 # Frontmatter Parser

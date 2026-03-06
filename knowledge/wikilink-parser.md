@@ -1,10 +1,11 @@
 ---
 slug: wikilink-parser
 title: Wikilink Parser
-tags: [module, parser]
+tags: [parser, module]
 relationships:
-  part-of: parser
+  of: parser
   produces: relationship
+  needs: [result-type, section]
 ---
 
 # Wikilink Parser
@@ -13,7 +14,7 @@ Extracts [[relationship]] values from inline wikilink syntax in Markdown body te
 
 ## Syntax
 
-- `[[target]]` — creates a `relates-to` relationship to the target slug
+- `[[target]]` — creates a `refs` relationship to the target slug
 - `[[type::target]]` — creates a relationship with an explicit type
 
 ## Section context

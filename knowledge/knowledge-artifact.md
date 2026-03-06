@@ -1,11 +1,11 @@
 ---
 slug: knowledge-artifact
 title: Knowledge Artifact
-tags: [schema, core]
+tags: [schema, type]
 relationships:
-  defined-in: schema
-  has-part: [relationship, section]
-  validated-by: zod
+  of: schema
+  has: [relationship, section]
+  needs: zod
 ---
 
 # Knowledge Artifact

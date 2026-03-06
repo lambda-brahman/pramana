@@ -1,9 +1,7 @@
 ---
 slug: zod
 title: Zod
-tags: [dependency, external]
-relationships:
-  used-by: [schema, frontmatter-parser]
+tags: [lib, external]
 ---
 
 # Zod

@@ -1,10 +1,10 @@
 ---
 slug: api
 title: HTTP API
-tags: [module, api]
+tags: [api, module]
 relationships:
-  part-of: pramana
-  uses: reader
+  of: pramana
+  consumes: reader
 ---
 
 # HTTP API

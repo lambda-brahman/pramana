@@ -68,12 +68,12 @@ describe("Reader", () => {
     storage.store(
       makeArtifact({
         slug: "order",
-        relationships: [{ target: "customer", type: "depends-on" }],
+        relationships: [{ target: "customer", type: "needs" }],
       })
     );
     storage.store(makeArtifact({ slug: "customer", title: "Customer" }));
 
-    const result = reader.traverse("order", "depends-on");
+    const result = reader.traverse("order", "needs");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value).toHaveLength(1);
@@ -84,23 +84,23 @@ describe("Reader", () => {
     storage.store(
       makeArtifact({
         slug: "a",
-        relationships: [{ target: "b", type: "links" }],
+        relationships: [{ target: "b", type: "refs" }],
       })
     );
     storage.store(
       makeArtifact({
         slug: "b",
-        relationships: [{ target: "c", type: "links" }],
+        relationships: [{ target: "c", type: "refs" }],
       })
     );
     storage.store(makeArtifact({ slug: "c" }));
 
-    const depth1 = reader.traverse("a", "links", 1);
+    const depth1 = reader.traverse("a", "refs", 1);
     expect(depth1.ok).toBe(true);
     if (!depth1.ok) return;
     expect(depth1.value).toHaveLength(1);
 
-    const depth2 = reader.traverse("a", "links", 2);
+    const depth2 = reader.traverse("a", "refs", 2);
     expect(depth2.ok).toBe(true);
     if (!depth2.ok) return;
     expect(depth2.value).toHaveLength(2);
@@ -136,7 +136,7 @@ describe("Reader", () => {
     storage.store(
       makeArtifact({
         slug: "order",
-        relationships: [{ target: "customer", type: "depends-on" }],
+        relationships: [{ target: "customer", type: "needs" }],
       })
     );
     storage.store(makeArtifact({ slug: "customer" }));

@@ -66,7 +66,7 @@ describe("API endpoints", () => {
   });
 
   test("GET /v1/traverse/:from returns related", async () => {
-    const res = await fetch(`${baseUrl}/v1/traverse/order?type=depends-on`);
+    const res = await fetch(`${baseUrl}/v1/traverse/order?type=needs`);
     expect(res.status).toBe(200);
 
     const data = (await res.json()) as Array<{ slug: string }>;

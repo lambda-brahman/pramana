@@ -1,10 +1,9 @@
 ---
 slug: section
 title: Section
-tags: [schema, core]
+tags: [schema, type]
 relationships:
-  part-of: knowledge-artifact
-  produced-by: section-parser
+  of: knowledge-artifact
 ---
 
 # Section

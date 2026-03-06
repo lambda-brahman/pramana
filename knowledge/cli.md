@@ -1,10 +1,10 @@
 ---
 slug: cli
 title: CLI
-tags: [module, cli]
+tags: [cli, module]
 relationships:
-  part-of: pramana
-  uses: [builder, reader, api]
+  of: pramana
+  consumes: [builder, reader, api]
 ---
 
 # CLI

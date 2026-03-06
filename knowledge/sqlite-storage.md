@@ -1,11 +1,12 @@
 ---
 slug: sqlite-storage
 title: SQLite Storage
-tags: [module, storage]
+tags: [storage, module]
 relationships:
-  implements: storage-interface
-  part-of: pramana
-  depends-on: result-type
+  of: pramana
+  impl: storage-interface
+  needs: result-type
+  consumes: knowledge-artifact
 ---
 
 # SQLite Storage

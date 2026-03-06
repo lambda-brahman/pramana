@@ -48,8 +48,8 @@ describe("SqlitePlugin", () => {
   test("store with relationships", () => {
     const artifact = makeArtifact({
       relationships: [
-        { target: "other", type: "depends-on" },
-        { target: "another", type: "contains", line: 5, section: "attributes" },
+        { target: "other", type: "needs" },
+        { target: "another", type: "has", line: 5, section: "attributes" },
       ],
     });
     db.store(artifact);
@@ -114,7 +114,7 @@ describe("SqlitePlugin", () => {
     db.store(
       makeArtifact({
         slug: "order",
-        relationships: [{ target: "customer", type: "depends-on" }],
+        relationships: [{ target: "customer", type: "needs" }],
       })
     );
     db.store(makeArtifact({ slug: "customer" }));
@@ -124,7 +124,7 @@ describe("SqlitePlugin", () => {
     if (!inverse.ok) return;
     expect(inverse.value).toHaveLength(1);
     expect(inverse.value[0]!.target).toBe("order");
-    expect(inverse.value[0]!.type).toBe("depends-on");
+    expect(inverse.value[0]!.type).toBe("needs");
   });
 
   test("FTS search", () => {

@@ -3,7 +3,7 @@ slug: result-type
 title: Result Type
 tags: [lib, pattern]
 relationships:
-  used-by: [parser, storage-interface, engine, reader, builder, sqlite-storage]
+  of: pramana
 ---
 
 # Result Type

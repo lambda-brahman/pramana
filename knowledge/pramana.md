@@ -1,15 +1,14 @@
 ---
 slug: pramana
 title: Pramana
-tags: [overview, knowledge-engine]
+tags: [engine, module]
 relationships:
-  composed-of: [parser, storage, engine, api, cli]
-  depends-on: [result-type]
+  has: [parser, storage-interface, engine, api, cli, schema, result-type, programming-model]
 ---
 
 # Pramana
 
-Pramana is a knowledge engine that turns a directory of Markdown files into a queryable knowledge graph. It parses source files at startup into an in-memory SQLite database, then exposes four read-only primitives: get, search, traverse, and list.
+A knowledge engine that turns a directory of Markdown files into a queryable knowledge graph. Files are parsed at startup into an in-memory SQLite database, then exposes four read-only primitives: get, search, traverse, and list.
 
 ## Design principles
 

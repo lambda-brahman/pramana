@@ -2,9 +2,8 @@
 slug: order
 tags: [entity, commerce, core]
 relationships:
-  depends-on: customer
-  contains: [line-item, shipping-info]
-  see-also: domain-driven-design
+  needs: customer
+  has: [line-item, shipping-info]
 ---
 
 # Order
@@ -13,8 +12,8 @@ An Order represents a customer's intent to purchase.
 
 ## Attributes
 - lineItems: [[line-item]][] (at least one required)
-- customer: [[dep::customer]] reference
+- customer: [[needs::customer]] reference
 
 ## Rules
-- Total equals sum of [[dep::line-item#pricing]] values
+- Total equals sum of [[needs::line-item#pricing]] values
 - Must have valid [[shipping-info]]

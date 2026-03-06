@@ -1,8 +1,23 @@
 import { z } from "zod";
 
+export const RELATIONSHIP_TYPES = [
+  "has",       // source contains target as a component
+  "of",        // source is a component of target (inverse of has)
+  "needs",     // source requires target to function
+  "feeds",     // source provides output consumed by target
+  "impl",      // source implements the contract defined by target
+  "produces",  // source creates/emits target as output
+  "consumes",  // source takes target as input
+  "refs",      // narrative reference (default for wikilinks)
+] as const;
+
+export const RelationshipTypeSchema = z.enum(RELATIONSHIP_TYPES);
+
+export type RelationshipType = z.infer<typeof RelationshipTypeSchema>;
+
 export const RelationshipSchema = z.object({
   target: z.string(),
-  type: z.string(),
+  type: RelationshipTypeSchema,
   line: z.number().optional(),
   section: z.string().optional(),
 });
@@ -29,6 +44,6 @@ export type Section = z.infer<typeof SectionSchema>;
 export type KnowledgeArtifact = z.infer<typeof KnowledgeArtifactSchema>;
 
 export const FrontmatterRelationshipsSchema = z.record(
-  z.string(),
+  RelationshipTypeSchema,
   z.union([z.string(), z.array(z.string())])
 );

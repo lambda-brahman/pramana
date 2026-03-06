@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import type { KnowledgeArtifact, Relationship, Section } from "../../schema/index.ts";
+import type { KnowledgeArtifact, Relationship, RelationshipType, Section } from "../../schema/index.ts";
 import type { StoragePlugin, StorageError, SearchResult } from "../interface.ts";
 import { type Result, ok, err } from "../../lib/result.ts";
 
@@ -274,7 +274,7 @@ function toArtifact(row: ArtifactRow, rels: RelRow[], secs: SecRow[]): Knowledge
 function toRelationship(row: RelRow): Relationship {
   return {
     target: row.target,
-    type: row.type,
+    type: row.type as RelationshipType,
     ...(row.line != null ? { line: row.line } : {}),
     ...(row.section != null ? { section: row.section } : {}),
   };

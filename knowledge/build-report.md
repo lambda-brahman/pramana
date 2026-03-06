@@ -1,10 +1,9 @@
 ---
 slug: build-report
 title: Build Report
-tags: [schema, engine]
+tags: [engine, type]
 relationships:
-  produced-by: builder
-  consumed-by: cli
+  of: builder
 ---
 
 # Build Report

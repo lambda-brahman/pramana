@@ -1,10 +1,10 @@
 ---
 slug: engine
 title: Engine
-tags: [module, engine]
+tags: [engine, module]
 relationships:
-  part-of: pramana
-  composed-of: [builder, reader]
+  of: pramana
+  has: [builder, reader]
 ---
 
 # Engine

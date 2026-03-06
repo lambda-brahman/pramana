@@ -7,7 +7,7 @@ describe("parseDocument", () => {
 slug: order
 tags: [entity, commerce]
 relationships:
-  depends-on: customer
+  needs: customer
 ---
 
 # Order
@@ -18,7 +18,7 @@ An Order represents a purchase.
 - lineItems: [[line-item]][]
 
 ## Rules
-- Total from [[dep::line-item#pricing]]`;
+- Total from [[needs::line-item#pricing]]`;
 
     const result = parseDocument(raw);
     expect(result.ok).toBe(true);
@@ -33,9 +33,9 @@ An Order represents a purchase.
 
     // Frontmatter relationship + 2 content wikilinks
     expect(artifact.relationships.length).toBeGreaterThanOrEqual(3);
-    expect(artifact.relationships.some((r) => r.target === "customer" && r.type === "depends-on")).toBe(true);
-    expect(artifact.relationships.some((r) => r.target === "line-item" && r.type === "relates-to")).toBe(true);
-    expect(artifact.relationships.some((r) => r.target === "line-item#pricing" && r.type === "dep")).toBe(true);
+    expect(artifact.relationships.some((r) => r.target === "customer" && r.type === "needs")).toBe(true);
+    expect(artifact.relationships.some((r) => r.target === "line-item" && r.type === "refs")).toBe(true);
+    expect(artifact.relationships.some((r) => r.target === "line-item#pricing" && r.type === "needs")).toBe(true);
   });
 
   test("uses slug as title when no H1", () => {

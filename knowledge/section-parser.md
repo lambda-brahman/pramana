@@ -1,10 +1,11 @@
 ---
 slug: section-parser
 title: Section Parser
-tags: [module, parser]
+tags: [parser, module]
 relationships:
-  part-of: parser
+  of: parser
   produces: section
+  needs: result-type
 ---
 
 # Section Parser

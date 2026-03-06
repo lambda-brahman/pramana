@@ -1,11 +1,11 @@
 ---
 slug: reader
 title: Reader
-tags: [module, engine]
+tags: [engine, module]
 relationships:
-  part-of: engine
-  uses: storage-interface
-  serves: [api, cli]
+  of: engine
+  needs: storage-interface
+  feeds: [api, cli]
 ---
 
 # Reader

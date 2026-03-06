@@ -1,11 +1,11 @@
 ---
 slug: schema
 title: Schema
-tags: [module, schema]
+tags: [schema, module]
 relationships:
-  part-of: pramana
-  defines: [knowledge-artifact, relationship, section]
-  depends-on: zod
+  of: pramana
+  has: [knowledge-artifact, relationship, section]
+  needs: zod
 ---
 
 # Schema

@@ -1,11 +1,12 @@
 ---
 slug: builder
 title: Builder
-tags: [module, engine]
+tags: [engine, module]
 relationships:
-  part-of: engine
-  uses: [parser, storage-interface]
+  of: engine
+  needs: [parser, storage-interface]
   produces: build-report
+  feeds: [sqlite-storage]
 ---
 
 # Builder
@@ -21,10 +22,4 @@ The write-path component of the [[engine]]. Scans a source directory for Markdow
 
 ## Build report
 
-Returns a `BuildReport` with:
-
-- **total** — number of files found
-- **succeeded** — number successfully ingested
-- **failed** — array of `{ file, error }` for each failure
-
-The [[cli]] prints a summary line and lists any failures to stderr.
+Returns a [[build-report]] with total, succeeded, and failed counts. The [[cli]] prints a summary line and lists any failures to stderr.

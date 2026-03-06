@@ -2,7 +2,7 @@
 slug: customer
 tags: [entity, commerce, core]
 relationships:
-  see-also: order
+  refs: order
 ---
 
 # Customer

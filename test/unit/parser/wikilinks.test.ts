@@ -18,7 +18,7 @@ describe("parseWikilinks", () => {
     expect(rels).toHaveLength(1);
     expect(rels[0]).toEqual({
       target: "line-item",
-      type: "relates-to",
+      type: "refs",
       line: 4,
       section: "attributes",
     });
@@ -31,13 +31,13 @@ describe("parseWikilinks", () => {
 Some content.
 
 ## Rules
-- Total from [[dep::line-item#pricing]] values`;
+- Total from [[needs::line-item#pricing]] values`;
 
     const rels = parseWikilinks(body, sections);
     expect(rels).toHaveLength(1);
     expect(rels[0]).toEqual({
       target: "line-item#pricing",
-      type: "dep",
+      type: "needs",
       line: 7,
       section: "rules",
     });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type Relationship, FrontmatterRelationshipsSchema } from "../schema/index.ts";
+import { type Relationship, type RelationshipType, FrontmatterRelationshipsSchema } from "../schema/index.ts";
 import { type Result, ok, err } from "../lib/result.ts";
 
 export type FrontmatterData = {
@@ -55,7 +55,7 @@ function normalizeRelationships(raw: unknown): Relationship[] {
   if (!parsed.success) return [];
 
   const result: Relationship[] = [];
-  for (const [type, targets] of Object.entries(parsed.data)) {
+  for (const [type, targets] of Object.entries(parsed.data) as [RelationshipType, string | string[]][]) {
     const targetList = Array.isArray(targets) ? targets : [targets];
     for (const target of targetList) {
       result.push({ target, type });
