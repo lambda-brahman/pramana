@@ -3,30 +3,35 @@ slug: cli
 title: CLI
 tags: [cli, module]
 relationships:
-  depends-on: [pramana, builder, reader, api]
+  depends-on: [pramana, engine, api]
 ---
 
 # CLI
 
-The command-line interface and entry point for [[pramana]]. Parses arguments, builds the knowledge graph, then executes the requested command.
+Entry point and command dispatcher. Every command follows the same lifecycle: initialize storage → build → query.
+
+## Why this design
+
+**Why rebuild on every invocation?**
+No persistent state means no stale data. The CLI is a pipeline: `source dir → parse → index → query → output`. Each run is hermetic. The cost (~100ms for hundreds of files) is acceptable for interactive use.
+
+**Why JSON output to stdout, diagnostics to stderr?**
+Unix convention. Stdout is for machine-readable data (pipe to `jq`, consume from scripts). Stderr is for human-readable status (ingestion summary, errors). This makes `pramana list --source kb | jq '.[] | .slug'` work correctly.
 
 ## Commands
 
-- `pramana serve --source <dir> [--port 3000]` — start the [[api]] server
-- `pramana get <slug> --source <dir>` — print artifact as JSON
-- `pramana search <query> --source <dir>` — print search results as JSON
-- `pramana traverse <slug> --source <dir> [--type <rel>] [--depth <n>]` — print traversal results
-- `pramana list --source <dir> [--tags <t1,t2>]` — print all matching artifacts
+| Command | Maps to | Output |
+|---------|---------|--------|
+| `serve --source <dir>` | `createServer({reader})` | HTTP server |
+| `get <slug> --source <dir>` | `reader.get(slug)` | JSON to stdout |
+| `search <query> --source <dir>` | `reader.search(query)` | JSON to stdout |
+| `traverse <slug> --source <dir>` | `reader.traverse(slug, type?, depth?)` | JSON to stdout |
+| `list --source <dir>` | `reader.list(filter?)` | JSON to stdout |
 
-## Startup
+## Invariants
 
-Every command follows the same startup sequence:
-
-1. Initialize [[sqlite-storage]] with `:memory:`
-2. Run the [[builder]] against `--source` directory
-3. Print ingestion summary to stderr
-4. Create a [[reader]] and execute the command
-
-## Output
-
-All query commands print JSON to stdout. Diagnostic messages (ingestion summary, errors) go to stderr.
+| Invariant | Why | Implementation | Test |
+|-----------|-----|----------------|------|
+| Ingestion summary goes to stderr | Doesn't pollute JSON output | `src/cli/index.ts:44` — `console.error` | `test/e2e/full-pipeline.test.ts` — tests query stdout, not stderr |
+| Missing --source exits with error | Required for all commands | `src/cli/index.ts:63-66` | **[GAP]** — no dedicated test |
+| Non-zero exit on error | Scripts can check `$?` | `src/cli/index.ts:65` — `process.exit(1)` | **[GAP]** — no dedicated test |

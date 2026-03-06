@@ -3,36 +3,51 @@ slug: programming-model
 title: Programming Model
 tags: [meta, programming-model]
 relationships:
-  depends-on: [pramana, relationship-vocabulary, tag-taxonomy, query-patterns]
+  depends-on: pramana
 ---
 
 # Programming Model
 
-The [[pramana]] programming model defines how knowledge is encoded so that it becomes computable — meaning the four primitives (get, search, traverse, list) can derive answers, not just retrieve text.
+How to encode knowledge so it's computable — meaning questions are answerable by composing primitives, not by reading prose.
 
 ## The computability principle
 
-Knowledge is computable when a question can be answered by a finite composition of primitives. If you have to read prose to get the answer, the knowledge is documentation. If you can traverse a typed graph or filter by tags, it's computable.
+If you have to read a paragraph to get the answer, the knowledge is documentation. If `traverse X --type depends-on --depth 3` gives you the answer, it's computable knowledge. Every frontmatter relationship should serve at least one query pattern.
 
 ## Two relationship types
 
-Only two: `depends-on` and `relates-to`. See [[relationship-vocabulary]].
+| Type | Meaning | Query |
+|------|---------|-------|
+| `depends-on` | X cannot function without Y | `traverse X --type depends-on` |
+| `relates-to` | X and Y are connected, neither requires the other | `traverse X --type relates-to` |
 
-`depends-on` is the workhorse — it encodes every structural, contractual, and operational dependency. `relates-to` is for associative context that doesn't imply dependency.
+**Why only two?** Every richer vocabulary (`has`, `of`, `implements`, `produces`, `consumes`) is a specialization of `depends-on`. Specializations add cognitive load without adding computability — `traverse X --type depends-on` answers "what does X need?" regardless of whether the edge was "composition" or "implementation". Semantic distinctions belong in prose, not in the edge type.
 
-## Tag taxonomy
+Enforced by Zod enum at parse time (`src/schema/index.ts:3`).
 
-A fixed set of [[tag-taxonomy]] categories. Tags classify artifacts into computable sets. `list --tags X` returns a meaningful, complete set.
+## Tags
+
+Tags classify artifacts into queryable sets. `list --tags X,Y` returns all artifacts tagged with both X and Y. Tags are freeform but should follow conventions per corpus.
+
+## Wikilinks
+
+`[[target]]` in body text creates a `relates-to` edge (narrative context). `[[depends-on::target]]` creates a `depends-on` edge. Structural dependencies belong in frontmatter; wikilinks are for inline references.
 
 ## Query patterns
 
-[[query-patterns]] are recipes for composing primitives to answer specific questions. They are the "programs" you write against the knowledge graph.
+| Question | Pattern |
+|----------|---------|
+| What does X depend on? | `traverse X --type depends-on --depth N` |
+| What depends on X? | `get X` → `inverseRelationships` where type = depends-on |
+| What's related to X? | `traverse X --type relates-to --depth 1` |
+| All modules in layer Y? | `list --tags module,Y` |
+| What mentions "keyword"? | `search "keyword"` |
+| External deps of parser layer? | `list --tags module,parser` → for each, `traverse --type depends-on` → filter by tag `external` |
 
 ## Encoding discipline
 
-When adding knowledge to pramana:
-
-1. Use `depends-on` for any relationship where X needs Y to function
-2. Use `relates-to` for associative cross-references
-3. Assign tags from the [[tag-taxonomy]]
-4. Verify computability: can your intended question be answered by a query pattern without reading prose?
+1. Frontmatter relationships = computable edges (use `depends-on` or `relates-to`)
+2. Body wikilinks = narrative context (default `relates-to`)
+3. Tags = classification for `list` queries
+4. Prose = explanation for humans (WHY, rationale, anti-patterns)
+5. If a claim can be a relationship or tag, make it one — don't bury it in prose
