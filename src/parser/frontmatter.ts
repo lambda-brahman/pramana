@@ -15,7 +15,7 @@ export type FrontmatterData = {
 
 export type FrontmatterError = { type: "frontmatter"; message: string };
 
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
 
 export function parseFrontmatter(raw: string): Result<FrontmatterData, FrontmatterError> {
   const match = raw.match(FRONTMATTER_RE);

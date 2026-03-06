@@ -50,18 +50,10 @@ If the install or upgrade fails, report the error to the user and **stop** — d
 
 ## Step 1: Start the daemon
 
-Determine the correct command based on the number of sources:
-
-**Single source:**
-```bash
-pramana serve --source <dir> --port 5111
-```
-
-**Multiple sources (multi-tenant):**
-Help the user name each tenant. Names must be lowercase, start with a letter, and contain only `a-z`, `0-9`, `-`. Reserved names that cannot be used: `get`, `search`, `traverse`, `list`, `tenants`, `reload`.
+Every knowledge base is a named tenant. Help the user name each tenant. Names must be lowercase, start with a letter, and contain only `a-z`, `0-9`, `-`. Reserved names that cannot be used: `get`, `search`, `traverse`, `list`, `tenants`, `reload`.
 
 ```bash
-pramana serve --source <dir1>:<name1> --source <dir2>:<name2> --port 5111
+pramana serve --source <dir>:<name> [--source <dir2>:<name2>] --port 5111
 ```
 
 Run the command in the background and capture stderr for the ingestion report.
@@ -73,11 +65,6 @@ The daemon prints ingestion summaries to stderr:
 ```
 [tenant-name] Ingested 42/45 files (3 failed)
   ✗ /path/to/file.md: error message
-```
-
-For single-tenant mode:
-```
-Ingested 42/45 files (3 failed)
 ```
 
 Check for:
@@ -96,17 +83,13 @@ For each failed file:
    - **Invalid relationship type**: Only `depends-on` and `relates-to` are valid
    - **Duplicate slug**: Two files declare the same slug
 3. Show the user the problem and suggest a fix
-4. After fixes, reload: `pramana reload --tenant <name>` or `pramana reload`
+4. After fixes, reload: `pramana reload --tenant <name>`
 
 ## Step 4: Verify
 
 Run verification commands:
 
 ```bash
-# Single tenant
-pramana list
-
-# Multi-tenant
 pramana list --tenant <name>
 ```
 
@@ -117,11 +100,11 @@ Report:
 
 ## Multi-tenant guidance
 
-When helping users set up multi-tenant:
+When helping users set up multiple tenants:
 - Suggest meaningful tenant names that reflect the knowledge domain
 - Each source directory is independently ingested with its own SQLite database
 - Tenants are fully isolated — no cross-tenant queries
-- The first mounted tenant becomes the default (used when no `--tenant` is specified)
+- `--tenant` is required for all query commands — there is no default tenant
 - Use `pramana reload --tenant <name>` to re-ingest a single tenant without restarting
 
 ## Success message
@@ -130,7 +113,7 @@ Once everything is running:
 ```
 Pramana daemon is running on port 5111.
 - Tenants: <list of tenant names with artifact counts>
-- Query with: pramana get <slug> [--tenant <name>]
+- Query with: pramana get <slug> --tenant <name>
 - Use /pramana:query to search the knowledge base
 - Use /pramana:author to create new artifacts
 ```

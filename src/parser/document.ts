@@ -50,7 +50,7 @@ export async function parseDocumentFromFile(
 ): Promise<Result<KnowledgeArtifact, DocumentError>> {
   try {
     const file = Bun.file(filePath);
-    const raw = await file.text();
+    const raw = (await file.text()).replaceAll("\r\n", "\n");
     return parseDocument(raw);
   } catch (e) {
     return err({

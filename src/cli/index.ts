@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { basename } from "node:path";
 import { createServer } from "../api/server.ts";
 import { TenantManager } from "../engine/tenant.ts";
 import { err, ok, type Result } from "../lib/result.ts";
@@ -37,8 +38,7 @@ function parseSources(): Array<{ path: string; name: string }> {
       if (n.length > 0) return { path: p, name: n };
     }
     // No colon or empty name — use basename
-    const parts = s.replace(/\/+$/, "").split("/");
-    return { path: s, name: parts[parts.length - 1]! };
+    return { path: s, name: basename(s) };
   });
 }
 
@@ -83,10 +83,22 @@ async function checkLatest(): Promise<
   return ok({ latest, current, upgradeAvailable: compareSemver(latest, current) > 0 });
 }
 
+function platformLabel(): string {
+  switch (process.platform) {
+    case "darwin":
+      return "darwin";
+    case "win32":
+      return "windows";
+    default:
+      return "linux";
+  }
+}
+
 async function performUpgrade(targetVersion: string): Promise<Result<void, CliError>> {
-  const os = process.platform === "darwin" ? "darwin" : "linux";
+  const os = platformLabel();
   const arch = process.arch === "arm64" ? "arm64" : "x64";
-  const binary = `pramana-${os}-${arch}`;
+  const ext = process.platform === "win32" ? ".exe" : "";
+  const binary = `pramana-${os}-${arch}${ext}`;
   const url = `https://github.com/lambda-brahman/pramana/releases/download/${targetVersion}/${binary}`;
 
   const res = await fetch(url, { redirect: "follow" });
@@ -94,11 +106,32 @@ async function performUpgrade(targetVersion: string): Promise<Result<void, CliEr
 
   const execPath = process.execPath;
   const tmpPath = `${execPath}.upgrade-tmp`;
+  const isWindows = process.platform === "win32";
+
+  const { chmodSync, renameSync, unlinkSync } = await import("node:fs");
+
+  // Clean up leftover .old from previous Windows upgrade
+  if (isWindows) {
+    const oldPath = `${execPath}.old`;
+    try {
+      unlinkSync(oldPath);
+    } catch {
+      /* not present */
+    }
+  }
+
   await Bun.write(tmpPath, res);
 
-  const { chmodSync, renameSync } = await import("node:fs");
-  chmodSync(tmpPath, 0o755);
-  renameSync(tmpPath, execPath);
+  if (isWindows) {
+    // Windows: can't overwrite running exe, but CAN rename it
+    const oldPath = `${execPath}.old`;
+    renameSync(execPath, oldPath);
+    renameSync(tmpPath, execPath);
+  } else {
+    chmodSync(tmpPath, 0o755);
+    renameSync(tmpPath, execPath);
+  }
+
   return ok(undefined);
 }
 
@@ -311,8 +344,7 @@ async function main() {
     process.exit(1);
   }
 
-  const parts = sourceDir.replace(/\/+$/, "").split("/");
-  const tenantName = getFlag("tenant") ?? parts[parts.length - 1]!;
+  const tenantName = getFlag("tenant") ?? basename(sourceDir);
 
   const tm = new TenantManager();
   const mountResult = await tm.mount({ name: tenantName, sourceDir });
