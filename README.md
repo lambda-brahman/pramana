@@ -1,169 +1,150 @@
 # Pramana
 
-A knowledge engine that turns a directory of Markdown files into a queryable knowledge graph. Files are parsed at startup into an in-memory SQLite database, exposing four read-only primitives via CLI and HTTP API. Supports multi-tenant serving of multiple knowledge bases.
+**Give Claude your domain knowledge.**
 
-Pramana is the reference implementation of the semantic layer described in [Knowledge Engineering: The Future of AI-Assisted Software Engineering](https://knowledgeengineering.substack.com/p/knowledge-engineering-the-future) — where domain experts encode business knowledge as interconnected artifacts, and AI agents access it through structured primitives (get, search, traverse, list) rather than unstructured context dumps.
+Pramana turns a directory of Markdown files into a queryable knowledge graph that Claude can search, traverse, and build upon. Instead of pasting context into every conversation, encode your expertise once — Claude retrieves exactly what it needs.
 
-## Install
+> The reference implementation of the semantic layer described in [Knowledge Engineering: The Future of AI-Assisted Software Engineering](https://knowledgeengineering.substack.com/p/knowledge-engineering-the-future).
+
+## Quick start
+
+### 1. Install Pramana
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
 ```
 
-To install a specific version:
+### 2. Install the Claude plugin
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh -s v0.1.0
+```
+/plugin marketplace add lambda-brahman/pramana
+/plugin install pramana@lambda-brahman
 ```
 
-Custom install directory:
+### 3. Write your first artifact
 
-```bash
-PRAMANA_INSTALL=~/.local/bin curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
-```
-
-Or download a binary directly from [Releases](https://github.com/lambda-brahman/pramana/releases).
-
-## Document format
-
-Each Markdown file needs YAML frontmatter with at least a `slug`:
+Create a Markdown file in a directory (e.g., `./knowledge/`):
 
 ```markdown
 ---
-slug: my-topic
-title: My Topic
-tags: [concept, architecture]
-relates-to: [other-topic, another-topic]
+slug: onboarding-flow
+title: Onboarding Flow
+tags: [process, user-facing]
+relates-to: [user-account, email-verification]
 ---
 
-# My Topic
+# Onboarding Flow
 
-Content with [[wikilink]] references to other documents.
+New users go through a three-step onboarding...
+
+## Steps
+
+1. Create account via [[depends-on::user-account]]
+2. Verify email via [[email-verification]]
+3. Complete profile
 ```
 
-Relationships can be declared in frontmatter (as typed relations) or inline via `[[wikilinks]]`.
-
-## CLI
-
-```
-pramana serve --source <dir>[:name] [--source <dir>[:name] ...] [--port 3000]
-pramana get <slug> --source <dir> [--tenant <name>]
-pramana search <query> --source <dir> [--tenant <name>]
-pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] [--tenant <name>]
-pramana list --source <dir> [--tags <tag1,tag2>] [--tenant <name>]
-pramana reload [--tenant <name>]
-```
-
-### Client mode
-
-When a Pramana daemon is running, CLI commands automatically connect to it via HTTP instead of rebuilding the knowledge graph:
+### 4. Start the daemon and ask Claude
 
 ```bash
-# Start the daemon
-pramana serve --source ./knowledge --port 3000
-
-# These connect to the daemon (no --source needed)
-pramana get order
-pramana search "parser"
-pramana list --tags concept
-```
-
-Port resolution: `--port` flag > `PRAMANA_PORT` env var > default `3000`.
-
-If no daemon is reachable, commands fall back to standalone mode (requires `--source`).
-
-Use `--standalone` to force rebuild mode even when a daemon is running:
-
-```bash
-pramana get order --source ./knowledge --standalone
-```
-
-### Multi-tenant serve
-
-Serve multiple knowledge bases from a single daemon:
-
-```bash
-pramana serve --source ./law:law --source ./music:music --port 3000
-```
-
-The `path:name` notation assigns a tenant name. Without `:`, the directory basename is used.
-
-Query specific tenants with `--tenant`:
-
-```bash
-pramana get negligence --tenant law
-pramana search "jazz" --tenant music
-pramana list --tenant law
-```
-
-Without `--tenant`, the default tenant (first mounted) is used.
-
-### Reload
-
-Re-ingest a tenant without restarting the daemon:
-
-```bash
-pramana reload --tenant law
-pramana reload                    # reloads default tenant
-```
-
-## HTTP API
-
-Start the server with `pramana serve --source <dir>`, then:
-
-```
-GET /v1/get/:slug              — Get artifact by slug
-GET /v1/get/:slug/:section     — Get artifact focused on a section
-GET /v1/search?q=<query>       — Full-text search
-GET /v1/traverse/:slug?type=<rel>&depth=<n> — Graph traversal
-GET /v1/list?tags=<t1,t2>      — List artifacts, optionally filtered by tags
-```
-
-### Multi-tenant endpoints
-
-```
-GET /v1/tenants                         — List all tenants
-GET /v1/:tenant/get/:slug               — Tenant-scoped get
-GET /v1/:tenant/search?q=<query>        — Tenant-scoped search
-GET /v1/:tenant/traverse/:slug          — Tenant-scoped traverse
-GET /v1/:tenant/list                    — Tenant-scoped list
-POST /v1/:tenant/reload                 — Rebuild tenant
-POST /v1/reload                         — Rebuild default tenant
-```
-
-All endpoints return JSON.
-
-## Claude Plugin
-
-Pramana includes a Claude plugin with three skills:
-
-- `/pramana:setup` — Start daemon, monitor ingestion, diagnose errors
-- `/pramana:query` — Semantically query your knowledge base
-- `/pramana:author` — Create artifacts with auto-profile elicitation
-
-```bash
-# Start the daemon
 pramana serve --source ./knowledge
-
-# Use with Claude
-claude --plugin-dir ./plugin
 ```
 
-Then ask Claude using the skills:
+```
+/pramana:query "how does onboarding work?"
+```
+
+Claude will search your knowledge base, read the relevant sections, follow the relationship links, and give you an answer grounded in your domain knowledge.
+
+## What can Claude do with Pramana?
+
+### `/pramana:setup` — Set up your knowledge base
+
+Claude starts the daemon, checks ingestion, and helps fix any broken files:
 
 ```
 /pramana:setup ./my-knowledge-dir
-/pramana:query "how does the parser work?"
-/pramana:author "tort liability"
 ```
 
-See `plugin/README.md` for details.
+### `/pramana:query` — Ask questions about your domain
+
+Claude searches, reads focused sections, and follows dependency chains to answer:
+
+```
+/pramana:query "what are the pricing rules for enterprise customers?"
+/pramana:query "show me everything that depends on the auth module"
+```
+
+### `/pramana:author` — Create new knowledge artifacts
+
+Claude elicits your authoring preferences (style, principles, completeness criteria), then drafts new artifacts that fit your knowledge base:
+
+```
+/pramana:author "API rate limiting policy"
+```
+
+On first use, Claude asks you five questions to build an author profile — so every artifact it creates matches your standards.
+
+## Multi-tenant: multiple knowledge bases
+
+Serve several knowledge domains from one daemon:
+
+```bash
+pramana serve --source ./law:law --source ./engineering:eng --port 3000
+```
+
+Then query specific domains:
+
+```
+/pramana:query law "what is negligence?"
+/pramana:query eng "how does the build pipeline work?"
+```
+
+## How it works
+
+```
+Your Markdown files
+      ↓ parsed at startup
+In-memory knowledge graph (SQLite)
+      ↓ four primitives
+get · search · traverse · list
+      ↓ via CLI + HTTP
+Claude skills (setup · query · author)
+```
+
+- **get** — point lookup by slug, with optional section focus
+- **search** — full-text search across all artifacts
+- **traverse** — follow dependency chains through the graph
+- **list** — enumerate artifacts, filtered by tags
+
+Artifacts link to each other through two relationship types:
+- **depends-on** — structural: A cannot function without B
+- **relates-to** — associative: A and B are connected
+
+## Install options
+
+```bash
+# Latest
+curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
+
+# Specific version
+curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh -s v0.2.0
+
+# Or download from GitHub Releases
+```
+
+See [Releases](https://github.com/lambda-brahman/pramana/releases) for binaries.
+
+## Documentation
+
+- [Technical reference](docs/technical.md) — CLI commands, HTTP API, document format, multi-tenant details
+- [Plugin guide](plugin/README.md) — Skill details, architecture, multi-tenant querying
 
 ## Development
 
 ```bash
 bun install
-bun test
+bun test          # 113 tests
 bun run typecheck
 ```
 

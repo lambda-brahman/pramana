@@ -1,0 +1,22 @@
+{
+  "name": "lambda-brahman",
+  "owner": {
+    "name": "Lambda Brahman"
+  },
+  "metadata": {
+    "description": "Knowledge engineering tools for Claude",
+    "version": "0.2.0"
+  },
+  "plugins": [
+    {
+      "name": "pramana",
+      "source": "./plugin",
+      "description": "Give Claude your domain knowledge. Turns Markdown files into a queryable knowledge graph with semantic query, authoring, and multi-tenant support.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Lambda Brahman"
+      },
+      "tags": ["knowledge", "graph", "markdown", "multi-tenant", "authoring"]
+    }
+  ]
+}
