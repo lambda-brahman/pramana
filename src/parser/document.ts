@@ -1,0 +1,61 @@
+import { type KnowledgeArtifact, KnowledgeArtifactSchema } from "../schema/index.ts";
+import { type Result, ok, err } from "../lib/result.ts";
+import { sha256 } from "../lib/hash.ts";
+import { parseFrontmatter, type FrontmatterError } from "./frontmatter.ts";
+import { parseSections } from "./sections.ts";
+import { parseWikilinks } from "./wikilinks.ts";
+
+export type DocumentError =
+  | FrontmatterError
+  | { type: "read"; message: string }
+  | { type: "validation"; message: string };
+
+const TITLE_RE = /^#\s+(.+)$/m;
+
+export function parseDocument(raw: string): Result<KnowledgeArtifact, DocumentError> {
+  const fm = parseFrontmatter(raw);
+  if (!fm.ok) return fm;
+
+  const { slug, title: fmTitle, tags, relationships: fmRelationships, body } = fm.value;
+
+  const titleMatch = body.match(TITLE_RE);
+  const title = fmTitle || titleMatch?.[1]?.trim() || slug;
+
+  const sections = parseSections(body);
+  const contentRelationships = parseWikilinks(body, sections);
+  const relationships = [...fmRelationships, ...contentRelationships];
+
+  const hash = sha256(raw);
+
+  const artifact = {
+    slug,
+    title,
+    tags,
+    relationships,
+    sections,
+    content: body,
+    hash,
+  };
+
+  const validated = KnowledgeArtifactSchema.safeParse(artifact);
+  if (!validated.success) {
+    return err({ type: "validation", message: validated.error.message });
+  }
+
+  return ok(validated.data);
+}
+
+export async function parseDocumentFromFile(
+  filePath: string
+): Promise<Result<KnowledgeArtifact, DocumentError>> {
+  try {
+    const file = Bun.file(filePath);
+    const raw = await file.text();
+    return parseDocument(raw);
+  } catch (e) {
+    return err({
+      type: "read",
+      message: `Failed to read ${filePath}: ${e instanceof Error ? e.message : String(e)}`,
+    });
+  }
+}

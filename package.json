@@ -1,0 +1,23 @@
+{
+  "name": "pramana",
+  "module": "src/cli/index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "pramana": "src/cli/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/cli/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "zod": "^3.25"
+  }
+}
