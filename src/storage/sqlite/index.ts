@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
-import type { KnowledgeArtifact, Relationship, RelationshipType, Section } from "../../schema/index.ts";
-import type { StoragePlugin, StorageError, SearchResult } from "../interface.ts";
-import { type Result, ok, err } from "../../lib/result.ts";
+import { err, ok, type Result } from "../../lib/result.ts";
+import type { KnowledgeArtifact, Relationship, RelationshipType } from "../../schema/index.ts";
+import type { SearchResult, StorageError, StoragePlugin } from "../interface.ts";
 
 const DDL = `
   CREATE TABLE IF NOT EXISTS artifacts (
@@ -65,20 +65,20 @@ export class SqlitePlugin implements StoragePlugin {
         this.db
           .prepare(
             `INSERT OR REPLACE INTO artifacts (slug, title, tags, content, hash)
-             VALUES (?, ?, ?, ?, ?)`
+             VALUES (?, ?, ?, ?, ?)`,
           )
           .run(
             artifact.slug,
             artifact.title,
             JSON.stringify(artifact.tags),
             artifact.content,
-            artifact.hash
+            artifact.hash,
           );
 
         this.db.prepare(`DELETE FROM relationships WHERE source = ?`).run(artifact.slug);
         const insertRel = this.db.prepare(
           `INSERT INTO relationships (source, target, type, line, section)
-           VALUES (?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?)`,
         );
         for (const rel of artifact.relationships) {
           insertRel.run(artifact.slug, rel.target, rel.type, rel.line ?? null, rel.section ?? null);
@@ -87,7 +87,7 @@ export class SqlitePlugin implements StoragePlugin {
         this.db.prepare(`DELETE FROM sections WHERE artifact_slug = ?`).run(artifact.slug);
         const insertSec = this.db.prepare(
           `INSERT INTO sections (artifact_slug, id, heading, level, line)
-           VALUES (?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, ?)`,
         );
         for (const sec of artifact.sections) {
           insertSec.run(artifact.slug, sec.id, sec.heading, sec.level, sec.line);
@@ -180,7 +180,7 @@ export class SqlitePlugin implements StoragePlugin {
     try {
       const rows = this.db
         .prepare(
-          `SELECT source as target, type, line, section FROM relationships WHERE target = ? OR target LIKE ?`
+          `SELECT source as target, type, line, section FROM relationships WHERE target = ? OR target LIKE ?`,
         )
         .all(slug, `${slug}#%`) as RelRow[];
 
@@ -198,7 +198,7 @@ export class SqlitePlugin implements StoragePlugin {
                   rank
            FROM artifacts_fts
            WHERE artifacts_fts MATCH ?
-           ORDER BY rank`
+           ORDER BY rank`,
         )
         .all(query) as FtsRow[];
 
@@ -208,7 +208,7 @@ export class SqlitePlugin implements StoragePlugin {
           title: r.title,
           snippet: r.snippet,
           rank: r.rank,
-        }))
+        })),
       );
     } catch (e) {
       return err({ type: "storage", message: `Search failed: ${errorMsg(e)}` });

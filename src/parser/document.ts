@@ -1,7 +1,7 @@
-import { type KnowledgeArtifact, KnowledgeArtifactSchema } from "../schema/index.ts";
-import { type Result, ok, err } from "../lib/result.ts";
 import { sha256 } from "../lib/hash.ts";
-import { parseFrontmatter, type FrontmatterError } from "./frontmatter.ts";
+import { err, ok, type Result } from "../lib/result.ts";
+import { type KnowledgeArtifact, KnowledgeArtifactSchema } from "../schema/index.ts";
+import { type FrontmatterError, parseFrontmatter } from "./frontmatter.ts";
 import { parseSections } from "./sections.ts";
 import { parseWikilinks } from "./wikilinks.ts";
 
@@ -46,7 +46,7 @@ export function parseDocument(raw: string): Result<KnowledgeArtifact, DocumentEr
 }
 
 export async function parseDocumentFromFile(
-  filePath: string
+  filePath: string,
 ): Promise<Result<KnowledgeArtifact, DocumentError>> {
   try {
     const file = Bun.file(filePath);

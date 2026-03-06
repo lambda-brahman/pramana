@@ -1,7 +1,4 @@
 import { test, expect, describe, beforeAll, afterAll } from "bun:test";
-import { SqlitePlugin } from "../../src/storage/sqlite/index.ts";
-import { Builder } from "../../src/engine/builder.ts";
-import { Reader } from "../../src/engine/reader.ts";
 import { TenantManager } from "../../src/engine/tenant.ts";
 import { createServer } from "../../src/api/server.ts";
 import path from "node:path";
@@ -12,25 +9,23 @@ const FIXTURES_ALT_DIR = path.join(import.meta.dir, "../fixtures-alt");
 describe("API endpoints", () => {
   let server: ReturnType<typeof createServer>;
   let baseUrl: string;
+  let tm: TenantManager;
 
   beforeAll(async () => {
-    const storage = new SqlitePlugin(":memory:");
-    storage.initialize();
+    tm = new TenantManager();
+    await tm.mount({ name: "test", sourceDir: FIXTURES_DIR });
 
-    const builder = new Builder(storage);
-    await builder.build(FIXTURES_DIR);
-
-    const reader = new Reader(storage, storage);
-    server = createServer({ port: 0, reader });
+    server = createServer({ port: 0, tenantManager: tm });
     baseUrl = `http://localhost:${server.port}`;
   });
 
   afterAll(() => {
     server.stop();
+    tm.close();
   });
 
-  test("GET /v1/get/:slug returns artifact", async () => {
-    const res = await fetch(`${baseUrl}/v1/get/order`);
+  test("GET /v1/test/get/:slug returns artifact", async () => {
+    const res = await fetch(`${baseUrl}/v1/test/get/order`);
     expect(res.status).toBe(200);
 
     const data = (await res.json()) as Record<string, unknown>;
@@ -39,13 +34,13 @@ describe("API endpoints", () => {
     expect(data.tags).toContain("entity");
   });
 
-  test("GET /v1/get/:slug returns 404 for missing", async () => {
-    const res = await fetch(`${baseUrl}/v1/get/nonexistent`);
+  test("GET /v1/test/get/:slug returns 404 for missing", async () => {
+    const res = await fetch(`${baseUrl}/v1/test/get/nonexistent`);
     expect(res.status).toBe(404);
   });
 
-  test("GET /v1/get/:slug/:section returns section focus", async () => {
-    const res = await fetch(`${baseUrl}/v1/get/order/attributes`);
+  test("GET /v1/test/get/:slug/:section returns section focus", async () => {
+    const res = await fetch(`${baseUrl}/v1/test/get/order/attributes`);
     expect(res.status).toBe(200);
 
     const data = (await res.json()) as Record<string, any>;
@@ -53,8 +48,8 @@ describe("API endpoints", () => {
     expect(data.focusedSection.heading).toBe("Attributes");
   });
 
-  test("GET /v1/search?q= returns results", async () => {
-    const res = await fetch(`${baseUrl}/v1/search?q=purchase`);
+  test("GET /v1/test/search?q= returns results", async () => {
+    const res = await fetch(`${baseUrl}/v1/test/search?q=purchase`);
     expect(res.status).toBe(200);
 
     const data = (await res.json()) as Array<{ slug: string }>;
@@ -62,29 +57,29 @@ describe("API endpoints", () => {
     expect(data.some((r) => r.slug === "order")).toBe(true);
   });
 
-  test("GET /v1/search without q returns 400", async () => {
-    const res = await fetch(`${baseUrl}/v1/search`);
+  test("GET /v1/test/search without q returns 400", async () => {
+    const res = await fetch(`${baseUrl}/v1/test/search`);
     expect(res.status).toBe(400);
   });
 
-  test("GET /v1/traverse/:from returns related", async () => {
-    const res = await fetch(`${baseUrl}/v1/traverse/order?type=depends-on`);
+  test("GET /v1/test/traverse/:from returns related", async () => {
+    const res = await fetch(`${baseUrl}/v1/test/traverse/order?type=depends-on`);
     expect(res.status).toBe(200);
 
     const data = (await res.json()) as Array<{ slug: string }>;
     expect(data.some((a) => a.slug === "customer")).toBe(true);
   });
 
-  test("GET /v1/list returns all", async () => {
-    const res = await fetch(`${baseUrl}/v1/list`);
+  test("GET /v1/test/list returns all", async () => {
+    const res = await fetch(`${baseUrl}/v1/test/list`);
     expect(res.status).toBe(200);
 
     const data = (await res.json()) as Array<unknown>;
     expect(data.length).toBeGreaterThanOrEqual(4);
   });
 
-  test("GET /v1/list?tags= filters by tags", async () => {
-    const res = await fetch(`${baseUrl}/v1/list?tags=entity,commerce`);
+  test("GET /v1/test/list?tags= filters by tags", async () => {
+    const res = await fetch(`${baseUrl}/v1/test/list?tags=entity,commerce`);
     expect(res.status).toBe(200);
 
     const data = (await res.json()) as Array<{ tags: string[] }>;
@@ -95,7 +90,7 @@ describe("API endpoints", () => {
   });
 
   test("CORS headers present", async () => {
-    const res = await fetch(`${baseUrl}/v1/list`);
+    const res = await fetch(`${baseUrl}/v1/test/list`);
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
@@ -106,9 +101,18 @@ describe("API endpoints", () => {
     expect(data.version).toMatch(/^v?\d+\.\d+\.\d+$/);
   });
 
-  test("unknown route returns 404", async () => {
-    const res = await fetch(`${baseUrl}/v1/unknown`);
-    expect(res.status).toBe(404);
+  test("GET /v1/list without tenant returns 400", async () => {
+    const res = await fetch(`${baseUrl}/v1/list`);
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toContain("Specify tenant");
+  });
+
+  test("GET /v1/get/order without tenant returns 400", async () => {
+    const res = await fetch(`${baseUrl}/v1/get/order`);
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toContain("Specify tenant");
   });
 });
 
@@ -191,22 +195,19 @@ describe("Multi-tenant API", () => {
     expect(data.focusedSection.heading).toBe("Content");
   });
 
-  test("default tenant fallthrough for /v1/get/:slug", async () => {
-    // Default tenant is "commerce" (first mounted)
-    const res = await fetch(`${baseUrl}/v1/get/order`);
-    expect(res.status).toBe(200);
-
-    const data = (await res.json()) as Record<string, unknown>;
-    expect(data.slug).toBe("order");
+  test("GET /v1/list without tenant returns 400", async () => {
+    const res = await fetch(`${baseUrl}/v1/list`);
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toContain("Specify tenant");
+    expect(data.error).toContain("commerce");
   });
 
-  test("default tenant fallthrough for /v1/list", async () => {
-    const res = await fetch(`${baseUrl}/v1/list`);
-    expect(res.status).toBe(200);
-
-    const data = (await res.json()) as Array<{ slug: string }>;
-    // Default tenant is "commerce" — should have order
-    expect(data.some((a) => a.slug === "order")).toBe(true);
+  test("POST /v1/reload without tenant returns 400", async () => {
+    const res = await fetch(`${baseUrl}/v1/reload`, { method: "POST" });
+    expect(res.status).toBe(400);
+    const data = (await res.json()) as { error: string };
+    expect(data.error).toContain("Specify tenant");
   });
 
   test("POST /v1/:tenant/reload rebuilds tenant", async () => {
@@ -220,11 +221,6 @@ describe("Multi-tenant API", () => {
     // Verify tenant still works after reload
     const getRes = await fetch(`${baseUrl}/v1/commerce/get/order`);
     expect(getRes.status).toBe(200);
-  });
-
-  test("POST /v1/reload reloads default tenant", async () => {
-    const res = await fetch(`${baseUrl}/v1/reload`, { method: "POST" });
-    expect(res.status).toBe(200);
   });
 
   test("tenant isolation — commerce cannot see notes artifacts", async () => {

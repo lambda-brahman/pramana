@@ -11,6 +11,8 @@
 - Source files parsed at startup → in-memory SQLite
 - Four read-only primitives: get, search, traverse, list
 - Result<T,E> for error handling — no thrown exceptions
+- No `throw` — always return Result<T, E>. No `new Error` either.
+- `biome check` must pass — run `bun run lint` before committing
 - Manual dependency wiring, no DI framework
 
 ## Code Style

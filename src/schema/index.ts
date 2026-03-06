@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const RELATIONSHIP_TYPES = [
-  "depends-on",   // X cannot function without Y (directed, transitive)
-  "relates-to",   // X and Y are connected but neither requires the other
+  "depends-on", // X cannot function without Y (directed, transitive)
+  "relates-to", // X and Y are connected but neither requires the other
 ] as const;
 
 export const RelationshipTypeSchema = z.enum(RELATIONSHIP_TYPES);
@@ -39,5 +39,5 @@ export type KnowledgeArtifact = z.infer<typeof KnowledgeArtifactSchema>;
 
 export const FrontmatterRelationshipsSchema = z.record(
   RelationshipTypeSchema,
-  z.union([z.string(), z.array(z.string())])
+  z.union([z.string(), z.array(z.string())]),
 );

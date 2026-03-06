@@ -1,7 +1,7 @@
 import { Glob } from "bun";
-import { parseDocumentFromFile, type DocumentError } from "../parser/document.ts";
-import type { StorageWriter, StorageError } from "../storage/interface.ts";
-import { type Result, ok, err } from "../lib/result.ts";
+import { err, ok, type Result } from "../lib/result.ts";
+import { type DocumentError, parseDocumentFromFile } from "../parser/document.ts";
+import type { StorageError, StorageWriter } from "../storage/interface.ts";
 
 export type BuildReport = {
   total: number;

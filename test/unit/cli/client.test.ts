@@ -38,7 +38,7 @@ describe("CLI client mode", () => {
   }
 
   test("get connects to running daemon", async () => {
-    const { stdout, exitCode } = await runCli(["get", "order"]);
+    const { stdout, exitCode } = await runCli(["get", "order", "--tenant", "commerce"]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout);
     expect(data.slug).toBe("order");
@@ -46,7 +46,7 @@ describe("CLI client mode", () => {
   });
 
   test("get with section focus via daemon", async () => {
-    const { stdout, exitCode } = await runCli(["get", "order#attributes"]);
+    const { stdout, exitCode } = await runCli(["get", "order#attributes", "--tenant", "commerce"]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout);
     expect(data.focusedSection).toBeDefined();
@@ -54,34 +54,40 @@ describe("CLI client mode", () => {
   });
 
   test("get returns error for missing slug", async () => {
-    const { stderr, exitCode } = await runCli(["get", "nonexistent"]);
+    const { stderr, exitCode } = await runCli(["get", "nonexistent", "--tenant", "commerce"]);
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Not found");
   });
 
+  test("get without --tenant returns error", async () => {
+    const { stderr, exitCode } = await runCli(["get", "order"]);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Specify tenant");
+  });
+
   test("search connects to running daemon", async () => {
-    const { stdout, exitCode } = await runCli(["search", "purchase"]);
+    const { stdout, exitCode } = await runCli(["search", "purchase", "--tenant", "commerce"]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout) as Array<{ slug: string }>;
     expect(data.some((r) => r.slug === "order")).toBe(true);
   });
 
   test("traverse connects to running daemon", async () => {
-    const { stdout, exitCode } = await runCli(["traverse", "order", "--type", "depends-on"]);
+    const { stdout, exitCode } = await runCli(["traverse", "order", "--type", "depends-on", "--tenant", "commerce"]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout) as Array<{ slug: string }>;
     expect(data.some((a) => a.slug === "customer")).toBe(true);
   });
 
   test("list connects to running daemon", async () => {
-    const { stdout, exitCode } = await runCli(["list"]);
+    const { stdout, exitCode } = await runCli(["list", "--tenant", "commerce"]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout) as Array<unknown>;
     expect(data.length).toBeGreaterThanOrEqual(4);
   });
 
   test("list with tags filter via daemon", async () => {
-    const { stdout, exitCode } = await runCli(["list", "--tags", "entity,commerce"]);
+    const { stdout, exitCode } = await runCli(["list", "--tags", "entity,commerce", "--tenant", "commerce"]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout) as Array<{ tags: string[] }>;
     for (const a of data) {

@@ -75,38 +75,15 @@ describe("TenantManager", () => {
     expect(reader.ok).toBe(false);
   });
 
-  test("getDefaultReader returns first mounted tenant", async () => {
+  test("tenantNames returns all tenant names", async () => {
     tm = new TenantManager();
+    expect(tm.tenantNames()).toEqual([]);
+
     await tm.mount({ name: "first", sourceDir: FIXTURES_DIR });
+    expect(tm.tenantNames()).toEqual(["first"]);
+
     await tm.mount({ name: "second", sourceDir: FIXTURES_ALT_DIR });
-
-    const reader = tm.getDefaultReader();
-    expect(reader.ok).toBe(true);
-    if (reader.ok) {
-      const list = reader.value.list();
-      expect(list.ok).toBe(true);
-      if (list.ok) {
-        // first tenant has fixtures (order, customer, etc.)
-        expect(list.value.some((a) => a.slug === "order")).toBe(true);
-      }
-    }
-  });
-
-  test("getDefaultReader returns error when no tenants", () => {
-    tm = new TenantManager();
-    const reader = tm.getDefaultReader();
-    expect(reader.ok).toBe(false);
-    if (!reader.ok) {
-      expect(reader.error.message).toContain("No tenants");
-    }
-  });
-
-  test("defaultTenantName returns first tenant name", async () => {
-    tm = new TenantManager();
-    expect(tm.defaultTenantName()).toBeNull();
-
-    await tm.mount({ name: "kb", sourceDir: FIXTURES_DIR });
-    expect(tm.defaultTenantName()).toBe("kb");
+    expect(tm.tenantNames()).toEqual(["first", "second"]);
   });
 
   test("listTenants returns all mounted tenants", async () => {
@@ -203,6 +180,6 @@ describe("TenantManager", () => {
 
     tm.close();
     expect(tm.hasTenant("kb")).toBe(false);
-    expect(tm.defaultTenantName()).toBeNull();
+    expect(tm.tenantNames()).toEqual([]);
   });
 });

@@ -1,4 +1,9 @@
-import { type Relationship, type RelationshipType, RELATIONSHIP_TYPES, type Section } from "../schema/index.ts";
+import {
+  RELATIONSHIP_TYPES,
+  type Relationship,
+  type RelationshipType,
+  type Section,
+} from "../schema/index.ts";
 
 const WIKILINK_RE = /\[\[(?:([^:\]]+)::)?([^\]]+)\]\]/g;
 
@@ -15,7 +20,7 @@ export function parseWikilinks(body: string, sections: Section[]): Relationship[
       const rawType = match[1]?.trim() || "relates-to";
       const type = (RELATIONSHIP_TYPES as readonly string[]).includes(rawType)
         ? (rawType as RelationshipType)
-        : "relates-to" as RelationshipType;
+        : ("relates-to" as RelationshipType);
       const target = match[2]!.trim();
       const lineNum = i + 1;
 

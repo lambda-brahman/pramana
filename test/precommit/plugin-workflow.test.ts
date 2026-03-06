@@ -163,6 +163,7 @@ describe("Plugin structure validation", () => {
 describe("Single-tenant daemon", () => {
   let daemonProc: ReturnType<typeof Bun.spawn>;
   let port: number;
+  const tenant = path.basename(FIXTURES_DIR);
 
   function runClient(args: string[]) {
     return runCli(args, { PRAMANA_PORT: String(port) });
@@ -174,7 +175,7 @@ describe("Single-tenant daemon", () => {
       ["bun", "run", CLI_PATH, "serve", "--source", FIXTURES_DIR, "--port", String(port)],
       { stdout: "pipe", stderr: "pipe" },
     );
-    await waitForDaemon(port, "/v1/list");
+    await waitForDaemon(port, "/v1/version");
   });
 
   afterAll(() => {
@@ -215,7 +216,7 @@ describe("Single-tenant daemon", () => {
   });
 
   test("list returns all 4 fixture artifacts", async () => {
-    const { stdout, exitCode } = await runClient(["list"]);
+    const { stdout, exitCode } = await runClient(["list", "--tenant", tenant]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout) as Array<{ slug: string }>;
     const slugs = data.map((a) => a.slug).sort();
@@ -223,7 +224,7 @@ describe("Single-tenant daemon", () => {
   });
 
   test("get retrieves artifact by slug", async () => {
-    const { stdout, exitCode } = await runClient(["get", "order"]);
+    const { stdout, exitCode } = await runClient(["get", "order", "--tenant", tenant]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout);
     expect(data.slug).toBe("order");
@@ -231,14 +232,14 @@ describe("Single-tenant daemon", () => {
   });
 
   test("search finds relevant artifacts", async () => {
-    const { stdout, exitCode } = await runClient(["search", "purchase"]);
+    const { stdout, exitCode } = await runClient(["search", "purchase", "--tenant", tenant]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout) as Array<{ slug: string }>;
     expect(data.some((a) => a.slug === "order")).toBe(true);
   });
 
   test("traverse follows dependencies", async () => {
-    const { stdout, exitCode } = await runClient(["traverse", "order", "--type", "depends-on"]);
+    const { stdout, exitCode } = await runClient(["traverse", "order", "--type", "depends-on", "--tenant", tenant]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout) as Array<{ slug: string }>;
     expect(data.some((a) => a.slug === "customer")).toBe(true);
@@ -322,12 +323,10 @@ describe("Multi-tenant daemon", () => {
       expect(slugs).toEqual(["customer", "line-item", "order"]);
     });
 
-    test("list without --tenant uses default (commerce)", async () => {
-      const { stdout, exitCode } = await runClient(["list"]);
-      expect(exitCode).toBe(0);
-      const slugs = (JSON.parse(stdout) as Array<{ slug: string }>).map((a) => a.slug);
-      expect(slugs).toContain("order");
-      expect(slugs).not.toContain("note");
+    test("list without --tenant returns error", async () => {
+      const { stderr, exitCode } = await runClient(["list"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("Specify tenant");
     });
   });
 
@@ -475,11 +474,10 @@ describe("Multi-tenant daemon", () => {
       expect(data.report.succeeded).toBeGreaterThanOrEqual(2);
     });
 
-    test("reload (default) succeeds", async () => {
-      const { stdout, exitCode } = await runClient(["reload"]);
-      expect(exitCode).toBe(0);
-      const data = JSON.parse(stdout);
-      expect(data.status).toBe("ok");
+    test("reload without --tenant returns error", async () => {
+      const { stderr, exitCode } = await runClient(["reload"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("Missing --tenant");
     });
 
     test("queries work after reload", async () => {
@@ -496,43 +494,40 @@ describe("Multi-tenant daemon", () => {
       expect(body.report.succeeded).toBeGreaterThan(0);
     });
 
-    test("POST /v1/reload via HTTP", async () => {
+    test("POST /v1/reload via HTTP returns 400", async () => {
       const { status, body } = await httpPost(port, "/v1/reload");
-      expect(status).toBe(200);
-      expect(body.status).toBe("ok");
+      expect(status).toBe(400);
+      expect(body.error).toContain("Specify tenant");
     });
   });
 
-  // ---------- 3g: Default tenant fallthrough ----------
-  describe("Default tenant fallthrough", () => {
-    test("get order (no --tenant)", async () => {
-      const { stdout, exitCode } = await runClient(["get", "order"]);
-      expect(exitCode).toBe(0);
-      expect(JSON.parse(stdout).slug).toBe("order");
+  // ---------- 3g: No default tenant ----------
+  describe("No default tenant", () => {
+    test("get without --tenant returns error", async () => {
+      const { stderr, exitCode } = await runClient(["get", "order"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("Specify tenant");
     });
 
-    test("list (no --tenant)", async () => {
-      const { stdout, exitCode } = await runClient(["list"]);
-      expect(exitCode).toBe(0);
-      const slugs = (JSON.parse(stdout) as Array<{ slug: string }>).map((a) => a.slug);
-      expect(slugs).toContain("order");
-      expect(slugs).not.toContain("note");
+    test("list without --tenant returns error", async () => {
+      const { stderr, exitCode } = await runClient(["list"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("Specify tenant");
     });
 
-    test("search 'purchase' (no --tenant)", async () => {
-      const { stdout, exitCode } = await runClient(["search", "purchase"]);
-      expect(exitCode).toBe(0);
-      const data = JSON.parse(stdout) as Array<{ slug: string }>;
-      expect(data.some((a) => a.slug === "order")).toBe(true);
+    test("search without --tenant returns error", async () => {
+      const { stderr, exitCode } = await runClient(["search", "purchase"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("Specify tenant");
     });
   });
 
   // ---------- 3h: Error cases ----------
   describe("Error cases", () => {
-    test("get note (no --tenant, default=commerce) -> 404", async () => {
+    test("get without --tenant returns error", async () => {
       const { stderr, exitCode } = await runClient(["get", "note"]);
       expect(exitCode).toBe(1);
-      expect(stderr).toContain("Not found");
+      expect(stderr).toContain("Specify tenant");
     });
 
     test("reload --tenant nonexistent -> error", async () => {
@@ -622,7 +617,7 @@ describe("Author workflow with temp directory", () => {
       ],
       { stdout: "pipe", stderr: "pipe" },
     );
-    await waitForDaemon(port, "/v1/list");
+    await waitForDaemon(port, "/v1/version");
   });
 
   afterAll(() => {
@@ -631,7 +626,7 @@ describe("Author workflow with temp directory", () => {
   });
 
   test("get _meta-author -> 404 before profile", async () => {
-    const { exitCode } = await runClient(["get", "_meta-author"]);
+    const { exitCode } = await runClient(["get", "_meta-author", "--tenant", "authoring"]);
     expect(exitCode).toBe(1);
   });
 
@@ -655,10 +650,10 @@ describe("Author workflow with temp directory", () => {
       ].join("\n"),
     );
 
-    const reload = await runClient(["reload"]);
+    const reload = await runClient(["reload", "--tenant", "authoring"]);
     expect(reload.exitCode).toBe(0);
 
-    const { stdout, exitCode } = await runClient(["get", "_meta-author"]);
+    const { stdout, exitCode } = await runClient(["get", "_meta-author", "--tenant", "authoring"]);
     expect(exitCode).toBe(0);
     const data = JSON.parse(stdout);
     expect(data.slug).toBe("_meta-author");
@@ -685,23 +680,23 @@ describe("Author workflow with temp directory", () => {
       ].join("\n"),
     );
 
-    const reload = await runClient(["reload"]);
+    const reload = await runClient(["reload", "--tenant", "authoring"]);
     expect(reload.exitCode).toBe(0);
 
-    const { stdout, exitCode } = await runClient(["get", "payment"]);
+    const { stdout, exitCode } = await runClient(["get", "payment", "--tenant", "authoring"]);
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout).slug).toBe("payment");
   });
 
   test("traverse new artifact follows dependencies", async () => {
-    const { stdout, exitCode } = await runClient(["traverse", "payment", "--type", "depends-on"]);
+    const { stdout, exitCode } = await runClient(["traverse", "payment", "--type", "depends-on", "--tenant", "authoring"]);
     expect(exitCode).toBe(0);
     const slugs = (JSON.parse(stdout) as Array<{ slug: string }>).map((a) => a.slug);
     expect(slugs).toContain("order");
   });
 
   test("existing data still queryable after reload", async () => {
-    const { stdout, exitCode } = await runClient(["get", "order"]);
+    const { stdout, exitCode } = await runClient(["get", "order", "--tenant", "authoring"]);
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout).slug).toBe("order");
   });

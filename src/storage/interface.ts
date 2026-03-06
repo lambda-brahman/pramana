@@ -1,5 +1,5 @@
-import type { KnowledgeArtifact, Relationship } from "../schema/index.ts";
 import type { Result } from "../lib/result.ts";
+import type { KnowledgeArtifact, Relationship } from "../schema/index.ts";
 
 export type StorageError = { type: "storage"; message: string };
 

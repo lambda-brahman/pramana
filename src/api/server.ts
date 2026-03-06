@@ -2,27 +2,10 @@ import type { Reader } from "../engine/reader.ts";
 import type { TenantManager } from "../engine/tenant.ts";
 import { VERSION } from "../version.ts";
 
-export type ApiServerOptions =
-  | { port: number; tenantManager: TenantManager }
-  | { port: number; reader: Reader };
+export type ApiServerOptions = { port: number; tenantManager: TenantManager };
 
 export function createServer(opts: ApiServerOptions) {
-  const tm = "tenantManager" in opts ? opts.tenantManager : null;
-  const singleReader = "reader" in opts ? opts.reader : null;
-
-  function getReader(tenantName?: string): Reader | null {
-    if (tm) {
-      const result = tenantName
-        ? tm.getReader(tenantName)
-        : tm.getDefaultReader();
-      return result.ok ? result.value : null;
-    }
-    return singleReader;
-  }
-
-  function isTenant(segment: string): boolean {
-    return tm ? tm.hasTenant(segment) : false;
-  }
+  const tm = opts.tenantManager;
 
   return Bun.serve({
     port: opts.port,
@@ -37,7 +20,7 @@ export function createServer(opts: ApiServerOptions) {
       }
 
       // POST /v1/:tenant/reload
-      // POST /v1/reload
+      // POST /v1/reload → error
       if (req.method === "POST") {
         const tenantReloadMatch = path.match(/^\/v1\/([^/]+)\/reload$/);
         if (tenantReloadMatch) {
@@ -45,9 +28,11 @@ export function createServer(opts: ApiServerOptions) {
           return handleReload(tm, tenant);
         }
         if (path === "/v1/reload") {
-          const defaultName = tm?.defaultTenantName();
-          if (!defaultName) return json({ error: "No default tenant" }, 400);
-          return handleReload(tm, defaultName);
+          const names = tm.tenantNames();
+          return json(
+            { error: `Specify tenant: POST /v1/:tenant/reload. Available: ${names.join(", ")}` },
+            400,
+          );
         }
         return json({ error: "Not found" }, 404);
       }
@@ -58,27 +43,30 @@ export function createServer(opts: ApiServerOptions) {
       }
 
       // GET /v1/tenants
-      if (path === "/v1/tenants" && tm) {
+      if (path === "/v1/tenants") {
         return json(tm.listTenants());
       }
 
       // Try tenant-scoped routing: /v1/:tenant/...
       const tenantMatch = path.match(/^\/v1\/([^/]+)\/(.+)$/);
-      if (tenantMatch && isTenant(tenantMatch[1]!)) {
+      if (tenantMatch && tm.hasTenant(tenantMatch[1]!)) {
         const tenant = tenantMatch[1]!;
         const rest = tenantMatch[2]!;
-        const reader = getReader(tenant);
-        if (!reader) return json({ error: `Tenant "${tenant}" not found` }, 404);
-        return handleOperation(reader, rest, url);
+        const result = tm.getReader(tenant);
+        if (!result.ok) return json({ error: `Tenant "${tenant}" not found` }, 404);
+        return handleOperation(result.value, rest, url);
       }
 
-      // Default tenant routing: /v1/...
-      const defaultMatch = path.match(/^\/v1\/(.+)$/);
-      if (defaultMatch) {
-        const rest = defaultMatch[1]!;
-        const reader = getReader();
-        if (!reader) return json({ error: "No default tenant" }, 404);
-        return handleOperation(reader, rest, url);
+      // Unscoped /v1/... paths → error with available tenant names
+      const unscopedMatch = path.match(/^\/v1\/(.+)$/);
+      if (unscopedMatch) {
+        const names = tm.tenantNames();
+        return json(
+          {
+            error: `Specify tenant in URL: /v1/:tenant/${unscopedMatch[1]}. Available: ${names.join(", ")}`,
+          },
+          400,
+        );
       }
 
       return json({ error: "Not found" }, 404);
@@ -139,11 +127,7 @@ function handleOperation(reader: Reader, opPath: string, url: URL): Response {
   return json({ error: "Not found" }, 404);
 }
 
-async function handleReload(
-  tm: TenantManager | null,
-  tenantName: string
-): Promise<Response> {
-  if (!tm) return json({ error: "Reload not supported in single-reader mode" }, 400);
+async function handleReload(tm: TenantManager, tenantName: string): Promise<Response> {
   const result = await tm.reload(tenantName);
   if (!result.ok) return json({ error: result.error.message }, 500);
   return json({ status: "ok", report: result.value });

@@ -1,6 +1,11 @@
+import { err, ok, type Result } from "../lib/result.ts";
 import type { KnowledgeArtifact, Relationship, Section } from "../schema/index.ts";
-import type { StorageReader, StorageSearcher, SearchResult, StorageError } from "../storage/interface.ts";
-import { type Result, ok, err } from "../lib/result.ts";
+import type {
+  SearchResult,
+  StorageError,
+  StorageReader,
+  StorageSearcher,
+} from "../storage/interface.ts";
 
 export type ArtifactView = {
   slug: string;
@@ -23,7 +28,7 @@ export type EngineError = { type: "engine"; message: string };
 export class Reader {
   constructor(
     private storage: StorageReader,
-    private searcher: StorageSearcher
+    private searcher: StorageSearcher,
   ) {}
 
   get(slugWithSection: string): Result<ArtifactView | null, EngineError> {
@@ -42,16 +47,10 @@ export class Reader {
     return ok(result.value);
   }
 
-  traverse(
-    from: string,
-    relType?: string,
-    depth: number = 1
-  ): Result<ArtifactView[], EngineError> {
+  traverse(from: string, relType?: string, depth: number = 1): Result<ArtifactView[], EngineError> {
     const visited = new Set<string>();
     const results: ArtifactView[] = [];
-    const queue: Array<{ slug: string; currentDepth: number }> = [
-      { slug: from, currentDepth: 0 },
-    ];
+    const queue: Array<{ slug: string; currentDepth: number }> = [{ slug: from, currentDepth: 0 }];
 
     while (queue.length > 0) {
       const item = queue.shift()!;
@@ -61,9 +60,7 @@ export class Reader {
       const relsResult = this.storage.getRelationships(item.slug);
       if (!relsResult.ok) return mapError(relsResult);
 
-      const rels = relType
-        ? relsResult.value.filter((r) => r.type === relType)
-        : relsResult.value;
+      const rels = relType ? relsResult.value.filter((r) => r.type === relType) : relsResult.value;
 
       for (const rel of rels) {
         const targetSlug = rel.target.split("#")[0]!;
@@ -98,7 +95,7 @@ function splitSlugSection(input: string): [string, string | undefined] {
 function toView(
   artifact: KnowledgeArtifact,
   storage: StorageReader,
-  sectionId?: string
+  sectionId?: string,
 ): ArtifactView {
   const inverseResult = storage.getInverse(artifact.slug);
   const inverseRelationships = inverseResult.ok ? inverseResult.value : [];
@@ -128,17 +125,11 @@ function toView(
   return view;
 }
 
-function extractSectionContent(
-  content: string,
-  section: Section,
-  allSections: Section[]
-): string {
+function extractSectionContent(content: string, section: Section, allSections: Section[]): string {
   const lines = content.split("\n");
   const startLine = section.line;
 
-  const nextSection = allSections.find(
-    (s) => s.line > section.line && s.level <= section.level
-  );
+  const nextSection = allSections.find((s) => s.line > section.line && s.level <= section.level);
   const endLine = nextSection ? nextSection.line - 1 : lines.length;
 
   return lines.slice(startLine, endLine).join("\n").trim();

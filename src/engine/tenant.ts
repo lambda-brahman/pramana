@@ -1,7 +1,7 @@
+import { err, ok, type Result } from "../lib/result.ts";
 import { SqlitePlugin } from "../storage/sqlite/index.ts";
 import { Builder, type BuildReport } from "./builder.ts";
 import { Reader } from "./reader.ts";
-import { type Result, ok, err } from "../lib/result.ts";
 
 export type TenantConfig = { name: string; sourceDir: string };
 
@@ -21,20 +21,12 @@ export type TenantInfo = {
   artifactCount: number;
 };
 
-const RESERVED_NAMES = new Set([
-  "get",
-  "search",
-  "traverse",
-  "list",
-  "tenants",
-  "reload",
-]);
+const RESERVED_NAMES = new Set(["get", "search", "traverse", "list", "tenants", "reload"]);
 
 const NAME_REGEX = /^[a-z][a-z0-9-]*$/;
 
 export class TenantManager {
   private tenants = new Map<string, TenantState>();
-  private defaultTenant: string | null = null;
 
   async mount(config: TenantConfig): Promise<Result<BuildReport, TenantError>> {
     const { name, sourceDir } = config;
@@ -66,10 +58,6 @@ export class TenantManager {
     const { storage, reader, report } = result.value;
     this.tenants.set(name, { name, sourceDir, storage, reader, report });
 
-    if (this.defaultTenant === null) {
-      this.defaultTenant = name;
-    }
-
     return ok(report);
   }
 
@@ -99,15 +87,8 @@ export class TenantManager {
     return ok(tenant.reader);
   }
 
-  getDefaultReader(): Result<Reader, TenantError> {
-    if (!this.defaultTenant) {
-      return err({ type: "tenant", message: "No tenants mounted" });
-    }
-    return this.getReader(this.defaultTenant);
-  }
-
-  defaultTenantName(): string | null {
-    return this.defaultTenant;
+  tenantNames(): string[] {
+    return [...this.tenants.keys()];
   }
 
   listTenants(): TenantInfo[] {
@@ -133,11 +114,10 @@ export class TenantManager {
       state.storage.close();
     }
     this.tenants.clear();
-    this.defaultTenant = null;
   }
 
   private async buildTenant(
-    sourceDir: string
+    sourceDir: string,
   ): Promise<Result<{ storage: SqlitePlugin; reader: Reader; report: BuildReport }, TenantError>> {
     const storage = new SqlitePlugin(":memory:");
     const initResult = storage.initialize();

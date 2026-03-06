@@ -1,6 +1,9 @@
-import { z } from "zod";
-import { type Relationship, type RelationshipType, FrontmatterRelationshipsSchema } from "../schema/index.ts";
-import { type Result, ok, err } from "../lib/result.ts";
+import { err, ok, type Result } from "../lib/result.ts";
+import {
+  FrontmatterRelationshipsSchema,
+  type Relationship,
+  type RelationshipType,
+} from "../schema/index.ts";
 
 export type FrontmatterData = {
   slug: string;
@@ -55,7 +58,10 @@ function normalizeRelationships(raw: unknown): Relationship[] {
   if (!parsed.success) return [];
 
   const result: Relationship[] = [];
-  for (const [type, targets] of Object.entries(parsed.data) as [RelationshipType, string | string[]][]) {
+  for (const [type, targets] of Object.entries(parsed.data) as [
+    RelationshipType,
+    string | string[],
+  ][]) {
     const targetList = Array.isArray(targets) ? targets : [targets];
     for (const target of targetList) {
       result.push({ target, type });
@@ -129,7 +135,6 @@ function parseYaml(yaml: string): unknown {
     if (arrayItemMatch && currentKey) {
       if (!currentArray) currentArray = [];
       currentArray.push(arrayItemMatch[1]!.trim());
-      continue;
     }
   }
 

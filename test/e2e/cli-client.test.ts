@@ -4,6 +4,7 @@ import path from "node:path";
 const FIXTURES_DIR = path.join(import.meta.dir, "../fixtures");
 const FIXTURES_ALT_DIR = path.join(import.meta.dir, "../fixtures-alt");
 const CLI_PATH = path.join(import.meta.dir, "../../src/cli/index.ts");
+const FIXTURES_TENANT = path.basename(FIXTURES_DIR);
 
 describe("CLI client E2E — daemon mode vs standalone", () => {
   let daemonProc: ReturnType<typeof Bun.spawn>;
@@ -24,7 +25,7 @@ describe("CLI client E2E — daemon mode vs standalone", () => {
     const start = Date.now();
     while (Date.now() - start < maxWait) {
       try {
-        const res = await fetch(`http://localhost:${port}/v1/list`);
+        const res = await fetch(`http://localhost:${port}/v1/version`);
         if (res.ok) break;
       } catch {
         // not ready yet
@@ -60,7 +61,7 @@ describe("CLI client E2E — daemon mode vs standalone", () => {
   }
 
   test("get output matches between client and standalone", async () => {
-    const client = await runClient(["get", "order"]);
+    const client = await runClient(["get", "order", "--tenant", FIXTURES_TENANT]);
     const standalone = await runStandalone(["get", "order"]);
 
     expect(client.exitCode).toBe(0);
@@ -75,7 +76,7 @@ describe("CLI client E2E — daemon mode vs standalone", () => {
   });
 
   test("list output matches between client and standalone", async () => {
-    const client = await runClient(["list"]);
+    const client = await runClient(["list", "--tenant", FIXTURES_TENANT]);
     const standalone = await runStandalone(["list"]);
 
     expect(client.exitCode).toBe(0);
@@ -90,7 +91,7 @@ describe("CLI client E2E — daemon mode vs standalone", () => {
   });
 
   test("search output matches between client and standalone", async () => {
-    const client = await runClient(["search", "purchase"]);
+    const client = await runClient(["search", "purchase", "--tenant", FIXTURES_TENANT]);
     const standalone = await runStandalone(["search", "purchase"]);
 
     expect(client.exitCode).toBe(0);
@@ -105,7 +106,7 @@ describe("CLI client E2E — daemon mode vs standalone", () => {
   });
 
   test("client mode does not print ingestion summary", async () => {
-    const { stderr, exitCode } = await runClient(["list"]);
+    const { stderr, exitCode } = await runClient(["list", "--tenant", FIXTURES_TENANT]);
     expect(exitCode).toBe(0);
     expect(stderr).not.toContain("Ingested");
   });
@@ -123,6 +124,12 @@ describe("CLI client E2E — daemon mode vs standalone", () => {
     expect(stderr).toContain("Ingested");
     const data = JSON.parse(stdout) as Array<unknown>;
     expect(data.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test("no --tenant returns error from server", async () => {
+    const { stderr, exitCode } = await runClient(["list"]);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Specify tenant");
   });
 });
 
@@ -193,11 +200,10 @@ describe("CLI client E2E — multi-tenant daemon", () => {
     expect(stderr).toContain("Not found");
   });
 
-  test("default tenant (commerce) used when no --tenant", async () => {
-    const { stdout, exitCode } = await runClient(["get", "order"]);
-    expect(exitCode).toBe(0);
-    const data = JSON.parse(stdout);
-    expect(data.slug).toBe("order");
+  test("no --tenant returns error", async () => {
+    const { stderr, exitCode } = await runClient(["get", "order"]);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Specify tenant");
   });
 
   test("list --tenant notes shows only notes", async () => {

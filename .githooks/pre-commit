@@ -1,2 +1,2 @@
 #!/bin/sh
-bun test test/precommit/
+bun run lint && bun test test/precommit/
