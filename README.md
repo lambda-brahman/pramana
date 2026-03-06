@@ -5,22 +5,22 @@ A knowledge engine that turns a directory of Markdown files into a queryable kno
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sarath-soman/pramana/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
 ```
 
 To install a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sarath-soman/pramana/main/install.sh | sh -s v0.1.0
+curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh -s v0.1.0
 ```
 
 Custom install directory:
 
 ```bash
-PRAMANA_INSTALL=~/.local/bin curl -fsSL https://raw.githubusercontent.com/sarath-soman/pramana/main/install.sh | sh
+PRAMANA_INSTALL=~/.local/bin curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
 ```
 
-Or download a binary directly from [Releases](https://github.com/sarath-soman/pramana/releases).
+Or download a binary directly from [Releases](https://github.com/lambda-brahman/pramana/releases).
 
 ## Document format
 

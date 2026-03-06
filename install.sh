@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO="sarath-soman/pramana"
+REPO="lambda-brahman/pramana"
 INSTALL_DIR="${PRAMANA_INSTALL:-/usr/local/bin}"
 
 # Detect platform
