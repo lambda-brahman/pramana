@@ -1,6 +1,6 @@
 ---
 name: query
-description: Query a Pramana knowledge base with semantic awareness
+description: Look up domain knowledge, definitions, rules, dependencies, and relationships from the user's Pramana knowledge base. Use whenever the conversation involves domain-specific concepts, the user asks about their domain, or you need context that may be captured in their knowledge base.
 args: query
 user_invocable: true
 ---
@@ -29,7 +29,7 @@ pramana traverse <slug> --type depends-on --depth 2 [--tenant <name>]  # follow 
 The daemon may serve multiple knowledge bases (tenants). To discover available tenants:
 
 ```bash
-curl http://localhost:${PRAMANA_PORT:-3000}/v1/tenants
+curl http://localhost:${PRAMANA_PORT:-5111}/v1/tenants
 ```
 
 Or check if the user specifies a tenant in their query. If the user's question mentions a specific domain and multiple tenants exist, ask which tenant to query. If only one tenant exists or the user doesn't specify, use the default tenant (omit `--tenant`).

@@ -2,124 +2,196 @@
 
 **Give Claude your domain knowledge.**
 
-Pramana turns a directory of Markdown files into a queryable knowledge graph that Claude can search, traverse, and build upon. Instead of pasting context into every conversation, encode your expertise once — Claude retrieves exactly what it needs.
+Write what you know in Markdown. Pramana makes it available to Claude — automatically. When your conversation touches your domain, Claude looks up the relevant knowledge without you having to ask.
 
 > The reference implementation of the semantic layer described in [Knowledge Engineering: The Future of AI-Assisted Software Engineering](https://knowledgeengineering.substack.com/p/knowledge-engineering-the-future).
 
 ## Quick start
 
-### 1. Install Pramana
+### 1. Install Pramana and the Claude plugin
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
 ```
 
-### 2. Install the Claude plugin
+In Claude Code:
 
 ```
 /plugin marketplace add lambda-brahman/pramana
 /plugin install pramana@lambda-brahman
 ```
 
-### 3. Write your first artifact
+### 2. Write a knowledge file
 
-Create a Markdown file in a directory (e.g., `./knowledge/`):
+Create a Markdown file in a directory (e.g., `./knowledge/onboarding.md`):
 
 ```markdown
 ---
 slug: onboarding-flow
 title: Onboarding Flow
 tags: [process, user-facing]
-relates-to: [user-account, email-verification]
+relationships:
+  depends-on: [user-account]
+  relates-to: [email-verification]
 ---
 
 # Onboarding Flow
 
-New users go through a three-step onboarding...
+New users go through a three-step onboarding.
 
 ## Steps
 
 1. Create account via [[depends-on::user-account]]
 2. Verify email via [[email-verification]]
 3. Complete profile
+
+## Rules
+
+- Email must be verified within 24 hours
+- Profile completion is optional but recommended
 ```
 
-### 4. Start the daemon and ask Claude
+Each file is a **knowledge artifact** — a self-contained piece of expertise with a name (`slug`), labels (`tags`), and connections to other artifacts (`relationships`).
 
-```bash
-pramana serve --source ./knowledge
-```
+### 3. Start Pramana and talk to Claude
 
-```
-/pramana:query "how does onboarding work?"
-```
-
-Claude will search your knowledge base, read the relevant sections, follow the relationship links, and give you an answer grounded in your domain knowledge.
-
-## What can Claude do with Pramana?
-
-### `/pramana:setup` — Set up your knowledge base
-
-Claude starts the daemon, checks ingestion, and helps fix any broken files:
+In Claude Code, ask Claude to set things up:
 
 ```
-/pramana:setup ./my-knowledge-dir
+/pramana:setup ./knowledge
 ```
 
-### `/pramana:query` — Ask questions about your domain
+Claude starts Pramana, checks that your files were loaded correctly, and reports any issues. Once running, **Claude automatically uses your knowledge base** whenever the conversation needs it.
 
-Claude searches, reads focused sections, and follows dependency chains to answer:
+## Using your knowledge base
 
-```
-/pramana:query "what are the pricing rules for enterprise customers?"
-/pramana:query "show me everything that depends on the auth module"
-```
+There are two ways to use Pramana — nudge Claude with a hint in your prompt, or invoke the query skill directly.
 
-### `/pramana:author` — Create new knowledge artifacts
+### Hint in your prompt
 
-Claude elicits your authoring preferences (style, principles, completeness criteria), then drafts new artifacts that fit your knowledge base:
+Mention the knowledge base in parentheses and Claude will look things up:
 
 ```
-/pramana:author "API rate limiting policy"
+"I'm working on the checkout page. How does order validation work?
+(use /pramana:query to check the KB)"
+
+"What would break if we changed the pricing model?
+(check the knowledge base with /pramana:query)"
 ```
 
-On first use, Claude asks you five questions to build an author profile — so every artifact it creates matches your standards.
+Claude sees the hint, invokes the query skill, searches your knowledge, reads the relevant sections, follows relationship chains, and answers grounded in what you wrote.
 
-## Multi-tenant: multiple knowledge bases
+### Invoke directly
 
-Serve several knowledge domains from one daemon:
+When you know exactly what you want to look up:
 
-```bash
-pramana serve --source ./law:law --source ./engineering:eng --port 3000
+```
+/pramana:query "what are the onboarding rules?"
+/pramana:query "show me everything that depends on user-account"
 ```
 
-Then query specific domains:
+For multiple knowledge bases, specify which one:
 
 ```
 /pramana:query law "what is negligence?"
 /pramana:query eng "how does the build pipeline work?"
 ```
 
-## How it works
+## Writing knowledge files
+
+A knowledge file is a Markdown file with a small header (called "frontmatter") that tells Pramana what the file is about.
+
+### The header
+
+Every file needs at least a `slug` — a short, lowercase name that identifies the artifact:
+
+```yaml
+---
+slug: pricing-rules
+title: Pricing Rules
+tags: [business, billing]
+relationships:
+  depends-on: [subscription-plan, discount-policy]
+  relates-to: [invoice]
+---
+```
+
+| Field | Required | What it does |
+|-------|----------|-------------|
+| `slug` | Yes | Unique identifier, lowercase with hyphens (e.g., `pricing-rules`) |
+| `title` | No | Human-readable name. Defaults to the first heading. |
+| `tags` | No | Labels for categorizing (e.g., `[business, billing]`) |
+| `relationships` | No | How this artifact connects to others |
+
+### Relationships
+
+There are two types:
+
+- **depends-on** — this artifact needs the other to make sense. "Pricing rules depend on subscription plans."
+- **relates-to** — these artifacts are connected but independent. "Pricing rules relate to invoices."
+
+### The body
+
+Write naturally using Markdown headings:
+
+```markdown
+# Pricing Rules
+
+## Tiers
+
+Enterprise customers get volume discounts...
+
+## Discounts
+
+Early-payment discount is 5% if paid within 10 days...
+```
+
+Use `##` headings to break content into sections. Claude reads specific sections rather than loading entire files, so good headings help Claude find exactly what it needs.
+
+### Linking artifacts together
+
+Use double-bracket links to connect ideas:
+
+```markdown
+Pricing depends on the [[depends-on::subscription-plan]].
+See also [[invoice]] for billing details.
+```
+
+These links are optional — the `relationships` header is what Pramana uses to build the graph. But inline links make your files more readable.
+
+## Let Claude write knowledge for you
 
 ```
-Your Markdown files
-      ↓ parsed at startup
-In-memory knowledge graph (SQLite)
-      ↓ four primitives
-get · search · traverse · list
-      ↓ via CLI + HTTP
-Claude skills (setup · query · author)
+/pramana:author "API rate limiting policy"
 ```
 
-- **get** — point lookup by slug, with optional section focus
-- **search** — full-text search across all artifacts
-- **traverse** — follow dependency chains through the graph
-- **list** — enumerate artifacts, filtered by tags
+The first time you use this, Claude asks five questions about your domain, writing style, and quality standards. Then it drafts new artifacts that fit your knowledge base — with proper connections to existing artifacts.
 
-Artifacts link to each other through two relationship types:
-- **depends-on** — structural: A cannot function without B
-- **relates-to** — associative: A and B are connected
+## Multiple knowledge bases
+
+If you have separate domains (e.g., legal knowledge and engineering knowledge), serve them together:
+
+```
+/pramana:setup ./law ./engineering
+```
+
+Claude helps you name each knowledge base and keeps them separate. When you ask a question, specify the domain:
+
+```
+/pramana:query law "what is negligence?"
+/pramana:query eng "how does the build pipeline work?"
+```
+
+## How Claude uses your knowledge
+
+When the Pramana plugin is installed and running, Claude has four ways to access your knowledge:
+
+- **Search** — find artifacts by topic or keyword
+- **Get** — read a specific artifact or section
+- **Traverse** — follow dependency chains ("what does X depend on?")
+- **List** — see all artifacts, optionally filtered by tags
+
+Claude chooses the right approach automatically based on your question. It reads specific sections rather than loading everything, keeping conversations focused and efficient.
 
 ## Install options
 
@@ -129,22 +201,31 @@ curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install
 
 # Specific version
 curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh -s v0.2.0
-
-# Or download from GitHub Releases
 ```
 
 See [Releases](https://github.com/lambda-brahman/pramana/releases) for binaries.
 
-## Documentation
+## Try it with examples
+
+Pramana ships with example knowledge bases (law, recipes, software architecture) you can try immediately:
+
+```
+/pramana:setup ./examples/recipes
+```
+
+See [examples/](examples/) for all available domains, or the [technical reference](docs/technical.md#example-knowledge-bases) for details.
+
+## Further reading
 
 - [Technical reference](docs/technical.md) — CLI commands, HTTP API, document format, multi-tenant details
-- [Plugin guide](plugin/README.md) — Skill details, architecture, multi-tenant querying
+- [Plugin guide](plugin/README.md) — Skill details, invocation modes, architecture
 
 ## Development
 
 ```bash
 bun install
-bun test          # 113 tests
+bun run test          # unit + e2e tests
+bun run test:precommit  # plugin workflow tests
 bun run typecheck
 ```
 

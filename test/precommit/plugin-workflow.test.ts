@@ -119,14 +119,16 @@ describe("Plugin structure validation", () => {
     const content = fs.readFileSync(skillPath, "utf-8");
     expect(content).toContain("name: setup");
     expect(content).toContain("user_invocable: true");
+    expect(content).toContain("disable-model-invocation: true");
   });
 
-  test("query skill exists with valid frontmatter", () => {
+  test("query skill exists with valid frontmatter and is auto-invocable", () => {
     const skillPath = path.join(PROJECT_ROOT, "plugin/skills/query/SKILL.md");
     expect(fs.existsSync(skillPath)).toBe(true);
     const content = fs.readFileSync(skillPath, "utf-8");
     expect(content).toContain("name: query");
     expect(content).toContain("user_invocable: true");
+    expect(content).not.toContain("disable-model-invocation");
   });
 
   test("author skill exists with valid frontmatter", () => {
@@ -135,6 +137,7 @@ describe("Plugin structure validation", () => {
     const content = fs.readFileSync(skillPath, "utf-8");
     expect(content).toContain("name: author");
     expect(content).toContain("user_invocable: true");
+    expect(content).toContain("disable-model-invocation: true");
   });
 });
 

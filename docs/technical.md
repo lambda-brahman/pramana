@@ -55,7 +55,7 @@ Relationships can be declared in frontmatter (as typed relations) or inline via 
 ## CLI
 
 ```
-pramana serve --source <dir>[:name] [--source <dir>[:name] ...] [--port 3000]
+pramana serve --source <dir>[:name] [--source <dir>[:name] ...] [--port 5111]
 pramana get <slug> --source <dir> [--tenant <name>]
 pramana search <query> --source <dir> [--tenant <name>]
 pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] [--tenant <name>]
@@ -69,7 +69,7 @@ When a Pramana daemon is running, CLI commands automatically connect to it via H
 
 ```bash
 # Start the daemon
-pramana serve --source ./knowledge --port 3000
+pramana serve --source ./knowledge --port 5111
 
 # These connect to the daemon (no --source needed)
 pramana get order
@@ -77,7 +77,7 @@ pramana search "parser"
 pramana list --tags concept
 ```
 
-Port resolution: `--port` flag > `PRAMANA_PORT` env var > default `3000`.
+Port resolution: `--port` flag > `PRAMANA_PORT` env var > default `5111`.
 
 If no daemon is reachable, commands fall back to standalone mode (requires `--source`).
 
@@ -92,7 +92,7 @@ pramana get order --source ./knowledge --standalone
 Serve multiple knowledge bases from a single daemon:
 
 ```bash
-pramana serve --source ./law:law --source ./music:music --port 3000
+pramana serve --source ./law:law --source ./music:music --port 5111
 ```
 
 The `path:name` notation assigns a tenant name. Without `:`, the directory basename is used.
@@ -141,6 +141,77 @@ POST /v1/reload                         — Rebuild default tenant
 ```
 
 All endpoints return JSON with `Content-Type: application/json` and CORS headers.
+
+## Example Knowledge Bases
+
+Pramana includes three example knowledge bases in the `examples/` directory. Each demonstrates how to structure artifacts, use relationships, and build dependency chains for a different domain.
+
+### Law — Tort Law Basics
+
+Four artifacts covering the elements of negligence in tort law. Designed for legal professionals, paralegals, and law students.
+
+| Artifact | Tags | Relationships |
+|----------|------|---------------|
+| `negligence` | concept, tort | depends-on: duty-of-care, breach, causation |
+| `duty-of-care` | concept, tort | relates-to: negligence |
+| `breach` | concept, tort | depends-on: duty-of-care |
+| `causation` | concept, tort | depends-on: breach |
+
+**Dependency chain:** Negligence depends on all three elements. Causation depends on breach, which depends on duty-of-care. Asking "what is negligence?" traverses the full chain.
+
+```
+/pramana:setup ./examples/law
+/pramana:query "what is negligence?"
+/pramana:query "what does negligence depend on?"
+```
+
+### Recipes — Cooking Techniques & Dishes
+
+Four artifacts showing how cooking techniques build on each other. Universally relatable, great for demos.
+
+| Artifact | Tags | Relationships |
+|----------|------|---------------|
+| `roux` | technique, base | — |
+| `bechamel` | sauce, french | depends-on: roux |
+| `lasagna` | dish, italian | depends-on: bechamel |
+| `mac-and-cheese` | dish, comfort | depends-on: bechamel, roux |
+
+**Dependency chain:** Roux is the foundation. Bechamel depends on roux. Both dishes depend on bechamel. Asking "how do I make lasagna?" traverses down to the roux technique.
+
+```
+/pramana:setup ./examples/recipes
+/pramana:query "how do I make lasagna from scratch?"
+/pramana:query "what do I need to know before making bechamel?"
+```
+
+### Software Architecture — Microservices
+
+Four artifacts modeling a microservice system. Designed for developers and engineering teams.
+
+| Artifact | Tags | Relationships |
+|----------|------|---------------|
+| `api-gateway` | service, infrastructure | depends-on: auth-service, rate-limiter |
+| `auth-service` | service, security | relates-to: user-service |
+| `user-service` | service, core | relates-to: auth-service |
+| `rate-limiter` | service, infrastructure | relates-to: api-gateway |
+
+**Dependency chain:** API gateway depends on auth and rate limiting. Auth relates to user service. Asking "what happens when a request hits the API?" traverses from gateway through auth and rate limiting.
+
+```
+/pramana:setup ./examples/architecture
+/pramana:query "what happens when a request hits the API gateway?"
+/pramana:query "what services does the API gateway depend on?"
+```
+
+### Verifying examples manually
+
+```bash
+pramana serve --source ./examples/law --port 4000 &
+curl http://localhost:4000/v1/list | jq length                                    # 4
+curl http://localhost:4000/v1/get/negligence | jq .slug                           # "negligence"
+curl "http://localhost:4000/v1/traverse/negligence?type=depends-on" | jq '.[].slug'  # duty-of-care, breach, causation
+kill %1
+```
 
 ## Development
 

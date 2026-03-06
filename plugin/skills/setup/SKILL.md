@@ -3,6 +3,7 @@ name: setup
 description: Start a Pramana daemon, monitor ingestion, and diagnose errors
 args: source_dirs
 user_invocable: true
+disable-model-invocation: true
 ---
 
 # Pramana Setup
@@ -13,20 +14,42 @@ You are setting up a Pramana knowledge engine daemon. Guide the user through sta
 
 The user provides one or more knowledge directories: **$ARGUMENTS**
 
+## Step 0: Check CLI availability
+
+Before anything else, verify the `pramana` CLI is installed:
+
+```bash
+command -v pramana
+```
+
+**If not found**, install it automatically:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
+```
+
+Then verify it installed correctly:
+
+```bash
+pramana --help
+```
+
+If the install fails, report the error to the user and **stop** — do not proceed to Step 1.
+
 ## Step 1: Start the daemon
 
 Determine the correct command based on the number of sources:
 
 **Single source:**
 ```bash
-pramana serve --source <dir> --port 3000
+pramana serve --source <dir> --port 5111
 ```
 
 **Multiple sources (multi-tenant):**
 Help the user name each tenant. Names must be lowercase, start with a letter, and contain only `a-z`, `0-9`, `-`. Reserved names that cannot be used: `get`, `search`, `traverse`, `list`, `tenants`, `reload`.
 
 ```bash
-pramana serve --source <dir1>:<name1> --source <dir2>:<name2> --port 3000
+pramana serve --source <dir1>:<name1> --source <dir2>:<name2> --port 5111
 ```
 
 Run the command in the background and capture stderr for the ingestion report.
@@ -93,7 +116,7 @@ When helping users set up multi-tenant:
 
 Once everything is running:
 ```
-Pramana daemon is running on port 3000.
+Pramana daemon is running on port 5111.
 - Tenants: <list of tenant names with artifact counts>
 - Query with: pramana get <slug> [--tenant <name>]
 - Use /pramana:query to search the knowledge base

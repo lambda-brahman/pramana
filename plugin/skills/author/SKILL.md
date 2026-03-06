@@ -3,6 +3,7 @@ name: author
 description: Create or update knowledge artifacts with auto-profile elicitation
 args: tenant topic
 user_invocable: true
+disable-model-invocation: true
 ---
 
 # Pramana Author

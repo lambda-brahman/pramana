@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Knowledge engineering tools for Claude",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "pramana",
       "source": "./plugin",
-      "description": "Give Claude your domain knowledge. Turns Markdown files into a queryable knowledge graph with semantic query, authoring, and multi-tenant support.",
-      "version": "0.2.0",
+      "description": "Turn your expertise into a knowledge base Claude can search and build on",
+      "version": "0.3.0",
       "author": {
         "name": "Lambda Brahman"
       },

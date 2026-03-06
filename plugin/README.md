@@ -1,8 +1,6 @@
 # Pramana Plugin for Claude
 
-Give Claude access to your domain knowledge — structured as a queryable graph, not raw context dumps.
-
-Pramana implements the semantic layer from [Knowledge Engineering: The Future of AI-Assisted Software Engineering](https://knowledgeengineering.substack.com/p/knowledge-engineering-the-future).
+Give Claude access to your domain knowledge. Write Markdown files, and Claude automatically looks things up when your conversation needs it.
 
 ## Install
 
@@ -11,96 +9,87 @@ Pramana implements the semantic layer from [Knowledge Engineering: The Future of
 /plugin install pramana@lambda-brahman
 ```
 
-Or load directly:
+## Getting started
+
+Install the Pramana CLI, then let Claude handle the rest:
 
 ```bash
-claude --plugin-dir ./plugin
-```
-
-## Prerequisites
-
-Install the Pramana CLI and start a daemon:
-
-```bash
-# Install
 curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
-
-# Start daemon
-pramana serve --source ./your-knowledge-dir --port 3000
 ```
-
-Or let Claude do it for you:
 
 ```
 /pramana:setup ./your-knowledge-dir
 ```
 
+Claude starts Pramana, verifies your files loaded correctly, and reports any issues.
+
 ## Skills
 
-### /pramana:setup — Start and configure
+This plugin provides three skills with different invocation modes:
+
+### Query — automatic
+
+Claude automatically uses your knowledge base when the conversation involves domain-specific concepts. You don't need to do anything — just talk about your domain and Claude will look things up.
+
+You can also invoke it explicitly:
 
 ```
-/pramana:setup ./my-knowledge-dir
-/pramana:setup ./law ./music
-```
-
-Claude starts the daemon, parses ingestion reports, diagnoses broken files (missing slugs, bad YAML, invalid relationships), and verifies everything is serving correctly.
-
-For multiple knowledge bases:
-
-```
-/pramana:setup ./law ./music
-```
-
-Claude helps you name tenants and starts a multi-tenant daemon.
-
-### /pramana:query — Ask questions
-
-```
-/pramana:query "how does the parser work?"
+/pramana:query "what are the pricing rules?"
 /pramana:query "what depends on the auth module?"
-/pramana:query "show me the pricing rules"
 ```
 
-Claude follows a structured workflow: orient (list), discover (search), focus (section reads), connect (traverse), synthesize. It reads specific sections instead of dumping entire files — keeping token usage efficient.
-
-For multi-tenant setups:
+For multiple knowledge bases, specify which one:
 
 ```
 /pramana:query law "what is negligence?"
-/pramana:query eng "how does the build pipeline work?"
 ```
 
-### /pramana:author — Create knowledge artifacts
+**How it works:** Claude searches your knowledge, reads relevant sections (not whole files), follows relationship chains, and synthesizes an answer. This happens automatically whenever Claude's description matches the conversation context.
+
+### Setup — explicit only
+
+```
+/pramana:setup ./my-knowledge-dir
+/pramana:setup ./law ./engineering
+```
+
+Starts Pramana, checks ingestion, diagnoses broken files (missing slugs, bad YAML, invalid relationships), and verifies everything is running. For multiple directories, Claude helps you name each knowledge base.
+
+This skill is **explicit only** (`disable-model-invocation`) because it starts a background process.
+
+### Author — explicit only
 
 ```
 /pramana:author "API rate limiting policy"
 /pramana:author law "tort liability"
 ```
 
-On first use, Claude elicits an author profile:
-1. What domain does this KB cover?
+Creates new knowledge artifacts that fit your existing knowledge base. On first use, Claude asks five questions to learn your writing preferences:
+
+1. What domain does this knowledge base cover?
 2. What core principles guide your thinking?
 3. How do you prefer knowledge structured?
 4. What makes an artifact "done"?
 5. Who is the intended reader?
 
-Then it researches existing connections, drafts with proper frontmatter and wikilinks, saves, and reloads the knowledge base.
+Claude saves your preferences and uses them for every future artifact. It researches existing connections, drafts with proper formatting and links, saves the file, and reloads Pramana.
+
+This skill is **explicit only** (`disable-model-invocation`) because it writes files to your knowledge directory.
+
+## Invocation modes
+
+| Skill | Auto-invoked by Claude | User-invocable via `/` | Why |
+|-------|----------------------|----------------------|-----|
+| query | Yes | Yes | Claude should reach for domain knowledge whenever relevant |
+| setup | No | Yes | Starts a daemon — user should ask for this explicitly |
+| author | No | Yes | Writes files — user should ask for this explicitly |
 
 ## Architecture
 
-No MCP server, no custom protocol — just Bash tool calls to the Pramana CLI:
+Claude uses Bash tool calls to the Pramana CLI, which talks to a background daemon over HTTP:
 
 ```
-Claude ──skill──▶ pramana CLI ──HTTP──▶ pramana daemon
+Claude ──skill──> pramana CLI ──HTTP──> pramana daemon
 ```
 
-The daemon holds an in-memory SQLite knowledge graph rebuilt from your Markdown files at startup. Four primitives — get, search, traverse, list — are all Claude needs.
-
-Multi-tenant routing uses `--tenant`:
-
-```
-Claude ──skill──▶ pramana get order --tenant commerce ──▶ daemon (commerce tenant)
-```
-
-If no daemon is running, commands fall back to standalone mode (rebuilds from source each time).
+The daemon builds a knowledge graph from your Markdown files at startup. If no daemon is running, commands fall back to standalone mode (slower, rebuilds each time).

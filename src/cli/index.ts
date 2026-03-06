@@ -47,7 +47,7 @@ function usage(): never {
   console.log(`pramana — Knowledge Engine
 
 Usage:
-  pramana serve --source <dir>[:name] [--source <dir>[:name] ...] [--port 3000]
+  pramana serve --source <dir>[:name] [--source <dir>[:name] ...] [--port 5111]
   pramana get <slug> --source <dir> [--tenant <name>]
   pramana search <query> --source <dir> [--tenant <name>]
   pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] [--tenant <name>]
@@ -56,12 +56,12 @@ Usage:
 
 Options:
   --standalone    Force rebuild mode (skip server detection)
-  --port <n>      Server port (default: PRAMANA_PORT env or 3000)
+  --port <n>      Server port (default: PRAMANA_PORT env or 5111)
   --tenant <name> Target a specific tenant (multi-tenant mode)
   --source <dir>[:name]  Knowledge source directory (repeatable for multi-tenant)
 
 Multi-tenant serve:
-  pramana serve --source ./law:law --source ./music:music --port 3000`);
+  pramana serve --source ./law:law --source ./music:music --port 5111`);
   process.exit(1);
 }
 
@@ -97,7 +97,7 @@ async function buildEngine(sourceDir: string) {
 }
 
 function resolvePort(): string {
-  return getFlag("port") ?? process.env.PRAMANA_PORT ?? "3000";
+  return getFlag("port") ?? process.env.PRAMANA_PORT ?? "5111";
 }
 
 async function isServerReachable(port: string): Promise<boolean> {
