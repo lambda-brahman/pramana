@@ -99,6 +99,13 @@ describe("API endpoints", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
+  test("GET /v1/version returns version", async () => {
+    const res = await fetch(`${baseUrl}/v1/version`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { version: string };
+    expect(data.version).toMatch(/^v?\d+\.\d+\.\d+$/);
+  });
+
   test("unknown route returns 404", async () => {
     const res = await fetch(`${baseUrl}/v1/unknown`);
     expect(res.status).toBe(404);
@@ -234,6 +241,13 @@ describe("Multi-tenant API", () => {
     const res = await fetch(`${baseUrl}/v1/tenants`);
     const methods = res.headers.get("Access-Control-Allow-Methods");
     expect(methods).toContain("POST");
+  });
+
+  test("GET /v1/version works in multi-tenant mode", async () => {
+    const res = await fetch(`${baseUrl}/v1/version`);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { version: string };
+    expect(data.version).toBeTruthy();
   });
 
   test("OPTIONS returns 204 preflight", async () => {

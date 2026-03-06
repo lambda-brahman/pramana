@@ -14,9 +14,9 @@ You are setting up a Pramana knowledge engine daemon. Guide the user through sta
 
 The user provides one or more knowledge directories: **$ARGUMENTS**
 
-## Step 0: Check CLI availability
+## Step 0: Check CLI availability and version
 
-Before anything else, verify the `pramana` CLI is installed:
+Before anything else, verify the `pramana` CLI is installed and up to date:
 
 ```bash
 command -v pramana
@@ -31,10 +31,22 @@ curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install
 Then verify it installed correctly:
 
 ```bash
-pramana --help
+pramana version
 ```
 
-If the install fails, report the error to the user and **stop** — do not proceed to Step 1.
+**If found**, check for updates and upgrade:
+
+```bash
+pramana version --check
+```
+
+If an upgrade is available:
+
+```bash
+pramana upgrade
+```
+
+If the install or upgrade fails, report the error to the user and **stop** — do not proceed to Step 1.
 
 ## Step 1: Start the daemon
 

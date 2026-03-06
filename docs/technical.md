@@ -61,6 +61,8 @@ pramana search <query> --source <dir> [--tenant <name>]
 pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] [--tenant <name>]
 pramana list --source <dir> [--tags <tag1,tag2>] [--tenant <name>]
 pramana reload [--tenant <name>]
+pramana version [--check]
+pramana upgrade
 ```
 
 ### Client mode
@@ -121,6 +123,7 @@ pramana reload                    # reloads default tenant
 Start the server with `pramana serve --source <dir>`, then:
 
 ```
+GET /v1/version                — Returns CLI/daemon version
 GET /v1/get/:slug              — Get artifact by slug
 GET /v1/get/:slug/:section     — Get artifact focused on a section
 GET /v1/search?q=<query>       — Full-text search

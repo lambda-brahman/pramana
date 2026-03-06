@@ -139,6 +139,22 @@ describe("Plugin structure validation", () => {
     expect(content).toContain("user_invocable: true");
     expect(content).toContain("disable-model-invocation: true");
   });
+
+  test("upgrade skill exists with valid frontmatter", () => {
+    const skillPath = path.join(PROJECT_ROOT, "plugin/skills/upgrade/SKILL.md");
+    expect(fs.existsSync(skillPath)).toBe(true);
+    const content = fs.readFileSync(skillPath, "utf-8");
+    expect(content).toContain("name: upgrade");
+    expect(content).toContain("user_invocable: true");
+    expect(content).toContain("disable-model-invocation: true");
+  });
+
+  test("setup skill references version check", () => {
+    const skillPath = path.join(PROJECT_ROOT, "plugin/skills/setup/SKILL.md");
+    const content = fs.readFileSync(skillPath, "utf-8");
+    expect(content).toContain("pramana version");
+    expect(content).toContain("pramana upgrade");
+  });
 });
 
 // ==========================================================================
@@ -163,6 +179,31 @@ describe("Single-tenant daemon", () => {
 
   afterAll(() => {
     daemonProc.kill();
+  });
+
+  test("pramana version prints version", async () => {
+    const { stdout, exitCode } = await runCli(["version"]);
+    expect(exitCode).toBe(0);
+    expect(stdout.trim()).toMatch(/^pramana v?\d+\.\d+\.\d+$/);
+  });
+
+  test("pramana --version prints version", async () => {
+    const { stdout, exitCode } = await runCli(["--version"]);
+    expect(exitCode).toBe(0);
+    expect(stdout.trim()).toMatch(/^pramana v?\d+\.\d+\.\d+$/);
+  });
+
+  test("pramana --help exits 0", async () => {
+    const { stdout, exitCode } = await runCli(["--help"]);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("pramana");
+    expect(stdout).toContain("Usage:");
+  });
+
+  test("no args shows usage and exits 0", async () => {
+    const { stdout, exitCode } = await runCli([]);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Usage:");
   });
 
   test("standalone ingestion prints report to stderr", async () => {

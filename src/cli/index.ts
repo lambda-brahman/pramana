@@ -4,6 +4,7 @@ import { Builder } from "../engine/builder.ts";
 import { Reader } from "../engine/reader.ts";
 import { TenantManager } from "../engine/tenant.ts";
 import { createServer } from "../api/server.ts";
+import { VERSION, compareSemver } from "../version.ts";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -43,8 +44,8 @@ function parseSources(): Array<{ path: string; name: string }> {
   });
 }
 
-function usage(): never {
-  console.log(`pramana — Knowledge Engine
+function usage(exitCode = 0): never {
+  console.log(`pramana ${VERSION} — Knowledge Engine
 
 Usage:
   pramana serve --source <dir>[:name] [--source <dir>[:name] ...] [--port 5111]
@@ -53,16 +54,49 @@ Usage:
   pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] [--tenant <name>]
   pramana list --source <dir> [--tags <tag1,tag2>] [--tenant <name>]
   pramana reload [--tenant <name>]
+  pramana version [--check]
+  pramana upgrade
 
 Options:
   --standalone    Force rebuild mode (skip server detection)
   --port <n>      Server port (default: PRAMANA_PORT env or 5111)
   --tenant <name> Target a specific tenant (multi-tenant mode)
   --source <dir>[:name]  Knowledge source directory (repeatable for multi-tenant)
+  --version       Show version
+  --help          Show this help
 
 Multi-tenant serve:
   pramana serve --source ./law:law --source ./music:music --port 5111`);
-  process.exit(1);
+  process.exit(exitCode);
+}
+
+async function checkLatest(): Promise<{ latest: string; current: string; upgradeAvailable: boolean }> {
+  const current = VERSION;
+  const res = await fetch("https://api.github.com/repos/lambda-brahman/pramana/releases/latest", {
+    headers: { "Accept": "application/vnd.github+json" },
+  });
+  if (!res.ok) throw new Error(`GitHub API returned ${res.status}`);
+  const data = await res.json() as { tag_name: string };
+  const latest = data.tag_name;
+  return { latest, current, upgradeAvailable: compareSemver(latest, current) > 0 };
+}
+
+async function performUpgrade(targetVersion: string): Promise<void> {
+  const os = process.platform === "darwin" ? "darwin" : "linux";
+  const arch = process.arch === "arm64" ? "arm64" : "x64";
+  const binary = `pramana-${os}-${arch}`;
+  const url = `https://github.com/lambda-brahman/pramana/releases/download/${targetVersion}/${binary}`;
+
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+
+  const execPath = process.execPath;
+  const tmpPath = `${execPath}.upgrade-tmp`;
+  await Bun.write(tmpPath, res);
+
+  const { chmodSync, renameSync } = await import("node:fs");
+  chmodSync(tmpPath, 0o755);
+  renameSync(tmpPath, execPath);
 }
 
 async function buildEngine(sourceDir: string) {
@@ -180,7 +214,57 @@ async function httpClient(port: string): Promise<void> {
 }
 
 async function main() {
-  if (!command) usage();
+  // Handle --version flag anywhere in args
+  if (args.includes("--version")) {
+    console.log(`pramana ${VERSION}`);
+    process.exit(0);
+  }
+
+  // Handle --help flag anywhere in args
+  if (args.includes("--help")) {
+    usage(0);
+  }
+
+  if (!command) usage(0);
+
+  // version command
+  if (command === "version") {
+    if (hasFlag("check")) {
+      try {
+        const info = await checkLatest();
+        if (info.upgradeAvailable) {
+          console.log(`pramana ${info.current} (latest: ${info.latest}, run \`pramana upgrade\`)`);
+          process.exit(1);
+        } else {
+          console.log(`pramana ${info.current} (up to date)`);
+        }
+      } catch (e) {
+        console.log(`pramana ${VERSION}`);
+        console.error(`Could not check for updates: ${(e as Error).message}`);
+      }
+    } else {
+      console.log(`pramana ${VERSION}`);
+    }
+    process.exit(0);
+  }
+
+  // upgrade command
+  if (command === "upgrade") {
+    try {
+      const info = await checkLatest();
+      if (!info.upgradeAvailable) {
+        console.log(`pramana ${info.current} is already up to date`);
+        process.exit(0);
+      }
+      console.log(`Upgrading pramana ${info.current} → ${info.latest}...`);
+      await performUpgrade(info.latest);
+      console.log(`Upgraded to pramana ${info.latest}`);
+    } catch (e) {
+      console.error(`Upgrade failed: ${(e as Error).message}`);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
 
   const standalone = hasFlag("standalone");
   const port = resolvePort();

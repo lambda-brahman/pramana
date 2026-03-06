@@ -1,5 +1,6 @@
 import type { Reader } from "../engine/reader.ts";
 import type { TenantManager } from "../engine/tenant.ts";
+import { VERSION } from "../version.ts";
 
 export type ApiServerOptions =
   | { port: number; tenantManager: TenantManager }
@@ -49,6 +50,11 @@ export function createServer(opts: ApiServerOptions) {
           return handleReload(tm, defaultName);
         }
         return json({ error: "Not found" }, 404);
+      }
+
+      // GET /v1/version
+      if (path === "/v1/version") {
+        return json({ version: `v${VERSION}` });
       }
 
       // GET /v1/tenants
