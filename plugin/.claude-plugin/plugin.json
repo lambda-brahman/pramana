@@ -1,9 +1,9 @@
 {
   "name": "pramana",
-  "description": "Query knowledge graphs built from Markdown files",
-  "version": "1.0.0",
+  "description": "Query, author, and manage knowledge graphs built from Markdown files",
+  "version": "0.2.0",
   "author": { "name": "Lambda Brahman" },
   "repository": "https://github.com/lambda-brahman/pramana",
   "license": "MIT",
-  "keywords": ["knowledge", "graph", "markdown"]
+  "keywords": ["knowledge", "graph", "markdown", "multi-tenant", "authoring"]
 }
