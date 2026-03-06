@@ -8,40 +8,94 @@ relationships:
 
 # Parser
 
-Transforms raw Markdown text into validated [[knowledge-artifact]] values through a three-stage pipeline: frontmatter → sections → wikilinks.
+## Specification
 
-## Why this pipeline
+```
+parseDocument     : string → Result<Artifact, DocumentError>
+parseDocumentFile : FilePath → Promise<Result<Artifact, DocumentError>>
 
-**Why three separate stages, not one pass?**
-Each stage has a distinct concern: frontmatter extracts metadata, sections extract structure, wikilinks extract inline relationships. Separating them means each can fail independently with a typed error. A single-pass parser would conflate unrelated failures.
+DocumentError = FrontmatterError | ReadError | ValidationError
+FrontmatterError = { type: "frontmatter", message: string }
+ReadError        = { type: "read", message: string }
+ValidationError  = { type: "validation", message: string }
+```
 
-**Why a custom YAML parser instead of a library?**
-Pramana's frontmatter is a strict subset of YAML: simple key-values, inline arrays, one level of nesting. A full YAML library (js-yaml, yaml) adds ~50KB for features never used. The custom parser handles exactly the subset needed in ~80 lines.
+`parseDocument` is pure (string in, Result out). `parseDocumentFile` adds IO (reads file via `Bun.file`, then delegates to `parseDocument`).
 
-**Why wikilinks default to `relates-to`, not `depends-on`?**
-Inline `[[references]]` in prose are usually associative context, not structural dependencies. Structural dependencies belong in frontmatter where they're explicit and intentional. Body wikilinks capture "this is mentioned here" — a weaker claim.
+## Pipeline
 
-## Stages
+Three stages composed sequentially. Each stage is a pure function.
 
-1. **Frontmatter** (`src/parser/frontmatter.ts`) — Extracts slug, title, tags, typed relationships from YAML block
-2. **Sections** (`src/parser/sections.ts`) — Scans h2/h3 headings, generates kebab-case ids
-3. **Wikilinks** (`src/parser/wikilinks.ts`) — Extracts `[[target]]` and `[[type::target]]` patterns with section context
+### Stage 1: Frontmatter
 
-The document parser (`src/parser/document.ts`) orchestrates all three, merges relationships, hashes content, and validates via Zod.
+```
+parseFrontmatter : string → Result<FrontmatterData, FrontmatterError>
 
-## Invariants
+FrontmatterData = { slug: Slug, title?: string, tags: string[],
+                    relationships: Relationship[], body: string }
+```
 
-| Invariant | Why | Implementation | Test |
-|-----------|-----|----------------|------|
-| No frontmatter → typed error, not exception | Caller handles gracefully | `src/parser/frontmatter.ts:19` — returns Err | `test/unit/parser/frontmatter.test.ts` > "returns error when no frontmatter" |
-| Wikilinks track their source line and section | Enables "where was this referenced?" queries | `src/parser/wikilinks.ts:17-22` | `test/unit/parser/wikilinks.test.ts` > "assigns correct section context" |
-| Section ids are deterministic kebab-case | Same heading always produces same id | `src/parser/sections.ts:25` — toKebabCase | `test/unit/parser/sections.test.ts` |
-| Invalid relationship types rejected | Zod enum validation on the assembled artifact | `src/parser/document.ts:40` — safeParse | `test/unit/parser/document.test.ts` > "parses a complete document" |
+**Input**: raw file content.
+**Operation**: match regex `^---\n(.*)\n---\n(.*)$`. Parse the YAML block with a custom lightweight parser. Extract slug (required), title, tags, relationships. Relationship keys must be valid RelType — invalid types are silently dropped by Zod validation.
+**Output**: structured frontmatter + remaining body.
 
-## Anti-patterns
+Custom YAML parser supports: key-value pairs, inline arrays `[a, b]`, dash-list arrays, one level of nesting (for relationships). Does NOT support multi-line strings, anchors, aliases, or other full-YAML features.
 
-| Don't do this | Why | Do this instead |
-|---------------|-----|-----------------|
-| Add full YAML library as dependency | Overkill for the subset used, adds bundle size | Extend the custom parser if new syntax is needed |
-| Put structural dependencies in body wikilinks | They default to `relates-to`, won't show in `--type depends-on` traversals | Declare dependencies in frontmatter |
-| Throw in parser functions | Breaks the Result contract | Return `err()` with typed error |
+### Stage 2: Sections
+
+```
+parseSections : string → Section[]
+```
+
+**Input**: body text (after frontmatter).
+**Operation**: scan each line for `^(#{2,3})\s+(.+)$`. For each match, produce `{ id: kebabCase(heading), heading, level: hashes.length, line: lineNumber }`.
+**Output**: ordered array of sections.
+
+kebab-case transform: lowercase → remove non-alphanumeric (keep spaces, hyphens) → spaces to hyphens → collapse multiple hyphens → trim.
+
+### Stage 3: Wikilinks
+
+```
+parseWikilinks : (string, Section[]) → Relationship[]
+```
+
+**Input**: body text + sections from stage 2.
+**Operation**: scan for regex `\[\[(?:([^:\]]+)::)?([^\]]+)\]\]`. For each match:
+- If typed (`[[type::target]]`): use type if it's a valid RelType, else fall back to `relates-to`
+- If untyped (`[[target]]`): type = `relates-to`
+- Attach line number and containing section id (the nearest section with `line <= current line`)
+
+**Output**: array of relationships with provenance (line, section).
+
+### Composition
+
+```
+parseDocument(raw) =
+  let fm  = parseFrontmatter(raw)          — fail fast on error
+  let sec = parseSections(fm.body)
+  let wl  = parseWikilinks(fm.body, sec)
+  let rels = fm.relationships ++ wl        — merge frontmatter + wikilink rels
+  let hash = sha256(raw)                   — hash the ENTIRE raw input
+  let title = fm.title ?? firstH1(fm.body) ?? fm.slug
+  validate({ slug: fm.slug, title, tags: fm.tags,
+             relationships: rels, sections: sec,
+             content: fm.body, hash })      — Zod safeParse
+```
+
+## Laws
+
+**P1. Determinism**: `parseDocument(s) = parseDocument(s)` — same input always produces same output.
+
+**P2. Frontmatter required**: no `---` delimiters → `Err(FrontmatterError)`.
+
+**P3. Slug required**: frontmatter without `slug` → `Err(FrontmatterError)`.
+
+**P4. Type safety**: relationship type ∉ RelType → dropped by Zod validation or defaulted to `relates-to`.
+
+**P5. Hash covers entire input**: hash = SHA-256(raw), not SHA-256(body). Frontmatter changes affect the hash.
+
+## Design rationale
+
+**Why custom YAML, not a library?** The subset used is ~80 lines to parse. A full YAML library adds ~50KB for unused features.
+
+**Why wikilinks default to `relates-to`?** Inline mentions are associative context. Structural dependencies belong in frontmatter where they're explicit.

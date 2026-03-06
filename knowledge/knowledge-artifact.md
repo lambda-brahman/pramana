@@ -8,45 +8,69 @@ relationships:
 
 # Knowledge Artifact
 
-The atomic unit of knowledge. One Markdown file → one artifact with a unique slug, typed relationships, and navigable sections.
+## Specification
 
-## Why this structure
+```
+RelType      = "depends-on" | "relates-to"
+Relationship = { target: Slug, type: RelType, line?: nat, section?: Slug }
+Section      = { id: Slug, heading: string, level: 2 | 3, line: nat }
+Artifact     = { slug: Slug, title: string, tags: string[],
+                 relationships: Relationship[], sections: Section[],
+                 content: string, hash: string }
+```
 
-**Why slug as the primary key, not file path?**
-File paths are filesystem concerns — they change with refactoring. Slugs are stable identifiers chosen by the author. Relationships reference slugs, so they survive file moves. The frontmatter `slug` field is mandatory for this reason.
+Validated at construction time by Zod schemas. Invalid data produces `Err`, never a partial artifact.
 
-**Why store raw content, not rendered HTML?**
-The engine is a knowledge graph, not a CMS. Consumers (APIs, CLIs, future UIs) decide how to render. Storing raw Markdown preserves author intent and avoids coupling to a rendering pipeline.
+## Schemas (Zod)
 
-**Why SHA-256 hash?**
-Content-addressable identity. Two artifacts with different slugs but identical content can be detected. Enables future incremental rebuild — skip files whose hash hasn't changed.
+```
+RelationshipTypeSchema  = z.enum(["depends-on", "relates-to"])
+RelationshipSchema      = z.object({ target: z.string(), type: RelationshipTypeSchema,
+                                     line: z.number().optional(), section: z.string().optional() })
+SectionSchema           = z.object({ id: z.string(), heading: z.string(),
+                                     level: z.number(), line: z.number() })
+KnowledgeArtifactSchema = z.object({ slug: z.string(), title: z.string(),
+                                     tags: z.array(z.string()),
+                                     relationships: z.array(RelationshipSchema),
+                                     sections: z.array(SectionSchema),
+                                     content: z.string(), hash: z.string() })
+FrontmatterRelationshipsSchema = z.record(RelationshipTypeSchema,
+                                          z.union([z.string(), z.array(z.string())]))
+```
 
-**Why sections from h2/h3 only?**
-h1 is the document title (redundant with `title`). h4+ is too granular for graph addressing. h2/h3 gives a useful two-level table of contents. Sections are addressable as `slug#section-id` in relationships and API calls.
+TypeScript types are inferred via `z.infer<>` — no duplicate type definitions.
 
-## Fields
+## Field semantics
 
-- **slug** — unique identifier from frontmatter (required)
-- **title** — from frontmatter, or first h1, or falls back to slug
-- **tags** — classification labels from frontmatter
-- **relationships** — typed edges to other artifacts (frontmatter + wikilinks)
-- **sections** — h2/h3 headings with kebab-case ids
-- **content** — Markdown body after frontmatter
-- **hash** — SHA-256 of the raw file including frontmatter
+| Field | Source | Invariant |
+|-------|--------|-----------|
+| slug | frontmatter `slug` (required) | non-empty, unique per corpus |
+| title | frontmatter `title`, else first h1, else slug | always resolved to a string |
+| tags | frontmatter `tags` array | empty array if absent |
+| relationships | frontmatter relationships + body wikilinks merged | type ∈ RelType (Zod-enforced) |
+| sections | h2/h3 headings from body | id = kebab-case(heading), level ∈ {2, 3} |
+| content | body text after frontmatter delimiter | raw markdown, not rendered |
+| hash | SHA-256 of entire raw file (including frontmatter) | deterministic, hex-encoded, 64 chars |
 
-## Invariants
+## Derived type: ArtifactView
 
-| Invariant | Why | Implementation | Test |
-|-----------|-----|----------------|------|
-| slug is required and non-empty | Every artifact must be addressable | `src/parser/frontmatter.ts:32` | `test/unit/parser/frontmatter.test.ts` > "returns error when slug is missing" |
-| hash is deterministic | Same content always produces same hash | `src/lib/hash.ts` — Bun.CryptoHasher("sha256") | `test/unit/parser/document.test.ts` > "produces deterministic hash" |
-| Validated by Zod at parse time | Malformed documents fail fast with typed errors | `src/parser/document.ts:40` — safeParse | `test/unit/parser/document.test.ts` > "parses a complete document" |
-| Relationship types constrained to enum | Prevents ad-hoc, unqueryable relationship types | `src/schema/index.ts:3` — RELATIONSHIP_TYPES | `test/unit/parser/frontmatter.test.ts` > "parses slug, tags, and relationships" |
+```
+ArtifactView = Artifact ∧ {
+  inverseRelationships: Relationship[],
+  focusedSection?: { id: Slug, heading: string, content: string }
+}
+```
 
-## Anti-patterns
+Computed at query time by the Reader. `inverseRelationships` are all edges in the graph where `target = this.slug`. `focusedSection` is populated when querying `slug#section-id`.
 
-| Don't do this | Why | Do this instead |
-|---------------|-----|-----------------|
-| Omit the slug field | Parser rejects the document entirely | Always include `slug` in frontmatter |
-| Use h1 for sections | h1 is the title, not a section | Use h2/h3 for navigable sections |
-| Invent relationship types outside the enum | Zod rejects them at parse time | Use `depends-on` or `relates-to` |
+## Section addressing
+
+Slug supports fragment syntax: `slug#section-id`. The `#` delimiter splits slug from section. Section content is extracted as the text between the section heading and the next heading of equal or lesser depth.
+
+## Design rationale
+
+**Why slug, not file path?** Slugs survive file renames. Relationships reference slugs.
+
+**Why SHA-256?** Content-addressable identity. Enables future incremental rebuild — skip files whose hash hasn't changed.
+
+**Why h2/h3 only?** h1 is the title. h4+ is too granular for graph addressing.

@@ -8,31 +8,44 @@ relationships:
 
 # Result Type
 
-Discriminated union for error handling: `Result<T, E> = Ok<T> | Err<E>`. Standard pattern — see Rust's `Result`, Haskell's `Either`.
+## Specification
 
-## Why no exceptions
+```
+type Ok<T>  = { ok: true,  value: T }
+type Err<E> = { ok: false, error: E }
+type Result<T, E> = Ok<T> | Err<E>
 
-**Why Result instead of try/catch?**
-Exceptions are invisible in type signatures. A function that throws looks identical to one that doesn't. With Result, the return type tells you: "this can fail, you must handle it." TypeScript has no checked exceptions, so Result is the only way to make error handling explicit.
+ok  : T → Ok<T>
+err : E → Err<E>
+```
 
-**Why typed error objects, not strings?**
-Each module defines its own error type (`FrontmatterError`, `StorageError`, `EngineError`). The `type` discriminant field tells you WHERE the error originated, not just what went wrong. This matters when a pipeline chains multiple fallible operations.
+Two constructors, one discriminated union. No methods, no monadic operations.
 
-## Implementation
+## Laws
 
-`src/lib/result.ts` — 11 lines total. Two constructors: `ok(value)` and `err(error)`.
+**Discrimination**: `result.ok = true ⟹ result.value exists`, `result.ok = false ⟹ result.error exists`
 
-## What it is NOT
+**Exhaustion**: every Result is exactly one of Ok or Err, never both, never neither.
 
-This is not a monad. There's no `map`, `flatMap`, or `chain`. Callers check `result.ok` and branch. This is deliberate — monadic error handling in TypeScript adds complexity without the type inference that makes it ergonomic in Rust or Haskell. Plain `if (!result.ok)` is clearer in this context.
+## Error type convention
 
-## Error types
+Each module defines a branded error type with a discriminant field:
 
-| Error type | Module | Discriminant |
-|-----------|--------|-------------|
-| FrontmatterError | parser | `type: "frontmatter"` |
-| DocumentError | parser | union of frontmatter, read, validation |
-| StorageError | storage | `type: "storage"` |
-| EngineError | engine | `type: "engine"` |
+```
+type FrontmatterError = { type: "frontmatter", message: string }
+type StorageError     = { type: "storage",     message: string }
+type EngineError      = { type: "engine",      message: string }
+type DocumentError    = FrontmatterError | ReadError | ValidationError
+```
 
-The Reader maps StorageError → EngineError via `mapError`, so API consumers see a uniform error type.
+The `type` field identifies origin. The `message` field is human-readable.
+
+Error mapping across layers: `mapError : Result<T, StorageError> → Result<T, EngineError>` — preserves the message, changes the discriminant.
+
+## Why not exceptions
+
+TypeScript has no checked exceptions. A function's throw behavior is invisible in its type signature. Result makes fallibility explicit — the caller MUST handle both branches. The trade-off: verbose `if (!result.ok)` checks. Accepted because explicit error handling matters more than brevity in a pipeline that chains multiple fallible operations.
+
+## Why not monadic
+
+No `map`, `flatMap`, `chain`. TypeScript's type inference doesn't make monadic composition ergonomic the way Rust or Haskell does. Plain branching is clearer here.

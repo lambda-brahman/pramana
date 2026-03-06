@@ -8,35 +8,56 @@ relationships:
 
 # HTTP API
 
-Read-only JSON API served via `Bun.serve()`. Maps HTTP routes to Reader primitives.
+## Specification
 
-## Why this design
+Read-only JSON API. Each endpoint maps to a Reader operation.
 
-**Why JSON, not GraphQL?**
-The four primitives (get, search, traverse, list) map cleanly to REST endpoints. GraphQL adds query parsing complexity for no gain when the query model is already fixed. Standard REST decision — see API design literature.
+```
+Server(port: nat, reader: Reader) → HTTPServer
+```
 
-**Why CORS enabled by default?**
-Pramana is a local knowledge server. Frontend tools (dashboards, editors) will call it from `localhost`. Requiring CORS configuration would be a papercut for every consumer.
+### Endpoints
 
-**Why section-based get uses a fallback handler?**
-`Bun.serve()` route matching doesn't support multi-segment params (`/v1/get/:slug/:section`). The fallback `fetch` handler catches this pattern via regex. This is a Bun-specific workaround, not a design choice.
+| Route | Method | Reader op | Input | Success | Error |
+|-------|--------|-----------|-------|---------|-------|
+| `/v1/get/:slug` | GET | `reader.get(slug)` | URL param | 200 + JSON | 404 if null, 500 on error |
+| `/v1/get/:slug/:section` | GET | `reader.get(slug#section)` | URL params | 200 + JSON | 404 if null, 500 on error |
+| `/v1/search?q=` | GET | `reader.search(q)` | query param | 200 + JSON[] | 400 if no q, 500 on error |
+| `/v1/traverse/:from?type=&depth=` | GET | `reader.traverse(from, type, depth)` | URL + query params | 200 + JSON[] | 500 on error |
+| `/v1/list?tags=` | GET | `reader.list({tags})` | query param (csv) | 200 + JSON[] | 500 on error |
+| `*` (unmatched) | any | — | — | — | 404 |
 
-## Endpoints
+### Response format
 
-All map directly to [[engine]] Reader methods:
+All responses: `Content-Type: application/json`, JSON pretty-printed with 2-space indent.
 
-| Endpoint | Reader method | Notes |
-|----------|--------------|-------|
-| `GET /v1/get/:slug` | `reader.get(slug)` | 404 if not found |
-| `GET /v1/get/:slug/:section` | `reader.get(slug#section)` | Fallback handler |
-| `GET /v1/search?q=` | `reader.search(q)` | 400 if no query |
-| `GET /v1/traverse/:from?type=&depth=` | `reader.traverse(from, type, depth)` | |
-| `GET /v1/list?tags=` | `reader.list({tags})` | |
+Error body: `{ "error": "<message>" }`
 
-## Invariants
+Success body: the Reader operation's return value serialized as JSON.
 
-| Invariant | Why | Implementation | Test |
-|-----------|-----|----------------|------|
-| Missing query param on search returns 400 | Not a server error, client must provide q | `src/api/server.ts:22` | `test/e2e/api.test.ts` > "GET /v1/search without q returns 400" |
-| Unknown routes return 404 | Clean error handling | `src/api/server.ts:52-65` — fallback fetch | `test/e2e/api.test.ts` > "unknown route returns 404" |
-| CORS headers on every response | All consumers can call without proxy | `src/api/server.ts:71-74` | `test/e2e/api.test.ts` > "CORS headers present" |
+### Headers
+
+Every response includes:
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, OPTIONS
+Access-Control-Allow-Headers: Content-Type
+```
+
+### Section-based get
+
+`/v1/get/:slug/:section` is handled by a fallback `fetch` handler (not a route definition) because Bun's route matching doesn't support multi-segment params. The handler matches `/v1/get/([^/]+)/(.+)$` via regex, concatenates as `slug#section`, then calls `reader.get()`.
+
+## Laws
+
+**A1. Endpoint-Reader isomorphism**: every endpoint returns exactly the JSON serialization of its corresponding Reader method's Ok value. No transformation, filtering, or enrichment.
+
+**A2. Error mapping**: Reader Err → HTTP 500. Null result → HTTP 404. Missing required param → HTTP 400.
+
+**A3. CORS universality**: every response carries CORS headers. No configuration needed for cross-origin consumers.
+
+## Design rationale
+
+**Why REST, not GraphQL?** Four fixed operations map cleanly to URL patterns. GraphQL adds query parsing for no gain when the query model is fixed.
+
+**Why CORS by default?** Pramana is a local knowledge server. Frontend tools will call from localhost.

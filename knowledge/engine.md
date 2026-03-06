@@ -8,42 +8,102 @@ relationships:
 
 # Engine
 
-Two components: the Builder (write path) and the Reader (read path). Wired together in the CLI at startup.
+## Specification
 
-## Why builder/reader split
+Two components: Builder (write path) and Reader (read path).
 
-The build phase is sequential and fallible (files may be malformed). The read phase is concurrent and infallible against the stored data. Separating them means the reader never encounters parse errors — it only sees validated artifacts. This is a CQRS-like separation (see established literature) applied to a knowledge engine rather than a database.
+### Builder
 
-## Builder
+```
+Builder(writer: StorageWriter)
+build : DirPath → Promise<Result<BuildReport, EngineError>>
 
-`src/engine/builder.ts` — Scans `**/*.md` via Bun.Glob, parses each file, stores successful artifacts, collects failures into a BuildReport.
+BuildReport = { total: nat, succeeded: nat,
+                failed: { file: FilePath, error: DocumentError }[] }
+```
 
-**Why continue on failure?**
-A single malformed file shouldn't prevent querying the rest of the corpus. The BuildReport surfaces failures to the user via stderr while the valid artifacts remain queryable.
+**Algorithm**:
+1. Glob `**/*.md` in source directory
+2. For each file: `parseDocumentFile(path)` → on Ok: `writer.store(artifact)` → on Err: collect in `failed`
+3. Return report
 
-## Reader
+Laws L13–L14 from [[programming-model]] apply.
 
-`src/engine/reader.ts` — Four query primitives wrapping storage calls.
+### Reader
 
-**Why compute inverse relationships at query time?**
-Storing inverse relationships would duplicate data and require sync on updates. Computing them via `getInverse()` is a single indexed query — fast enough for real-time use and always consistent.
+```
+Reader(storage: StorageReader, searcher: StorageSearcher)
 
-**Why BFS for traverse, not DFS?**
-BFS returns closer nodes first (depth 1 before depth 2), which matches the intuition "what's most directly related?" DFS would return an arbitrary deep path first. Standard graph traversal trade-off — BFS for breadth-first relevance.
+get      : Slug → Result<ArtifactView | null, EngineError>
+search   : string → Result<SearchResult[], EngineError>
+traverse : (Slug, RelType?, nat) → Result<ArtifactView[], EngineError>
+list     : { tags?: string[] }? → Result<ArtifactView[], EngineError>
+```
 
-## Invariants
+#### get
 
-| Invariant | Why | Implementation | Test |
-|-----------|-----|----------------|------|
-| Build report accounts for every file | total = succeeded + failed.length | `src/engine/builder.ts:26-44` | `test/e2e/full-pipeline.test.ts` > "build from fixtures" |
-| Traverse respects depth limit | Prevents runaway traversal on cyclic graphs | `src/engine/reader.ts:58` — `currentDepth >= depth` | `test/unit/engine/reader.test.ts` > "traverse with depth" |
-| Traverse deduplicates by slug | Avoids infinite loops on cycles | `src/engine/reader.ts:57` — `visited.has()` | `test/unit/engine/reader.test.ts` > "traverse follows relationships" |
-| Section focus extracts content between headings | Focused section contains only that section's prose | `src/engine/reader.ts:131-144` | `test/unit/engine/reader.test.ts` > "get with section focus" |
+1. Split input on `#` → (slug, sectionId?)
+2. `storage.get(slug)` → if null return Ok(null)
+3. `storage.getInverse(slug)` → attach as inverseRelationships
+4. If sectionId: find matching section, extract content between this heading and next heading of ≤ level → attach as focusedSection
 
-## Anti-patterns
+#### search
 
-| Don't do this | Why | Do this instead |
-|---------------|-----|-----------------|
-| Call builder after reader is created | Reader holds storage refs from build time — works, but confusing lifecycle | Build first, then create reader |
-| Traverse without a depth limit | Cyclic graphs cause infinite traversal | Always pass a depth, even if large |
-| Pre-compute inverse relationships in builder | Duplicates data, must sync on re-ingest | Compute at query time via getInverse() |
+Direct delegation: `searcher.search(query)` with error type mapping.
+
+#### traverse
+
+BFS over the relationship graph:
+
+```
+traverse(from, relType, depth):
+  visited = ∅
+  queue = [(from, 0)]
+  results = []
+  while queue ≠ ∅:
+    (slug, d) = dequeue
+    if slug ∈ visited ∨ d ≥ depth: continue
+    visited = visited ∪ {slug}
+    rels = storage.getRelationships(slug)
+    if relType: rels = rels.filter(r → r.type = relType)
+    for rel in rels:
+      target = rel.target.split("#")[0]
+      if target ∈ visited: continue
+      artifact = storage.get(target)
+      if artifact = null: continue
+      results.append(toView(artifact))
+      enqueue(target, d + 1)
+  return Ok(results)
+```
+
+Laws L8–L11 from [[programming-model]] apply.
+
+#### list
+
+`storage.list(filter)` → map each artifact through `toView`.
+
+#### toView
+
+```
+toView(artifact, storage, sectionId?):
+  inverse = storage.getInverse(artifact.slug)
+  view = artifact ∧ { inverseRelationships: inverse }
+  if sectionId:
+    section = artifact.sections.find(s → s.id = sectionId)
+    if section:
+      content = extractBetween(artifact.content, section, nextSectionOfEqualOrLesserLevel)
+      view.focusedSection = { id: section.id, heading: section.heading, content }
+  return view
+```
+
+#### Error mapping
+
+All StorageErrors are mapped to EngineErrors: `{ type: "engine", message: storageError.message }`. Consumers of the Reader see a uniform error type.
+
+## Design rationale
+
+**Why builder/reader split?** Build is sequential and fallible (parse errors). Read is concurrent and only fails on storage errors. CQRS-like separation — see established literature.
+
+**Why BFS, not DFS?** BFS returns closer nodes first (depth 1 before depth 2), matching the intuition "most directly related."
+
+**Why compute inverse relationships at query time?** Storing inverses would duplicate data and require sync on re-ingest. A single indexed query is fast and always consistent.

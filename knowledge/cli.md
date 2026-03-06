@@ -3,35 +3,79 @@ slug: cli
 title: CLI
 tags: [cli, module]
 relationships:
-  depends-on: [pramana, engine, api]
+  depends-on: [pramana, engine, api, storage]
 ---
 
 # CLI
 
-Entry point and command dispatcher. Every command follows the same lifecycle: initialize storage → build → query.
+## Specification
 
-## Why this design
+```
+pramana <command> --source <dir> [options]
+```
 
-**Why rebuild on every invocation?**
-No persistent state means no stale data. The CLI is a pipeline: `source dir → parse → index → query → output`. Each run is hermetic. The cost (~100ms for hundreds of files) is acceptable for interactive use.
+Entry point. Dispatches commands after a fixed lifecycle.
 
-**Why JSON output to stdout, diagnostics to stderr?**
-Unix convention. Stdout is for machine-readable data (pipe to `jq`, consume from scripts). Stderr is for human-readable status (ingestion summary, errors). This makes `pramana list --source kb | jq '.[] | .slug'` work correctly.
+### Lifecycle
 
-## Commands
+Every invocation follows:
 
-| Command | Maps to | Output |
-|---------|---------|--------|
-| `serve --source <dir>` | `createServer({reader})` | HTTP server |
-| `get <slug> --source <dir>` | `reader.get(slug)` | JSON to stdout |
-| `search <query> --source <dir>` | `reader.search(query)` | JSON to stdout |
-| `traverse <slug> --source <dir>` | `reader.traverse(slug, type?, depth?)` | JSON to stdout |
-| `list --source <dir>` | `reader.list(filter?)` | JSON to stdout |
+```
+1. parse args → (command, sourceDir, options)
+2. storage = new StoragePlugin(":memory:")
+3. storage.initialize()
+4. builder = new Builder(storage)
+5. report = builder.build(sourceDir)
+6. print ingestion summary to stderr
+7. reader = new Reader(storage, storage)
+8. dispatch(command, reader, options) → result
+9. print result as JSON to stdout (or start server)
+```
 
-## Invariants
+### Commands
 
-| Invariant | Why | Implementation | Test |
-|-----------|-----|----------------|------|
-| Ingestion summary goes to stderr | Doesn't pollute JSON output | `src/cli/index.ts:44` — `console.error` | `test/e2e/full-pipeline.test.ts` — tests query stdout, not stderr |
-| Missing --source exits with error | Required for all commands | `src/cli/index.ts:63-66` | **[GAP]** — no dedicated test |
-| Non-zero exit on error | Scripts can check `$?` | `src/cli/index.ts:65` — `process.exit(1)` | **[GAP]** — no dedicated test |
+| Command | Dispatch | Options |
+|---------|----------|---------|
+| `serve` | `createServer({ port, reader })` | `--port <n>` (default 3000) |
+| `get <slug>` | `reader.get(slug)` | — |
+| `search <query>` | `reader.search(query)` | — |
+| `traverse <slug>` | `reader.traverse(slug, type?, depth?)` | `--type <t>`, `--depth <n>` (default 1) |
+| `list` | `reader.list(filter?)` | `--tags <t1,t2>` |
+
+### IO contract
+
+| Stream | Content | Format |
+|--------|---------|--------|
+| stdout | Query results | JSON (pretty-printed) |
+| stderr | Ingestion summary, errors | Human-readable text |
+| exit 0 | Success | — |
+| exit 1 | Error (missing args, build failure, query error) | — |
+
+### Ingestion summary format
+
+```
+Ingested {succeeded}/{total} files
+```
+
+If failures exist:
+```
+Ingested {succeeded}/{total} files ({failed.length} failed)
+  ✗ {file}: {error.message}
+  ✗ {file}: {error.message}
+```
+
+## Laws
+
+**C1. Hermetic execution**: every invocation rebuilds from source. No persistent state between runs.
+
+**C2. Stdout is machine-readable**: only JSON goes to stdout. `pramana list --source kb | jq '.[]'` must work.
+
+**C3. Stderr is human-readable**: diagnostics, summaries, and errors go to stderr. Never pollutes stdout.
+
+**C4. Non-zero exit on error**: scripts can check `$?`.
+
+## Design rationale
+
+**Why rebuild every time?** No stale data, no cache invalidation, no schema migration. The cost (~100ms for hundreds of files) is acceptable for interactive and scripted use.
+
+**Why stderr for diagnostics?** Unix convention. Allows piping stdout to downstream tools without filtering noise.

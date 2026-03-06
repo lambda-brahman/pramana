@@ -8,53 +8,86 @@ relationships:
 
 # Storage
 
-Persistence layer with an interface/implementation split. The interface defines read/write/search contracts. The sole implementation uses `bun:sqlite` in-memory.
+## Specification
 
-## Why this design
+See [[programming-model]] for interface definitions and laws L1–L7.
 
-**Why an interface when there's only one implementation?**
-The interface (`src/storage/interface.ts`) decouples the engine from SQLite. Tests construct SqlitePlugin directly, but the engine only knows StorageReader/StorageWriter/StorageSearcher. If a future backend (e.g., DuckDB, persistent file) is needed, only the implementation changes.
+```
+StorageWriter   = { store }
+StorageReader   = { get, list, getRelationships, getInverse }
+StorageSearcher = { search }
+StoragePlugin   = StorageWriter ∧ StorageReader ∧ StorageSearcher
+                  ∧ { initialize, close }
+```
 
-**Why FTS5 with Porter stemming?**
-FTS5 is SQLite's built-in full-text search — zero external dependencies. Porter stemming handles English morphology (searching "running" finds "run"). The `unicode61` tokenizer handles non-ASCII. Alternative: Lunr.js or Tantivy — rejected because they add dependencies for marginal improvement on small corpora.
+Any implementation satisfying laws L1–L7 and L12 is a valid plugin.
 
-**Why WAL journal mode?**
-Write-Ahead Logging allows concurrent reads during the build phase. Without WAL, the entire database locks during writes. Irrelevant for the current single-writer model but costs nothing to enable.
+## SQLite implementation
 
-**Why tag filtering in application code, not SQL?**
-Tags are stored as JSON arrays. SQL-level filtering would require JSON functions or a join table. For corpora under ~10K documents, filtering in TypeScript after a full scan is fast enough and simpler. This is a deliberate trade-off: simplicity over query optimization.
+The sole implementation. Maps interfaces to SQL operations on an in-memory database.
 
-## Interface
+### Schema (DDL)
 
-Four sub-interfaces in `src/storage/interface.ts`:
+```sql
+CREATE TABLE artifacts (
+  slug TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  tags TEXT NOT NULL,          -- JSON array
+  content TEXT NOT NULL,
+  hash TEXT NOT NULL
+);
 
-- **StorageWriter**: `store(artifact)` — persist one artifact
-- **StorageReader**: `get(slug)`, `list(filter?)`, `getRelationships(slug)`, `getInverse(slug)`
-- **StorageSearcher**: `search(query)` — FTS5 MATCH with snippet extraction
-- **StoragePlugin**: combines all three + `initialize()` and `close()`
+CREATE TABLE relationships (
+  source TEXT NOT NULL,
+  target TEXT NOT NULL,
+  type TEXT NOT NULL,
+  line INTEGER,
+  section TEXT,
+  FOREIGN KEY (source) REFERENCES artifacts(slug)
+);
 
-## Schema (SQLite)
+CREATE TABLE sections (
+  artifact_slug TEXT NOT NULL,
+  id TEXT NOT NULL,
+  heading TEXT NOT NULL,
+  level INTEGER NOT NULL,
+  line INTEGER NOT NULL,
+  FOREIGN KEY (artifact_slug) REFERENCES artifacts(slug)
+);
 
-Three tables + one virtual table:
+CREATE VIRTUAL TABLE artifacts_fts USING fts5(
+  slug, title, content,
+  tokenize='porter unicode61'
+);
 
-- `artifacts` — slug PK, title, tags (JSON), content, hash
-- `relationships` — source, target, type, line, section (indexed both directions)
-- `sections` — artifact_slug, id, heading, level, line
-- `artifacts_fts` — FTS5 over slug, title, content
+CREATE INDEX idx_relationships_source ON relationships(source);
+CREATE INDEX idx_relationships_target ON relationships(target);
+CREATE INDEX idx_sections_slug ON sections(artifact_slug);
+```
 
-## Invariants
+### Operation mapping
 
-| Invariant | Why | Implementation | Test |
-|-----------|-----|----------------|------|
-| Store is transactional | Partial writes leave corrupt state | `src/storage/sqlite/index.ts:64` — `db.transaction()` | `test/unit/storage/sqlite.test.ts` > "upsert replaces existing artifact" |
-| Upsert semantics on store | Re-ingesting a changed file updates, doesn't duplicate | `src/storage/sqlite/index.ts:67` — INSERT OR REPLACE | `test/unit/storage/sqlite.test.ts` > "upsert replaces existing artifact" |
-| Inverse relationships include section-qualified targets | `getInverse("X")` finds edges targeting `X#section` | `src/storage/sqlite/index.ts:183` — LIKE `slug#%` | `test/unit/storage/sqlite.test.ts` > "inverse relationships" |
-| Search returns ranked results with snippets | Users see context, not just slugs | `src/storage/sqlite/index.ts:197` — snippet() function | `test/unit/storage/sqlite.test.ts` > "FTS search" |
+| Interface method | SQL |
+|-----------------|-----|
+| `store(a)` | Transaction: INSERT OR REPLACE into artifacts, DELETE+INSERT relationships, DELETE+INSERT sections, DELETE+INSERT FTS |
+| `get(slug)` | SELECT from artifacts + relationships + sections WHERE slug = ? |
+| `list({tags})` | SELECT all from artifacts, filter tags in application code |
+| `getRelationships(slug)` | SELECT from relationships WHERE source = ? |
+| `getInverse(slug)` | SELECT from relationships WHERE target = ? OR target LIKE ?||'#%' |
+| `search(q)` | SELECT from artifacts_fts WHERE MATCH ? with snippet() |
+| `initialize()` | PRAGMA journal_mode=WAL; exec DDL |
+| `close()` | db.close() |
 
-## Anti-patterns
+### Key decisions
 
-| Don't do this | Why | Do this instead |
-|---------------|-----|-----------------|
-| Store tags as a join table | Over-engineering for the corpus size | Keep JSON array, filter in app code |
-| Skip the transaction in store() | Partial write corrupts relationships/sections | Always wrap in `db.transaction()` |
-| Use persistent SQLite path in production | Source files are truth, DB is derived | Use `:memory:` and rebuild each startup |
+**Tags stored as JSON, filtered in app code**: a join table is more "correct" but adds complexity for no gain at this corpus scale. Tag filtering is O(n) over all artifacts — fast enough under ~10K.
+
+**FTS5 with Porter stemmer**: built-in to SQLite, zero dependencies. Porter handles English morphology. `unicode61` tokenizer handles non-ASCII.
+
+**WAL journal mode**: allows concurrent reads during build. Costs nothing to enable.
+
+**Inverse lookup includes section-qualified targets**: `getInverse("X")` matches both `target = "X"` and `target LIKE "X#%"`. This ensures section-level relationships are discoverable from the target artifact.
+
+**Store is transactional**: artifact, relationships, sections, and FTS are updated atomically. Partial writes would leave inconsistent state.
+
+**Upsert via INSERT OR REPLACE**: re-ingesting a changed file replaces the old data. Old relationships and sections are DELETEd before re-INSERT.
