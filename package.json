@@ -9,8 +9,10 @@
   },
   "scripts": {
     "dev": "bun run src/cli/index.ts",
-    "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "test": "bun test test/unit/ test/e2e/",
+    "test:precommit": "bun test test/precommit/",
+    "typecheck": "tsc --noEmit",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@types/bun": "latest"
