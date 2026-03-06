@@ -2,6 +2,8 @@
 
 A knowledge engine that turns a directory of Markdown files into a queryable knowledge graph. Files are parsed at startup into an in-memory SQLite database, exposing four read-only primitives via CLI and HTTP API. Supports multi-tenant serving of multiple knowledge bases.
 
+Pramana is the reference implementation of the semantic layer described in [Knowledge Engineering: The Future of AI-Assisted Software Engineering](https://knowledgeengineering.substack.com/p/knowledge-engineering-the-future) — where domain experts encode business knowledge as interconnected artifacts, and AI agents access it through structured primitives (get, search, traverse, list) rather than unstructured context dumps.
+
 ## Install
 
 ```bash
