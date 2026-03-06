@@ -3,9 +3,7 @@ slug: reader
 title: Reader
 tags: [engine, module]
 relationships:
-  of: engine
-  needs: storage-interface
-  feeds: [api, cli]
+  depends-on: [engine, storage-interface, api, cli]
 ---
 
 # Reader

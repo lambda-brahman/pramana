@@ -3,7 +3,7 @@ slug: pramana
 title: Pramana
 tags: [engine, module]
 relationships:
-  has: [parser, storage-interface, engine, api, cli, schema, result-type, programming-model]
+  depends-on: [parser, storage-interface, engine, api, cli, schema, result-type, programming-model]
 ---
 
 # Pramana

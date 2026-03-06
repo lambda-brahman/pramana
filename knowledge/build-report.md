@@ -3,7 +3,7 @@ slug: build-report
 title: Build Report
 tags: [engine, type]
 relationships:
-  of: builder
+  depends-on: builder
 ---
 
 # Build Report

@@ -3,7 +3,7 @@ slug: tag-taxonomy
 title: Tag Taxonomy
 tags: [meta, programming-model]
 relationships:
-  part-of: programming-model
+  depends-on: programming-model
 ---
 
 # Tag Taxonomy

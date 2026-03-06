@@ -2,7 +2,7 @@
 slug: line-item
 tags: [entity, commerce]
 relationships:
-  of: order
+  depends-on: order
 ---
 
 # Line Item

@@ -7,8 +7,7 @@ describe("parseFrontmatter", () => {
 slug: order
 tags: [entity, commerce, core]
 relationships:
-  needs: customer
-  has: [line-item, shipping-info]
+  depends-on: [customer, line-item, shipping-info]
 ---
 
 # Order
@@ -24,15 +23,15 @@ Content here.`;
     expect(result.value.relationships).toHaveLength(3);
     expect(result.value.relationships).toContainEqual({
       target: "customer",
-      type: "needs",
+      type: "depends-on",
     });
     expect(result.value.relationships).toContainEqual({
       target: "line-item",
-      type: "has",
+      type: "depends-on",
     });
     expect(result.value.relationships).toContainEqual({
       target: "shipping-info",
-      type: "has",
+      type: "depends-on",
     });
   });
 

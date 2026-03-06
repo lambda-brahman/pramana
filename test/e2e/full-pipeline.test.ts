@@ -53,17 +53,11 @@ describe("Full pipeline: ingest → query", () => {
     expect(result.value.some((r) => r.slug === "order")).toBe(true);
   });
 
-  test("traverse order needs", () => {
-    const result = reader.traverse("order", "needs");
+  test("traverse order depends-on", () => {
+    const result = reader.traverse("order", "depends-on");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.some((a) => a.slug === "customer")).toBe(true);
-  });
-
-  test("traverse order has", () => {
-    const result = reader.traverse("order", "has");
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
     expect(result.value.some((a) => a.slug === "line-item")).toBe(true);
     expect(result.value.some((a) => a.slug === "shipping-info")).toBe(true);
   });

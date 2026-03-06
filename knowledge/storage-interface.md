@@ -3,7 +3,7 @@ slug: storage-interface
 title: Storage Interface
 tags: [storage, interface]
 relationships:
-  of: pramana
+  depends-on: pramana
 ---
 
 # Storage Interface

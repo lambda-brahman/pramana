@@ -3,9 +3,7 @@ slug: schema
 title: Schema
 tags: [schema, module]
 relationships:
-  of: pramana
-  has: [knowledge-artifact, relationship, section]
-  needs: zod
+  depends-on: [pramana, knowledge-artifact, relationship, section, zod]
 ---
 
 # Schema

@@ -3,7 +3,7 @@ slug: relationship
 title: Relationship
 tags: [schema, type]
 relationships:
-  of: knowledge-artifact
+  depends-on: knowledge-artifact
 ---
 
 # Relationship

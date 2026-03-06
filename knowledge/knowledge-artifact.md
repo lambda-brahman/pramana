@@ -3,9 +3,7 @@ slug: knowledge-artifact
 title: Knowledge Artifact
 tags: [schema, type]
 relationships:
-  of: schema
-  has: [relationship, section]
-  needs: zod
+  depends-on: [schema, relationship, section, zod]
 ---
 
 # Knowledge Artifact

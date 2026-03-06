@@ -3,10 +3,7 @@ slug: builder
 title: Builder
 tags: [engine, module]
 relationships:
-  of: engine
-  needs: [parser, storage-interface]
-  produces: build-report
-  feeds: [sqlite-storage]
+  depends-on: [engine, parser, storage-interface, build-report, sqlite-storage]
 ---
 
 # Builder

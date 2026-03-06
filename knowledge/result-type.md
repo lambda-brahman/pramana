@@ -3,7 +3,7 @@ slug: result-type
 title: Result Type
 tags: [lib, pattern]
 relationships:
-  of: pramana
+  depends-on: pramana
 ---
 
 # Result Type

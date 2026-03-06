@@ -1,14 +1,8 @@
 import { z } from "zod";
 
 export const RELATIONSHIP_TYPES = [
-  "has",       // source contains target as a component
-  "of",        // source is a component of target (inverse of has)
-  "needs",     // source requires target to function
-  "feeds",     // source provides output consumed by target
-  "impl",      // source implements the contract defined by target
-  "produces",  // source creates/emits target as output
-  "consumes",  // source takes target as input
-  "refs",      // narrative reference (default for wikilinks)
+  "depends-on",   // X cannot function without Y (directed, transitive)
+  "relates-to",   // X and Y are connected but neither requires the other
 ] as const;
 
 export const RelationshipTypeSchema = z.enum(RELATIONSHIP_TYPES);

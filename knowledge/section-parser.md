@@ -3,9 +3,7 @@ slug: section-parser
 title: Section Parser
 tags: [parser, module]
 relationships:
-  of: parser
-  produces: section
-  needs: result-type
+  depends-on: [parser, section, result-type]
 ---
 
 # Section Parser

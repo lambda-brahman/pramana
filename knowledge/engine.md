@@ -3,8 +3,7 @@ slug: engine
 title: Engine
 tags: [engine, module]
 relationships:
-  of: pramana
-  has: [builder, reader]
+  depends-on: [pramana, builder, reader]
 ---
 
 # Engine

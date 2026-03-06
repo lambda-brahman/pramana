@@ -3,8 +3,7 @@ slug: cli
 title: CLI
 tags: [cli, module]
 relationships:
-  of: pramana
-  consumes: [builder, reader, api]
+  depends-on: [pramana, builder, reader, api]
 ---
 
 # CLI

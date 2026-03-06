@@ -3,8 +3,7 @@ slug: api
 title: HTTP API
 tags: [api, module]
 relationships:
-  of: pramana
-  consumes: reader
+  depends-on: [pramana, reader]
 ---
 
 # HTTP API

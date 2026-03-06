@@ -3,8 +3,7 @@ slug: programming-model
 title: Programming Model
 tags: [meta, programming-model]
 relationships:
-  part-of: pramana
-  composed-of: [relationship-vocabulary, tag-taxonomy, query-patterns]
+  depends-on: [pramana, relationship-vocabulary, tag-taxonomy, query-patterns]
 ---
 
 # Programming Model
@@ -15,17 +14,17 @@ The [[pramana]] programming model defines how knowledge is encoded so that it be
 
 Knowledge is computable when a question can be answered by a finite composition of primitives. If you have to read prose to get the answer, the knowledge is documentation. If you can traverse a typed graph or filter by tags, it's computable.
 
-## Three pillars
+## Two relationship types
 
-### Relationship vocabulary
+Only two: `depends-on` and `relates-to`. See [[relationship-vocabulary]].
 
-A fixed set of [[relationship-vocabulary]] types with defined directionality. Every relationship type has a forward direction (source → target) and a computable meaning. No synonyms — one type per semantic.
+`depends-on` is the workhorse — it encodes every structural, contractual, and operational dependency. `relates-to` is for associative context that doesn't imply dependency.
 
-### Tag taxonomy
+## Tag taxonomy
 
-A fixed set of [[tag-taxonomy]] categories. Tags classify artifacts into computable sets. `list --tags X` must return a meaningful, complete set.
+A fixed set of [[tag-taxonomy]] categories. Tags classify artifacts into computable sets. `list --tags X` returns a meaningful, complete set.
 
-### Query patterns
+## Query patterns
 
 [[query-patterns]] are recipes for composing primitives to answer specific questions. They are the "programs" you write against the knowledge graph.
 
@@ -33,7 +32,7 @@ A fixed set of [[tag-taxonomy]] categories. Tags classify artifacts into computa
 
 When adding knowledge to pramana:
 
-1. Choose relationship types only from the [[relationship-vocabulary]]
-2. Assign tags only from the [[tag-taxonomy]]
-3. Verify computability: can your intended question be answered by a query pattern without reading prose?
-4. Wikilinks in body text are for narrative context — computable relationships go in frontmatter
+1. Use `depends-on` for any relationship where X needs Y to function
+2. Use `relates-to` for associative cross-references
+3. Assign tags from the [[tag-taxonomy]]
+4. Verify computability: can your intended question be answered by a query pattern without reading prose?

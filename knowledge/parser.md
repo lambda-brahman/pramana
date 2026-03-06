@@ -3,11 +3,7 @@ slug: parser
 title: Parser
 tags: [parser, module]
 relationships:
-  of: pramana
-  has: [frontmatter-parser, section-parser, wikilink-parser]
-  consumes: knowledge-artifact
-  produces: knowledge-artifact
-  needs: result-type
+  depends-on: [pramana, frontmatter-parser, section-parser, wikilink-parser, knowledge-artifact, result-type]
 ---
 
 # Parser

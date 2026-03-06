@@ -3,9 +3,7 @@ slug: frontmatter-parser
 title: Frontmatter Parser
 tags: [parser, module]
 relationships:
-  of: parser
-  produces: [relationship, knowledge-artifact]
-  needs: result-type
+  depends-on: [parser, relationship, knowledge-artifact, result-type]
 ---
 
 # Frontmatter Parser

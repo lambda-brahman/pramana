@@ -3,56 +3,27 @@ slug: relationship-vocabulary
 title: Relationship Vocabulary
 tags: [meta, programming-model]
 relationships:
-  part-of: programming-model
+  depends-on: programming-model
 ---
 
 # Relationship Vocabulary
 
-The closed set of relationship types. Every frontmatter relationship must use one of these. Wikilinks in body text default to `refs` (narrative reference).
+Two relationship types. That's it.
 
-## Structural
+## depends-on
 
-| Type | Meaning | Traversal computes |
-|------|---------|-------------------|
-| `has` | source contains target as a component | decomposition tree |
-| `of` | source is a component of target | upward containment |
+X cannot function without Y. Directed and transitive.
 
-`has` and `of` are inverses. Use `has` on the parent, `of` on the child. `traverse X --type has --depth N` computes the full decomposition to depth N.
+Subsumes composition, implementation, data flow, and requirement. If X needs Y for any reason — structural, contractual, or operational — it's `depends-on`.
 
-## Dependency
+`traverse X --type depends-on --depth N` computes the transitive dependency set. Inverse relationships on `get X` reveal what depends on X.
 
-| Type | Meaning | Traversal computes |
-|------|---------|-------------------|
-| `needs` | source requires target to function | dependency chain |
-| `feeds` | source provides output consumed by target | data flow forward |
+## relates-to
 
-`traverse X --type needs --depth N` computes the transitive dependency set. `traverse X --type feeds --depth N` computes the downstream impact set.
+X and Y are connected but neither requires the other. Associative context.
 
-## Realization
+This is the default type for `[[wikilinks]]` in body text. Use it in frontmatter for explicit cross-references that aren't dependencies.
 
-| Type | Meaning | Traversal computes |
-|------|---------|-------------------|
-| `impl` | source implements the contract defined by target | implementations of an interface |
+## Why only two
 
-`traverse interface --type impl` from an interface is meaningless (wrong direction). Instead, `list` all artifacts and filter, or use inverse relationships on get.
-
-## Production
-
-| Type | Meaning | Traversal computes |
-|------|---------|-------------------|
-| `produces` | source creates/emits target as output | output trace |
-| `consumes` | source takes target as input | input trace |
-
-`traverse X --type produces --depth N` computes what X generates transitively. `traverse X --type consumes --depth N` computes the input ancestry.
-
-## Narrative
-
-| Type | Meaning | Traversal computes |
-|------|---------|-------------------|
-| `refs` | source mentions target in prose | nothing computable — context only |
-
-`refs` is the default for `[[wikilinks]]` in body text. It explicitly marks non-computable references. Do not use `refs` in frontmatter — if a relationship is worth declaring in frontmatter, it should be typed.
-
-## Summary
-
-Seven types total: `has`, `of`, `needs`, `feeds`, `impl`, `produces`, `consumes`, plus `refs` for body wikilinks.
+Every richer vocabulary (`has`, `of`, `implements`, `produces`, `consumes`, `feeds`) is a specialization of `depends-on`. Specializations add cognitive load without adding computability — `traverse X --type depends-on` answers the same question regardless of whether the edge was "composition" or "implementation". If you need the semantic distinction, put it in prose, not in the relationship type.

@@ -3,7 +3,7 @@ slug: section
 title: Section
 tags: [schema, type]
 relationships:
-  of: knowledge-artifact
+  depends-on: knowledge-artifact
 ---
 
 # Section

@@ -3,9 +3,7 @@ slug: wikilink-parser
 title: Wikilink Parser
 tags: [parser, module]
 relationships:
-  of: parser
-  produces: relationship
-  needs: [result-type, section]
+  depends-on: [parser, relationship, result-type, section]
 ---
 
 # Wikilink Parser

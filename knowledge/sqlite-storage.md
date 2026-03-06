@@ -3,10 +3,7 @@ slug: sqlite-storage
 title: SQLite Storage
 tags: [storage, module]
 relationships:
-  of: pramana
-  impl: storage-interface
-  needs: result-type
-  consumes: knowledge-artifact
+  depends-on: [pramana, storage-interface, result-type, knowledge-artifact]
 ---
 
 # SQLite Storage
