@@ -28,6 +28,13 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "graphology": "^0.26.0",
+    "graphology-communities-louvain": "^2.0.2",
+    "graphology-components": "^1.5.4",
+    "graphology-metrics": "^2.4.0",
+    "graphology-shortest-path": "^2.1.0",
+    "graphology-traversal": "^0.3.1",
+    "graphology-types": "^0.24.8",
     "ink": "^6.8.0",
     "react": "^19.2.4",
     "zod": "^3.25"

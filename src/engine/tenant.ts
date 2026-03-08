@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { GraphIndex } from "../graph/index.ts";
 import { err, ok, type Result } from "../lib/result.ts";
 import { NAME_REGEX, RESERVED_NAMES } from "../lib/tenant-names.ts";
 import { SqlitePlugin } from "../storage/sqlite/index.ts";
@@ -143,7 +144,11 @@ export class TenantManager {
       });
     }
 
-    const reader = new Reader(storage, storage);
+    // Build graph index from all stored artifacts
+    const listResult = storage.list();
+    const graphIndex = listResult.ok ? GraphIndex.fromArtifacts(listResult.value) : undefined;
+
+    const reader = new Reader(storage, storage, graphIndex);
     return ok({ storage, reader, report: buildResult.value });
   }
 }

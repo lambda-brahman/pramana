@@ -4,6 +4,13 @@
     "": {
       "name": "pramana",
       "dependencies": {
+        "graphology": "^0.26.0",
+        "graphology-communities-louvain": "^2.0.2",
+        "graphology-components": "^1.5.4",
+        "graphology-metrics": "^2.4.0",
+        "graphology-shortest-path": "^2.1.0",
+        "graphology-traversal": "^0.3.1",
+        "graphology-types": "^0.24.8",
         "ink": "^6.8.0",
         "react": "^19.2.4",
         "zod": "^3.25",
@@ -46,6 +53,8 @@
 
     "@types/react": ["@types/react@19.2.14", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w=="],
 
+    "@yomguithereal/helpers": ["@yomguithereal/helpers@1.1.1", "", {}, "sha512-UYvAq/XCA7xoh1juWDYsq3W0WywOB+pz8cgVnE1b45ZfdMhBvHDrgmSFG3jXeZSr2tMTYLGHFHON+ekG05Jebg=="],
+
     "ansi-escapes": ["ansi-escapes@7.3.0", "", { "dependencies": { "environment": "^1.0.0" } }, "sha512-BvU8nYgGQBxcmMuEeUEmNTvrMVjJNSH7RgW24vXexN4Ven6qCvy4TntnvlnwnMLTVlcRQQdbRY8NKnaIoeWDNg=="],
 
     "ansi-regex": ["ansi-regex@6.2.2", "", {}, "sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg=="],
@@ -78,7 +87,27 @@
 
     "escape-string-regexp": ["escape-string-regexp@2.0.0", "", {}, "sha512-UpzcLCXolUWcNu5HtVMHYdXJjArjsF9C0aNnquZYY4uW/Vu0miy5YoWvbV345HauVvcAUnpRuhMMcqTcGOY2+w=="],
 
+    "events": ["events@3.3.0", "", {}, "sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q=="],
+
     "get-east-asian-width": ["get-east-asian-width@1.5.0", "", {}, "sha512-CQ+bEO+Tva/qlmw24dCejulK5pMzVnUOFOijVogd3KQs07HnRIgp8TGipvCCRT06xeYEbpbgwaCxglFyiuIcmA=="],
+
+    "graphology": ["graphology@0.26.0", "", { "dependencies": { "events": "^3.3.0" }, "peerDependencies": { "graphology-types": ">=0.24.0" } }, "sha512-8SSImzgUUYC89Z042s+0r/vMibY7GX/Emz4LDO5e7jYXhuoWfHISPFJYjpRLUSJGq6UQ6xlenvX1p/hJdfXuXg=="],
+
+    "graphology-communities-louvain": ["graphology-communities-louvain@2.0.2", "", { "dependencies": { "graphology-indices": "^0.17.0", "graphology-utils": "^2.4.4", "mnemonist": "^0.39.0", "pandemonium": "^2.4.1" }, "peerDependencies": { "graphology-types": ">=0.19.0" } }, "sha512-zt+2hHVPYxjEquyecxWXoUoIuN/UvYzsvI7boDdMNz0rRvpESQ7+e+Ejv6wK7AThycbZXuQ6DkG8NPMCq6XwoA=="],
+
+    "graphology-components": ["graphology-components@1.5.4", "", { "dependencies": { "graphology-indices": "^0.17.0", "graphology-utils": "^2.1.2" }, "peerDependencies": { "graphology-types": ">=0.19.0" } }, "sha512-O37vC226wgnN0C6FUWHNe4fbTzaF51CcQjwX3naId/QTzH/PkUtXaanCShj9ws5Vju+z4u3zvSeEZE84Bo9jlA=="],
+
+    "graphology-indices": ["graphology-indices@0.17.0", "", { "dependencies": { "graphology-utils": "^2.4.2", "mnemonist": "^0.39.0" }, "peerDependencies": { "graphology-types": ">=0.20.0" } }, "sha512-A7RXuKQvdqSWOpn7ZVQo4S33O0vCfPBnUSf7FwE0zNCasqwZVUaCXePuWo5HBpWw68KJcwObZDHpFk6HKH6MYQ=="],
+
+    "graphology-metrics": ["graphology-metrics@2.4.0", "", { "dependencies": { "graphology-indices": "^0.17.0", "graphology-shortest-path": "^2.0.0", "graphology-utils": "^2.4.4", "mnemonist": "^0.39.0", "pandemonium": "2.4.1" }, "peerDependencies": { "graphology-types": ">=0.20.0" } }, "sha512-7WOfOP+mFLCaTJx55Qg4eY+211vr1/b3D/R3biz3SXGhAaCVcWYkfabnmO4O4WBNWANEHtVnFrGgJ0kj6MM6xw=="],
+
+    "graphology-shortest-path": ["graphology-shortest-path@2.1.0", "", { "dependencies": { "@yomguithereal/helpers": "^1.1.1", "graphology-indices": "^0.17.0", "graphology-utils": "^2.4.3", "mnemonist": "^0.39.0" }, "peerDependencies": { "graphology-types": ">=0.20.0" } }, "sha512-KbT9CTkP/u72vGEJzyRr24xFC7usI9Es3LMmCPHGwQ1KTsoZjxwA9lMKxfU0syvT/w+7fZUdB/Hu2wWYcJBm6Q=="],
+
+    "graphology-traversal": ["graphology-traversal@0.3.1", "", { "dependencies": { "graphology-indices": "^0.17.0", "graphology-utils": "^2.0.0" }, "peerDependencies": { "graphology-types": ">=0.20.0" } }, "sha512-lGLrLKEDKtNgAKgHVhVftKf3cb/nuWwuVPQZHXRnN90JWn0RSjco/s+NB2ARSlMapEMlbnPgv6j++427yTnU3Q=="],
+
+    "graphology-types": ["graphology-types@0.24.8", "", {}, "sha512-hDRKYXa8TsoZHjgEaysSRyPdT6uB78Ci8WnjgbStlQysz7xR52PInxNsmnB7IBOM1BhikxkNyCVEFgmPKnpx3Q=="],
+
+    "graphology-utils": ["graphology-utils@2.5.2", "", { "peerDependencies": { "graphology-types": ">=0.23.0" } }, "sha512-ckHg8MXrXJkOARk56ZaSCM1g1Wihe2d6iTmz1enGOz4W/l831MBCKSayeFQfowgF8wd+PQ4rlch/56Vs/VZLDQ=="],
 
     "indent-string": ["indent-string@5.0.0", "", {}, "sha512-m6FAo/spmsW2Ab2fU35JTYwtOKa2yAwXSwgjSv1TJzh4Mh7mC3lzAOVLBprb72XsTrgkEIsl7YrFNAiDiRhIGg=="],
 
@@ -92,7 +121,13 @@
 
     "mimic-fn": ["mimic-fn@2.1.0", "", {}, "sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg=="],
 
+    "mnemonist": ["mnemonist@0.39.8", "", { "dependencies": { "obliterator": "^2.0.1" } }, "sha512-vyWo2K3fjrUw8YeeZ1zF0fy6Mu59RHokURlld8ymdUPjMlD9EC9ov1/YPqTgqRvUN9nTr3Gqfz29LYAmu0PHPQ=="],
+
+    "obliterator": ["obliterator@2.0.5", "", {}, "sha512-42CPE9AhahZRsMNslczq0ctAEtqk8Eka26QofnqC346BZdHDySk3LWka23LI7ULIw11NmltpiLagIq8gBozxTw=="],
+
     "onetime": ["onetime@5.1.2", "", { "dependencies": { "mimic-fn": "^2.1.0" } }, "sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg=="],
+
+    "pandemonium": ["pandemonium@2.4.1", "", { "dependencies": { "mnemonist": "^0.39.2" } }, "sha512-wRqjisUyiUfXowgm7MFH2rwJzKIr20rca5FsHXCMNm1W5YPP1hCtrZfgmQ62kP7OZ7Xt+cR858aB28lu5NX55g=="],
 
     "patch-console": ["patch-console@2.0.0", "", {}, "sha512-0YNdUceMdaQwoKce1gatDScmMo5pu/tfABfnzEqeG0gtTmd7mh/WcwgUjtAeOU7N8nFFlbQBnFK2gXW5fGvmMA=="],
 

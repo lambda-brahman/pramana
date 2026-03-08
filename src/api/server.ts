@@ -124,6 +124,51 @@ function handleOperation(reader: Reader, opPath: string, url: URL): Response {
     return json(result.value);
   }
 
+  // graph/metrics
+  if (opPath === "graph/metrics") {
+    const result = reader.graphMetrics();
+    if (!result.ok) return json({ error: result.error.message }, 500);
+    return json(result.value);
+  }
+
+  // graph/centrality/degree
+  if (opPath === "graph/centrality/degree") {
+    const result = reader.degreeCentrality();
+    if (!result.ok) return json({ error: result.error.message }, 500);
+    return json(result.value);
+  }
+
+  // graph/centrality/betweenness
+  if (opPath === "graph/centrality/betweenness") {
+    const result = reader.betweennessCentrality();
+    if (!result.ok) return json({ error: result.error.message }, 500);
+    return json(result.value);
+  }
+
+  // graph/communities
+  if (opPath === "graph/communities") {
+    const result = reader.communities();
+    if (!result.ok) return json({ error: result.error.message }, 500);
+    return json(result.value);
+  }
+
+  // graph/components
+  if (opPath === "graph/components") {
+    const result = reader.connectedComponents();
+    if (!result.ok) return json({ error: result.error.message }, 500);
+    return json(result.value);
+  }
+
+  // graph/shortest-path?from=...&to=...
+  if (opPath === "graph/shortest-path") {
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    if (!from || !to) return json({ error: "Missing 'from' and 'to' parameters" }, 400);
+    const result = reader.shortestPath(from, to);
+    if (!result.ok) return json({ error: result.error.message }, 500);
+    return json(result.value);
+  }
+
   return json({ error: "Not found" }, 404);
 }
 

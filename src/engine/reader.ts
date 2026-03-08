@@ -1,3 +1,11 @@
+import type {
+  CentralityEntry,
+  Community,
+  Component,
+  GraphIndex,
+  GraphMetrics,
+  ShortestPath,
+} from "../graph/index.ts";
 import { err, ok, type Result } from "../lib/result.ts";
 import type { KnowledgeArtifact, Relationship, Section } from "../schema/index.ts";
 import type {
@@ -26,10 +34,15 @@ export type ListFilter = {
 export type EngineError = { type: "engine"; message: string };
 
 export class Reader {
+  private graphIndex?: GraphIndex;
+
   constructor(
     private storage: StorageReader,
     private searcher: StorageSearcher,
-  ) {}
+    graphIndex?: GraphIndex,
+  ) {
+    this.graphIndex = graphIndex;
+  }
 
   get(slugWithSection: string): Result<ArtifactView | null, EngineError> {
     const [slug, sectionId] = splitSlugSection(slugWithSection);
@@ -84,6 +97,40 @@ export class Reader {
 
     return ok(result.value.map((a) => toView(a, this.storage)));
   }
+
+  graphMetrics(): Result<GraphMetrics, EngineError> {
+    if (!this.graphIndex) return noGraphIndex();
+    return ok(this.graphIndex.metrics());
+  }
+
+  degreeCentrality(): Result<CentralityEntry[], EngineError> {
+    if (!this.graphIndex) return noGraphIndex();
+    return ok(this.graphIndex.degreeCentrality());
+  }
+
+  betweennessCentrality(): Result<CentralityEntry[], EngineError> {
+    if (!this.graphIndex) return noGraphIndex();
+    return ok(this.graphIndex.betweennessCentrality());
+  }
+
+  communities(): Result<Community[], EngineError> {
+    if (!this.graphIndex) return noGraphIndex();
+    const result = this.graphIndex.communities();
+    if (!result.ok) return err({ type: "engine", message: result.error.message });
+    return ok(result.value);
+  }
+
+  shortestPath(from: string, to: string): Result<ShortestPath | null, EngineError> {
+    if (!this.graphIndex) return noGraphIndex();
+    const result = this.graphIndex.shortestPath(from, to);
+    if (!result.ok) return err({ type: "engine", message: result.error.message });
+    return ok(result.value);
+  }
+
+  connectedComponents(): Result<Component[], EngineError> {
+    if (!this.graphIndex) return noGraphIndex();
+    return ok(this.graphIndex.connectedComponents());
+  }
 }
 
 function splitSlugSection(input: string): [string, string | undefined] {
@@ -137,4 +184,8 @@ function extractSectionContent(content: string, section: Section, allSections: S
 
 function mapError(result: { ok: false; error: StorageError }): Result<never, EngineError> {
   return err({ type: "engine", message: result.error.message });
+}
+
+function noGraphIndex(): Result<never, EngineError> {
+  return err({ type: "engine", message: "Graph index not available" });
 }
