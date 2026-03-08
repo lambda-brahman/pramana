@@ -4,9 +4,24 @@
 
 Write what you know in Markdown. Pramana makes it available to Claude — automatically. When your conversation touches your domain, Claude looks up the relevant knowledge without you having to ask.
 
+### Why?
+
+Without Pramana, Claude guesses your domain rules. With Pramana, Claude looks them up:
+
+> **Before:** "I'd suggest a standard 30-day return policy…" (generic guess)
+> **After:** "Per your pricing-rules artifact, early-payment discount is 5% within 10 days, and enterprise customers get volume discounts." (grounded in your knowledge)
+
 > The reference implementation of the semantic layer described in [Knowledge Engineering: The Future of AI-Assisted Software Engineering](https://knowledgeengineering.substack.com/p/knowledge-engineering-the-future).
 
 ## Quick start
+
+### Prerequisites
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with plugin marketplace support
+
+The install script downloads a standalone binary — no Bun, Node.js, or other runtime needed.
+
+**Platform support:** macOS (arm64, x64), Linux (x64), Windows (x64).
 
 ### 1. Install Pramana and the Claude plugin
 
@@ -14,7 +29,7 @@ Write what you know in Markdown. Pramana makes it available to Claude — automa
 curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
 ```
 
-In Claude Code:
+In Claude Code (requires plugin marketplace support):
 
 ```
 /plugin marketplace add lambda-brahman/pramana
@@ -161,6 +176,8 @@ These links are optional — the `relationships` header is what Pramana uses to 
 
 ## Let Claude write knowledge for you
 
+Author agents are useful when you want consistent artifacts across a team, or when generating knowledge as a CI artifact (e.g., API docs from code).
+
 First, create an author agent that captures your writing standards:
 
 ```
@@ -203,14 +220,31 @@ When the Pramana plugin is installed and running, Claude has four ways to access
 
 Claude chooses the right approach automatically based on your question. It reads specific sections rather than loading everything, keeping conversations focused and efficient.
 
+## Configuration
+
+Pramana runs on port **5111** by default. To change it:
+
+```bash
+pramana start --port 5200            # CLI flag
+PRAMANA_PORT=5200 pramana start      # environment variable
+```
+
+## Validating your knowledge base
+
+Run `pramana lint` to check your files for frontmatter errors, broken links, and missing slugs:
+
+```bash
+pramana lint ./knowledge
+```
+
 ## Install options
 
 ```bash
 # Latest
 curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
 
-# Specific version
-curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh -s v0.2.0
+# Specific version (see Releases for available versions)
+curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh -s v0.8.1
 ```
 
 See [Releases](https://github.com/lambda-brahman/pramana/releases) for binaries.
@@ -219,6 +253,37 @@ See [Releases](https://github.com/lambda-brahman/pramana/releases) for binaries.
 
 - [Technical reference](docs/technical.md) — CLI commands, HTTP API, document format, multi-tenant details
 - [Plugin guide](plugin/README.md) — Skill details, invocation modes, architecture
+
+## Troubleshooting
+
+**Daemon won't start**
+Check if another process is using port 5111: `lsof -i :5111`. Use `--port` or `PRAMANA_PORT` to pick a different port.
+
+**Files not loading**
+Ensure your Markdown files have valid frontmatter with at least a `slug` field. Run `pramana lint ./knowledge` to catch formatting issues.
+
+**Claude isn't using the knowledge base**
+Verify the plugin is installed (`/plugin list` in Claude Code) and Pramana is running. Add a hint like `(use /pramana:query to check the KB)` to your prompt.
+
+**"Connection refused" errors**
+The Pramana daemon may have stopped. Re-run `/pramana:setup ./knowledge` to restart it.
+
+**Stale data after editing files**
+Restart the daemon — Pramana loads files at startup. Re-run `/pramana:setup` to pick up changes.
+
+## Uninstall
+
+Remove the binary and the Claude Code plugin:
+
+```bash
+rm ~/.local/bin/pramana
+```
+
+In Claude Code:
+
+```
+/plugin uninstall pramana@lambda-brahman
+```
 
 ## Development
 
