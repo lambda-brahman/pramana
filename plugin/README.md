@@ -25,7 +25,7 @@ Claude starts Pramana, verifies your files loaded correctly, and reports any iss
 
 ## Skills
 
-This plugin provides four skills with different invocation modes:
+This plugin provides three skills with different invocation modes:
 
 ### Query — automatic
 
@@ -64,24 +64,18 @@ This skill is **explicit only** (`disable-model-invocation`) because it starts a
 /pramana:create-author commerce tutorial       # create "tutorial" author
 ```
 
-Builds a named author agent through interactive elicitation. Claude asks open-ended questions to learn your domain expertise, writing style, conventions, and quality standards, then constructs an agent definition file stored in your knowledge directory's `_meta/` folder.
+Builds a named author agent through interactive elicitation. Claude asks open-ended questions to learn your domain expertise, writing style, conventions, and quality standards, then produces a Claude Code agent file in `.claude/agents/`.
 
-Each author is a distinct agent persona — you can have multiple authors per knowledge base for different purposes (e.g., API reference vs tutorial).
+Each author is a distinct agent with its own persona and the full write workflow baked in — you can have multiple authors per knowledge base for different purposes (e.g., API reference vs tutorial).
+
+Once created, invoke the author agent with `@`:
+
+```
+@"author-api-docs-commerce (agent)" write about API rate limiting
+@"author-tutorial-commerce (agent)" write a getting started guide
+```
 
 This skill is **explicit only** (`disable-model-invocation`) because it requires interactive conversation with the user.
-
-### Write — automatic
-
-```
-/pramana:write commerce --author api-docs billing  # write with "api-docs" agent
-/pramana:write commerce billing                    # asks user to pick an author
-```
-
-Creates new knowledge artifacts using an existing author agent. The write skill loads the named author's persona and writes artifacts according to its style, conventions, and quality standards.
-
-**Requires an existing author agent** — if none exist, Claude instructs you to create one first via `/pramana:create-author`. This ensures artifacts are always written to defined quality standards.
-
-This skill is **auto-invocable** — Claude can use it autonomously when it determines an artifact should be created.
 
 ## Invocation modes
 
@@ -90,7 +84,6 @@ This skill is **auto-invocable** — Claude can use it autonomously when it dete
 | query | Yes | Yes | Claude should reach for domain knowledge whenever relevant |
 | setup | No | Yes | Starts a daemon — user should ask for this explicitly |
 | create-author | No | Yes | Interactive elicitation — user must participate |
-| write | Yes | Yes | Autonomous artifact creation (requires existing author) |
 
 ## Architecture
 

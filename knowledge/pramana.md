@@ -42,7 +42,7 @@ Source Dir(s) (*.md)
                                    │ Claude Plugin     │
                                    │ daemon+client     │
                                    │ +setup/query/     │
-                                   │  write skills     │
+                                   │  author agents    │
                                    └──────────────────┘
 ```
 
@@ -59,7 +59,7 @@ Source Dir(s) (*.md)
 | [[api]] | HTTP surface | `Route → Reader op → JSON Response` (tenant-scoped) |
 | [[cli]] | CLI surface | `Command → lifecycle → JSON stdout` (with `--tenant`) |
 | [[programming-model]] | Abstract machine | Types, interfaces, 14 laws, plugin contract |
-| [[claude-plugin]] | Claude integration | Daemon + CLI client + setup/query/write skills |
+| [[claude-plugin]] | Claude integration | Daemon + CLI client + setup/query skills + author agents |
 
 ## Invariants
 

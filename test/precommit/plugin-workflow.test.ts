@@ -131,22 +131,20 @@ describe("Plugin structure validation", () => {
     expect(content).not.toContain("disable-model-invocation");
   });
 
-  test("write skill exists with valid frontmatter and is auto-invocable", () => {
+  test("write skill does not exist (replaced by author agents)", () => {
     const skillPath = path.join(PROJECT_ROOT, "plugin/skills/write/SKILL.md");
-    expect(fs.existsSync(skillPath)).toBe(true);
-    const content = fs.readFileSync(skillPath, "utf-8");
-    expect(content).toContain("name: write");
-    expect(content).toContain("user_invocable: true");
-    expect(content).not.toContain("disable-model-invocation");
+    expect(fs.existsSync(skillPath)).toBe(false);
   });
 
-  test("create-author skill exists with valid frontmatter", () => {
+  test("create-author skill exists with valid frontmatter and produces agent format", () => {
     const skillPath = path.join(PROJECT_ROOT, "plugin/skills/create-author/SKILL.md");
     expect(fs.existsSync(skillPath)).toBe(true);
     const content = fs.readFileSync(skillPath, "utf-8");
     expect(content).toContain("name: create-author");
     expect(content).toContain("user_invocable: true");
     expect(content).toContain("disable-model-invocation: true");
+    expect(content).toContain(".claude/agents/");
+    expect(content).toContain("tools: Bash, Read, Write, Glob, Grep");
   });
 
   test("upgrade skill exists with valid frontmatter", () => {

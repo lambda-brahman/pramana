@@ -169,13 +169,13 @@ First, create an author agent that captures your writing standards:
 
 Claude asks open-ended questions about your domain expertise, writing style, and quality standards, then saves an author agent. You can create multiple authors for different purposes (e.g., API reference vs tutorials).
 
-Then use the author to create artifacts:
+Then invoke the author agent to create artifacts:
 
 ```
-/pramana:write commerce --author api-docs "API rate limiting policy"
+@"author-api-docs-commerce (agent)" write about API rate limiting
 ```
 
-Claude adopts the author's persona and drafts artifacts that match your standards — with proper connections to existing artifacts.
+Claude delegates to the author agent, which writes artifacts that match your standards — with proper connections to existing artifacts.
 
 ## Multiple knowledge bases
 

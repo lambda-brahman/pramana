@@ -24,13 +24,13 @@ pramana search "jazz" --tenant music       # connects to running daemon
     │
 /pramana:setup ./law-kb                    # start daemon, report ingestion
 /pramana:query law "negligence?"           # semantic query with tenant
-/pramana:write law "tort liability"        # create artifact, auto-profile
+@"author-domain-law (agent)" write about tort liability  # invoke author agent
 ```
 
 Three layers:
 1. **Daemon**: `pramana serve` — persistent process, supports multi-tenant
 2. **CLI client mode**: commands detect running server → HTTP client; fallback to rebuild
-3. **Skills**: teach Claude how to set up, query, and write knowledge
+3. **Skills**: teach Claude how to set up, query, and create author agents
 
 ## Skills
 
@@ -49,25 +49,15 @@ Teaches Claude semantic querying:
 - Token management (section reads over full artifacts)
 - Multi-tenant awareness (discover tenants, route queries)
 
-### /pramana:write
+### Author agents
 
-Guides Claude through artifact creation:
-- Check for author profile (`_meta/author.md`)
-- Elicit profile if missing (domain-agnostic questions)
-- Research connections to existing artifacts
-- Draft with proper frontmatter, sections, wikilinks
-- Save and reload
+Created via `/pramana:create-author`, each author agent is a Claude Code agent file in `.claude/agents/` that combines:
+- The author persona (style, conventions, quality standards)
+- The full write workflow (pramana CLI usage, format rules, save/reload)
 
-## Author profile
+Invoke with: `@"author-<name>-<tenant> (agent)" <topic>`
 
-Each tenant can have an author profile at `_meta/author.md` (slug: `_meta-author`). This captures:
-- Domain scope
-- Core principles
-- Writing style preferences
-- Completeness criteria
-- Target audience
-
-The profile is elicited on first `/pramana:write` invocation and used to guide all subsequent artifact creation.
+No intermediary skill needed — the agent IS the writer.
 
 ## Server discovery
 
@@ -122,8 +112,8 @@ plugin/
     │   └── SKILL.md         # semantic query guidance
     ├── setup/
     │   └── SKILL.md         # daemon setup guidance
-    └── write/
-        └── SKILL.md         # artifact authoring guidance
+    └── create-author/
+        └── SKILL.md         # author agent creation
 ```
 
 ## Laws
@@ -132,6 +122,6 @@ plugin/
 
 **CP2. Graceful degradation**: if no daemon is running and `--source` is provided, fall back to standalone mode silently. If neither is available, exit with error.
 
-**CP3. Skill as semantic layer**: the skill prompts shape Claude's behavior. Setup teaches daemon management, query teaches token-efficient retrieval, write teaches knowledge creation with profile-guided quality.
+**CP3. Skill as semantic layer**: the skill prompts shape Claude's behavior. Setup teaches daemon management, query teaches token-efficient retrieval, create-author produces self-contained author agents with the full write workflow baked in.
 
 **CP4. Zero coupling**: the plugin uses only Bash tool calls to invoke CLI commands. No MCP server, no custom protocol, no SDK dependency.

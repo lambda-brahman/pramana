@@ -34,20 +34,21 @@ The source directory is where the tenant's knowledge files live.
 
 ## Step 3: List existing authors
 
-Scan the `_meta/` directory in the knowledge source for existing author agents:
+Scan for existing author agents in both project-level and global agent directories:
 
 ```bash
-ls <source-dir>/_meta/author-*.md 2>/dev/null
+ls .claude/agents/author-*-<tenant>.md 2>/dev/null
+ls ~/.claude/agents/author-*-<tenant>.md 2>/dev/null
 ```
 
 Show what already exists so the user has context.
 
 ## Step 4: Check target author
 
-Read the target author file directly from disk:
+Check if the target author agent already exists:
 
 ```bash
-cat <source-dir>/_meta/author-<name>.md
+cat .claude/agents/author-<name>-<tenant>.md 2>/dev/null || cat ~/.claude/agents/author-<name>-<tenant>.md 2>/dev/null
 ```
 
 - **If it exists**: Show the current content and ask the user what they want to update.
@@ -73,33 +74,95 @@ Continue asking until you have a fine-grained understanding. The user drives the
 
 ## Step 6: Construct agent file
 
-Synthesize all elicited knowledge into a Claude-compatible agent definition file. The file follows Claude's sub-agent format:
+Synthesize all elicited knowledge into a Claude Code agent file. The file includes the author persona AND the full write workflow so the agent can operate independently.
 
-```markdown
+Use this structure:
+
+````markdown
 ---
-name: author-<name>
-description: <what this author agent does, when to use it>
+name: author-<name>-<tenant>
+description: <what this author agent does> for the <tenant> knowledge base
 model: inherit
+tools: Bash, Read, Write, Glob, Grep
 ---
 
-<system prompt: the complete author persona, style guide, conventions,
- quality standards — everything elicited from the user>
+# <Author Name>
+
+<Elicited persona: style, tone, conventions, quality standards, domain scope, audience, constraints — everything from the elicitation session>
+
+---
+
+# Knowledge Artifact Writing
+
+You create and update knowledge artifacts in the **<tenant>** Pramana knowledge base.
+Source directory: `<source-dir>`
+
+## Workflow
+
+### 1. Orient
+```bash
+pramana list --tenant <tenant>
 ```
 
-The YAML frontmatter uses the same fields as Claude Code agent files (`name`, `description`, `model`). The markdown body is the agent's system prompt — its identity and instructions. Keep it open-ended and as rich as the elicitation warrants.
+### 2. Research
+```bash
+pramana search "<topic>" --tenant <tenant>
+pramana get <slug>#<section> --tenant <tenant>
+```
+
+### 3. Write
+Create the artifact following your persona's style and these format rules:
+
+**Frontmatter:**
+```yaml
+---
+slug: kebab-case-slug
+title: Human Readable Title
+tags: [tag1, tag2]
+relationships:
+  depends-on: [slug1]
+  relates-to: [slug2]
+---
+```
+
+**Body:** H1 title, H2 major sections, H3 subsections. No H4+.
+**Wikilinks:** `[[slug]]` for relates-to, `[[depends-on::slug]]` for dependencies.
+
+### 4. Save and verify
+Save to `<source-dir>/<slug>.md`, then:
+```bash
+pramana reload --tenant <tenant>
+pramana get <slug> --tenant <tenant>
+pramana traverse <slug> --depth 1 --tenant <tenant>
+```
+
+### Quality checklist
+- Slug is kebab-case and unique
+- Tags follow existing conventions
+- All relationships point to existing artifacts
+- Sections use H2/H3 properly
+- Content matches your persona's quality standards
+- Relationship keys are valid (`depends-on` | `relates-to`)
+````
 
 ## Step 7: Save
 
-Save the file to `<source-dir>/_meta/author-<name>.md`.
+Ask the user where to place the agent:
+- **Project-level** (recommended): `.claude/agents/author-<name>-<tenant>.md`
+- **Global**: `~/.claude/agents/author-<name>-<tenant>.md`
 
 ```bash
-mkdir -p <source-dir>/_meta
+mkdir -p .claude/agents
+```
+or
+```bash
+mkdir -p ~/.claude/agents
 ```
 
-Write the agent definition file to disk. No reload is needed — authors are not indexed by the engine. They are skill-layer metadata read directly from the source directory.
+Write the agent definition file to disk.
 
 Confirm to the user:
 ```
-Author agent "author-<name>" saved to <source-dir>/_meta/author-<name>.md
-Use it with: /pramana:write <tenant> --author <name> <topic>
+Author agent "author-<name>-<tenant>" created in .claude/agents/.
+Invoke it with: @"author-<name>-<tenant> (agent)" <topic>
 ```
