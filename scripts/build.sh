@@ -8,7 +8,9 @@ set -euo pipefail
 #   scripts/build.sh --all               # Build all platforms (CI)
 #   scripts/build.sh --target <target>   # Build for specific target
 #
-# Handles the react-devtools-core stub needed for ink/bun compile compatibility.
+# Handles build-time stubs for:
+#   - react-devtools-core (ink dev dependency)
+#   - onnxruntime-node → onnxruntime-web (native dylib → WASM, see #38)
 
 ENTRY="src/cli/index.ts"
 
@@ -31,6 +33,43 @@ STUB
   fi
 }
 
+# --- Swap onnxruntime-node → onnxruntime-web for compiled binary (#38) ------
+# onnxruntime-node ships a .node native addon that dynamically links to
+# libonnxruntime.dylib via @rpath. bun build --compile embeds the .node
+# file but NOT the transitive dylib, so dlopen fails at runtime and
+# semantic search silently falls back to FTS-only.
+#
+# Fix: replace onnxruntime-node with a re-export of onnxruntime-web (WASM)
+# during compilation. The WASM backend is self-contained — no native deps.
+
+ORT_NODE_DIR="node_modules/onnxruntime-node"
+ORT_NODE_BACKUP="${ORT_NODE_DIR}.__real__"
+
+stub_onnxruntime_node() {
+  if [ -d "$ORT_NODE_DIR/bin" ]; then
+    mv "$ORT_NODE_DIR" "$ORT_NODE_BACKUP"
+    mkdir -p "$ORT_NODE_DIR"
+    cat > "$ORT_NODE_DIR/package.json" <<'STUB'
+{"name":"onnxruntime-node","version":"0.0.0-stub","main":"index.js","type":"commonjs"}
+STUB
+    cat > "$ORT_NODE_DIR/index.js" <<'STUB'
+// Build-time stub: re-export onnxruntime-web so compiled binary uses WASM
+// backend instead of native onnxruntime (which requires libonnxruntime dylib).
+// See: https://github.com/sarath-soman/pramana/issues/38
+module.exports = require("onnxruntime-web");
+STUB
+    echo "Stubbed onnxruntime-node → onnxruntime-web (WASM backend)"
+  fi
+}
+
+restore_onnxruntime_node() {
+  if [ -d "$ORT_NODE_BACKUP" ]; then
+    rm -rf "$ORT_NODE_DIR"
+    mv "$ORT_NODE_BACKUP" "$ORT_NODE_DIR"
+    echo "Restored real onnxruntime-node"
+  fi
+}
+
 build_target() {
   local target="$1"
   local outfile="$2"
@@ -41,6 +80,8 @@ build_target() {
 # --- Main -------------------------------------------------------------------
 
 stub_devtools
+stub_onnxruntime_node
+trap restore_onnxruntime_node EXIT
 
 MODE="${1:-}"
 
