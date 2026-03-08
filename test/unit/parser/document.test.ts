@@ -65,6 +65,39 @@ title: FM Title
     expect(result.value.title).toBe("FM Title");
   });
 
+  test("includes summary and aliases in artifact", () => {
+    const raw = `---
+slug: order
+summary: "A customer's intent to purchase"
+aliases: [purchase-order, PO]
+tags: [entity]
+---
+
+# Order
+
+Content.`;
+
+    const result = parseDocument(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.summary).toBe("A customer's intent to purchase");
+    expect(result.value.aliases).toEqual(["purchase-order", "PO"]);
+  });
+
+  test("omits summary and aliases when absent", () => {
+    const raw = `---
+slug: minimal
+---
+
+# Minimal`;
+
+    const result = parseDocument(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.summary).toBeUndefined();
+    expect(result.value.aliases).toBeUndefined();
+  });
+
   test("produces deterministic hash", () => {
     const raw = `---
 slug: hash-test

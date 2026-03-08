@@ -37,6 +37,7 @@ describe("lintFileContent", () => {
 	test("no diagnostics on valid file", () => {
 		const raw = `---
 slug: order
+summary: An order represents a purchase
 tags: [entity, commerce]
 relationships:
   depends-on: [customer]
@@ -97,6 +98,7 @@ Content with [[uses::billing]].
 	test("collects FM and wikilink relationships for graph checks", () => {
 		const raw = `---
 slug: order
+summary: An order represents a purchase
 relationships:
   depends-on: [customer, line-item]
 ---
@@ -113,6 +115,34 @@ Uses [[shipping-info]] and [[depends-on::payment]].
 		expect(targets).toContain("line-item");
 		expect(targets).toContain("shipping-info");
 		expect(targets).toContain("payment");
+	});
+
+	test("info when summary is missing", () => {
+		const raw = `---
+slug: test
+tags: [entity]
+---
+
+# Test
+`;
+		const result = lintFileContent("test.md", raw);
+		const infos = result.diagnostics.filter((d) => d.severity === "info");
+		expect(infos).toHaveLength(1);
+		expect(infos[0]!.message).toContain("Missing summary");
+	});
+
+	test("no summary warning when summary is present", () => {
+		const raw = `---
+slug: test
+summary: A test artifact
+tags: [entity]
+---
+
+# Test
+`;
+		const result = lintFileContent("test.md", raw);
+		const summaryInfos = result.diagnostics.filter((d) => d.message.includes("summary"));
+		expect(summaryInfos).toHaveLength(0);
 	});
 
 	test("handles valid relationship types alongside unknown ones", () => {

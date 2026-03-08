@@ -132,6 +132,40 @@ describe("Reader", () => {
     expect(result.value.length).toBeGreaterThanOrEqual(1);
   });
 
+  test("get returns summary and aliases in view", () => {
+    storage.store(
+      makeArtifact({
+        slug: "order",
+        title: "Order",
+        summary: "A purchase intent",
+        aliases: ["purchase-order", "PO"],
+      })
+    );
+
+    const result = reader.get("order");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value!.summary).toBe("A purchase intent");
+    expect(result.value!.aliases).toEqual(["purchase-order", "PO"]);
+  });
+
+  test("search results include summary", () => {
+    storage.store(
+      makeArtifact({
+        slug: "order",
+        title: "Order",
+        summary: "A purchase intent",
+        content: "Order content.",
+      })
+    );
+
+    const result = reader.search("order");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.length).toBeGreaterThanOrEqual(1);
+    expect(result.value[0]!.summary).toBe("A purchase intent");
+  });
+
   test("get includes inverse relationships", () => {
     storage.store(
       makeArtifact({

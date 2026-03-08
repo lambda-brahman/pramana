@@ -26,6 +26,8 @@ export const SectionSchema = z.object({
 export const KnowledgeArtifactSchema = z.object({
   slug: z.string(),
   title: z.string(),
+  summary: z.string().optional(),
+  aliases: z.array(z.string()).optional(),
   tags: z.array(z.string()),
   relationships: z.array(RelationshipSchema),
   sections: z.array(SectionSchema),

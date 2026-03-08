@@ -150,6 +150,82 @@ describe("SqlitePlugin", () => {
     expect(results.value[0]!.slug).toBe("order");
   });
 
+  test("store and get artifact with summary and aliases", () => {
+    const artifact = makeArtifact({
+      slug: "order",
+      summary: "A customer's intent to purchase",
+      aliases: ["purchase-order", "sales-order", "PO"],
+    });
+    db.store(artifact);
+
+    const got = db.get("order");
+    expect(got.ok).toBe(true);
+    if (!got.ok) return;
+    expect(got.value!.summary).toBe("A customer's intent to purchase");
+    expect(got.value!.aliases).toEqual(["purchase-order", "sales-order", "PO"]);
+  });
+
+  test("summary and aliases are undefined when not set", () => {
+    db.store(makeArtifact({ slug: "minimal" }));
+
+    const got = db.get("minimal");
+    expect(got.ok).toBe(true);
+    if (!got.ok) return;
+    expect(got.value!.summary).toBeUndefined();
+    expect(got.value!.aliases).toBeUndefined();
+  });
+
+  test("FTS search matches aliases", () => {
+    db.store(
+      makeArtifact({
+        slug: "order",
+        title: "Order",
+        aliases: ["procurement", "sales-order"],
+        content: "An Order entity.",
+      })
+    );
+
+    // "procurement" only appears in aliases, not in title/content
+    const results = db.search("procurement");
+    expect(results.ok).toBe(true);
+    if (!results.ok) return;
+    expect(results.value.length).toBeGreaterThanOrEqual(1);
+    expect(results.value[0]!.slug).toBe("order");
+  });
+
+  test("FTS search matches summary", () => {
+    db.store(
+      makeArtifact({
+        slug: "order",
+        title: "Order",
+        summary: "A customer's intent to purchase products",
+        content: "An Order entity.",
+      })
+    );
+
+    const results = db.search("intent purchase");
+    expect(results.ok).toBe(true);
+    if (!results.ok) return;
+    expect(results.value.length).toBeGreaterThanOrEqual(1);
+    expect(results.value[0]!.slug).toBe("order");
+  });
+
+  test("search results include summary", () => {
+    db.store(
+      makeArtifact({
+        slug: "order",
+        title: "Order",
+        summary: "A purchase intent",
+        content: "Order content.",
+      })
+    );
+
+    const results = db.search("order");
+    expect(results.ok).toBe(true);
+    if (!results.ok) return;
+    expect(results.value[0]!.summary).toBe("A purchase intent");
+  });
+
   test("upsert replaces existing artifact", () => {
     db.store(makeArtifact({ slug: "test", title: "V1" }));
     db.store(makeArtifact({ slug: "test", title: "V2" }));

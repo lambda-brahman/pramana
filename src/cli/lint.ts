@@ -60,6 +60,16 @@ export function lintFileContent(file: string, raw: string): FileLintResult {
   }
   const slug = obj.slug;
 
+  // Summary check — soft rule, encourage but don't require
+  if (typeof obj.summary !== "string" || obj.summary.length === 0) {
+    diagnostics.push({
+      severity: "info",
+      file,
+      message:
+        "Missing summary: consider adding a one-line description for better search discovery",
+    });
+  }
+
   // Tags check
   if (obj.tags !== undefined) {
     if (!Array.isArray(obj.tags)) {

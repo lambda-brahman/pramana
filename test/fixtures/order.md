@@ -1,5 +1,7 @@
 ---
 slug: order
+summary: "A customer's intent to purchase one or more products"
+aliases: [purchase-order, sales-order, transaction]
 tags: [entity, commerce, core]
 relationships:
   depends-on: [customer, line-item, shipping-info]
