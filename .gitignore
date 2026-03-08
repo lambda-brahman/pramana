@@ -6,6 +6,10 @@ out
 dist
 *.tgz
 
+# compiled binaries
+/pramana
+/pramana-*
+
 # code coverage
 coverage
 *.lcov
