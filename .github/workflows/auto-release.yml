@@ -1,0 +1,89 @@
+name: Auto-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options: [patch, minor, major]
+
+jobs:
+  release:
+    # Auto: only on feat/fix commits. Manual: always.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.event.head_commit.message, 'feat') ||
+      startsWith(github.event.head_commit.message, 'fix')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine bump type
+        id: bump
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "type=${{ inputs.bump }}" >> "$GITHUB_OUTPUT"
+          elif echo "${{ github.event.head_commit.message }}" | head -1 | grep -q '^feat'; then
+            echo "type=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        id: version
+        run: |
+          CURRENT=$(grep '"version"' package.json | head -1 | sed 's/.*"\([0-9]*\.[0-9]*\.[0-9]*\)".*/\1/')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          BUMP="${{ steps.bump.outputs.type }}"
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEXT="${MAJOR}.${MINOR}.${PATCH}"
+          TAG="v${NEXT}"
+
+          if git tag --list "$TAG" | grep -q "$TAG"; then
+            echo "Tag $TAG already exists, skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Bump: $BUMP — $CURRENT -> $NEXT"
+
+      - name: Bump version files
+        if: steps.version.outputs.skip == 'false'
+        run: |
+          CURRENT="${{ steps.version.outputs.current }}"
+          NEXT="${{ steps.version.outputs.next }}"
+
+          sed -i "s/\"version\": \"$CURRENT\"/\"version\": \"$NEXT\"/" package.json
+          sed -i "s/VERSION = \"$CURRENT\"/VERSION = \"$NEXT\"/" src/version.ts
+          sed -i "s/\"version\": \"$CURRENT\"/\"version\": \"$NEXT\"/" plugin/.claude-plugin/plugin.json
+          sed -i "s/\"version\": \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\"/\"version\": \"$NEXT\"/g" .claude-plugin/marketplace.json
+
+      - name: Commit, tag, and push
+        if: steps.version.outputs.skip == 'false'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json src/version.ts plugin/.claude-plugin/plugin.json .claude-plugin/marketplace.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.next }} [skip ci]"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin main "$TAG"
