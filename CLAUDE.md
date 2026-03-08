@@ -45,6 +45,22 @@
 - Link related issues (e.g. `Closes #7`)
 - Review PR description for LLM artifacts before submitting
 
+## Labels
+Every issue and PR should have at least one label.
+- `bug` — something isn't working
+- `enhancement` — new feature or request
+- `documentation` — documentation changes
+- `dx` — developer experience
+- `chore` — maintenance and tooling
+- `onboarding` — onboarding-related
+- `tui` — terminal UI related
+- `good first issue` — good for newcomers
+- `help wanted` — extra attention needed
+- `question` — further information requested
+- `duplicate` — duplicate issue
+- `invalid` — not valid
+- `wontfix` — will not be addressed
+
 ## Releases
 - Update versions in `package.json` and `src/version.ts`
 - Create and push a tag named `v<version>` (for example `v0.9.0`)
