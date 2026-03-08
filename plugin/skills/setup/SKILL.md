@@ -53,8 +53,10 @@ If the install or upgrade fails, report the error to the user and **stop** — d
 Every knowledge base is a named tenant. Help the user name each tenant. Names must be lowercase, start with a letter, and contain only `a-z`, `0-9`, `-`. Reserved names that cannot be used: `get`, `search`, `traverse`, `list`, `tenants`, `reload`.
 
 ```bash
-pramana serve --source <dir>:<name> [--source <dir2>:<name2>] --port 5111
+pramana serve --source <dir>:<name> [--source <dir2>:<name2>] --port 5111 --save
 ```
+
+Use `--save` so the sources are persisted to `~/.pramana/config.json`. Next time the user runs `pramana serve` without arguments, the daemon will auto-load from config.
 
 Run the command in the background and capture stderr for the ingestion report.
 
@@ -98,6 +100,22 @@ Report:
 - Any remaining issues
 - Confirm the daemon is serving
 
+## Step 5: Persist config
+
+For each successfully verified tenant, confirm the config was saved:
+
+```bash
+pramana config list
+```
+
+If `--save` was used in Step 1, the tenants are already persisted. If not, save them now:
+
+```bash
+pramana config add <name> <dir>
+```
+
+Inform the user: "Next time, `pramana serve` will auto-load these tenants from config. No `--source` flags needed."
+
 ## Multi-tenant guidance
 
 When helping users set up multiple tenants:
@@ -113,6 +131,7 @@ Once everything is running:
 ```
 Pramana daemon is running on port 5111.
 - Tenants: <list of tenant names with artifact counts>
+- Config saved — `pramana serve` will auto-load next time
 - Query with: pramana get <slug> --tenant <name>
 - Use /pramana:query to search the knowledge base
 - Use /pramana:create-author to set up your author agent

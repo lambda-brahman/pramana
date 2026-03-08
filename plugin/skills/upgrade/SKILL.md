@@ -1,15 +1,15 @@
 ---
 name: upgrade
-description: Upgrade the Pramana CLI and check for plugin updates
+description: Upgrade the Pramana CLI and plugin
 user_invocable: true
 disable-model-invocation: true
 ---
 
 # Pramana Upgrade
 
-You are upgrading the Pramana CLI and checking for plugin updates.
+You are upgrading the Pramana CLI and plugin.
 
-## Step 1: Upgrade CLI
+## Step 1: Check CLI availability
 
 First, check if `pramana` is installed:
 
@@ -23,7 +23,9 @@ command -v pramana
 curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
 ```
 
-**If found**, get the current version and upgrade:
+## Step 2: Upgrade
+
+**If found**, get the current version and run the upgrade:
 
 ```bash
 pramana version
@@ -33,33 +35,14 @@ pramana version
 pramana upgrade
 ```
 
-Report what happened: upgraded from X to Y, or already up to date.
-
-## Step 2: Check plugin version
-
-Fetch the latest plugin version from GitHub:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/.claude-plugin/marketplace.json
-```
-
-Parse the `version` field from the first plugin entry in the JSON.
-
-Then check the locally installed plugin version by reading the plugin's `plugin.json`. Look for it in the installed plugins directory — typically `~/.claude/plugins/pramana@lambda-brahman/.claude-plugin/plugin.json` or similar. If you cannot find it, check if the plugin directory exists under the Claude plugins path.
-
-Compare the remote version against the local version.
-
-If the plugin is outdated, tell the user:
-
-```
-A newer plugin version (vX.Y.Z) is available. To update the skills, run:
-  /plugin install pramana@lambda-brahman
-```
-
-If up to date, confirm.
+The `pramana upgrade` command handles everything:
+- Downloads and installs the latest CLI binary
+- Downloads and installs the latest plugin from the GitHub release (`plugin.tar.gz`)
+- Updates `~/.claude/plugins/installed_plugins.json`
 
 ## Step 3: Summary
 
-Report what was done:
-- **CLI**: upgraded from X to Y / already up to date
-- **Plugin**: up to date / update available (with instructions above)
+Report what happened based on the upgrade output:
+- **CLI + Plugin upgraded**: "Upgraded CLI X → Y with plugin"
+- **CLI upgraded, plugin failed**: "Upgraded CLI X → Y (plugin upgrade failed — you can retry with `pramana upgrade`)"
+- **Already up to date**: "pramana X is already up to date"

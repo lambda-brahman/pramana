@@ -1,4 +1,6 @@
+import { existsSync } from "node:fs";
 import { err, ok, type Result } from "../lib/result.ts";
+import { NAME_REGEX, RESERVED_NAMES } from "../lib/tenant-names.ts";
 import { SqlitePlugin } from "../storage/sqlite/index.ts";
 import { Builder, type BuildReport } from "./builder.ts";
 import { Reader } from "./reader.ts";
@@ -20,10 +22,6 @@ export type TenantInfo = {
   sourceDir: string;
   artifactCount: number;
 };
-
-const RESERVED_NAMES = new Set(["get", "search", "traverse", "list", "tenants", "reload"]);
-
-const NAME_REGEX = /^[a-z][a-z0-9-]*$/;
 
 export class TenantManager {
   private tenants = new Map<string, TenantState>();
@@ -49,6 +47,13 @@ export class TenantManager {
       return err({
         type: "tenant",
         message: `Tenant "${name}" already mounted`,
+      });
+    }
+
+    if (!existsSync(sourceDir)) {
+      return err({
+        type: "tenant",
+        message: `Source directory does not exist: ${sourceDir}`,
       });
     }
 

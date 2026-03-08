@@ -1,8 +1,15 @@
 #!/usr/bin/env bun
-import { basename } from "node:path";
+import { basename, resolve } from "node:path";
 import { createServer } from "../api/server.ts";
+import {
+  addTenant as configAddTenant,
+  configPath,
+  removeTenant as configRemoveTenant,
+  loadConfig,
+} from "../config/index.ts";
 import { TenantManager } from "../engine/tenant.ts";
 import { err, ok, type Result } from "../lib/result.ts";
+import { NAME_REGEX, RESERVED_NAMES } from "../lib/tenant-names.ts";
 import { compareSemver, VERSION } from "../version.ts";
 
 const args = process.argv.slice(2);
@@ -46,12 +53,16 @@ function usage(exitCode = 0): never {
   console.log(`pramana ${VERSION} — Knowledge Engine
 
 Usage:
-  pramana serve --source <dir>[:name] [--source <dir>[:name] ...] [--port 5111]
+  pramana serve [--source <dir>[:name] ...] [--port 5111] [--save]
   pramana get <slug> --source <dir> --tenant <name>
   pramana search <query> --source <dir> --tenant <name>
   pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] --tenant <name>
   pramana list --source <dir> [--tags <tag1,tag2>] --tenant <name>
   pramana reload --tenant <name>
+  pramana config add <name> <dir>
+  pramana config remove <name>
+  pramana config list
+  pramana config path
   pramana version [--check]
   pramana upgrade
 
@@ -60,6 +71,7 @@ Options:
   --port <n>      Server port (default: PRAMANA_PORT env or 5111)
   --tenant <name> Target a specific tenant (required for all queries)
   --source <dir>[:name]  Knowledge source directory (repeatable for multi-tenant)
+  --save          Persist CLI sources to config after successful mount
   --version       Show version
   --help          Show this help
 
@@ -131,6 +143,61 @@ async function performUpgrade(targetVersion: string): Promise<Result<void, CliEr
     chmodSync(tmpPath, 0o755);
     renameSync(tmpPath, execPath);
   }
+
+  return ok(undefined);
+}
+
+async function upgradePlugin(version: string): Promise<Result<void, CliError>> {
+  const { mkdirSync, existsSync } = await import("node:fs");
+  const { homedir } = await import("node:os");
+  const { join } = await import("node:path");
+
+  const tarUrl = `https://github.com/lambda-brahman/pramana/releases/download/${version}/plugin.tar.gz`;
+  const res = await fetch(tarUrl, { redirect: "follow" });
+  if (!res.ok) {
+    return err({ type: "cli", message: `Plugin download failed: ${res.status}` });
+  }
+
+  const home = homedir();
+  const cacheDir = join(home, ".claude", "plugins", "cache", "lambda-brahman", "pramana", version);
+  mkdirSync(cacheDir, { recursive: true });
+
+  // Write tarball to temp file and extract
+  const tarPath = join(cacheDir, "plugin.tar.gz");
+  await Bun.write(tarPath, res);
+
+  const extractResult = Bun.spawnSync(["tar", "xzf", tarPath, "-C", cacheDir]);
+  if (extractResult.exitCode !== 0) {
+    return err({ type: "cli", message: "Plugin extraction failed" });
+  }
+
+  // Clean up tarball
+  const { unlinkSync } = await import("node:fs");
+  try {
+    unlinkSync(tarPath);
+  } catch {
+    /* ignore */
+  }
+
+  // Update installed_plugins.json
+  const installedPath = join(home, ".claude", "plugins", "installed_plugins.json");
+  let installed: Record<string, unknown> = {};
+  if (existsSync(installedPath)) {
+    try {
+      const text = await Bun.file(installedPath).text();
+      installed = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      /* start fresh */
+    }
+  }
+
+  installed["pramana@lambda-brahman"] = {
+    version,
+    cachePath: cacheDir,
+  };
+
+  mkdirSync(join(home, ".claude", "plugins"), { recursive: true });
+  await Bun.write(installedPath, `${JSON.stringify(installed, null, 2)}\n`);
 
   return ok(undefined);
 }
@@ -227,6 +294,84 @@ async function httpClient(port: string): Promise<void> {
   console.log(body);
 }
 
+function validateTenantName(name: string): Result<void, CliError> {
+  if (!NAME_REGEX.test(name)) {
+    return err({
+      type: "cli",
+      message: `Invalid tenant name "${name}": must match /^[a-z][a-z0-9-]*$/`,
+    });
+  }
+  if (RESERVED_NAMES.has(name)) {
+    return err({ type: "cli", message: `Reserved tenant name "${name}"` });
+  }
+  return ok(undefined);
+}
+
+async function handleConfig(): Promise<void> {
+  const subcommand = args[1];
+
+  switch (subcommand) {
+    case "add": {
+      const name = args[2];
+      const dir = args[3];
+      if (!name || !dir) {
+        console.error("Usage: pramana config add <name> <dir>");
+        process.exit(1);
+      }
+      const nameCheck = validateTenantName(name);
+      if (!nameCheck.ok) {
+        console.error(nameCheck.error.message);
+        process.exit(1);
+      }
+      const absDir = resolve(dir);
+      const result = await configAddTenant(name, absDir);
+      if (!result.ok) {
+        console.error(result.error.message);
+        process.exit(1);
+      }
+      console.log(`Added "${name}" → ${absDir}`);
+      break;
+    }
+    case "remove": {
+      const name = args[2];
+      if (!name) {
+        console.error("Usage: pramana config remove <name>");
+        process.exit(1);
+      }
+      const result = await configRemoveTenant(name);
+      if (!result.ok) {
+        console.error(result.error.message);
+        process.exit(1);
+      }
+      console.log(`Removed "${name}"`);
+      break;
+    }
+    case "list": {
+      const result = await loadConfig();
+      if (!result.ok) {
+        console.error(result.error.message);
+        process.exit(1);
+      }
+      const entries = Object.entries(result.value.tenants);
+      if (entries.length === 0) {
+        console.log("No tenants configured");
+      } else {
+        for (const [name, dir] of entries) {
+          console.log(`${name} → ${dir}`);
+        }
+      }
+      break;
+    }
+    case "path": {
+      console.log(configPath());
+      break;
+    }
+    default:
+      console.error("Usage: pramana config <add|remove|list|path>");
+      process.exit(1);
+  }
+}
+
 async function main() {
   // Handle --version flag anywhere in args
   if (args.includes("--version")) {
@@ -273,45 +418,108 @@ async function main() {
       console.log(`pramana ${info.value.current} is already up to date`);
       process.exit(0);
     }
-    console.log(`Upgrading pramana ${info.value.current} → ${info.value.latest}...`);
-    const upgradeResult = await performUpgrade(info.value.latest);
+    const targetVersion = info.value.latest;
+    console.log(`Upgrading pramana ${info.value.current} → ${targetVersion}...`);
+    const upgradeResult = await performUpgrade(targetVersion);
     if (!upgradeResult.ok) {
       console.error(`Upgrade failed: ${upgradeResult.error.message}`);
       process.exit(1);
     }
-    console.log(`Upgraded to pramana ${info.value.latest}`);
+    console.log(`Upgraded CLI to pramana ${targetVersion}`);
+
+    // Also upgrade plugin
+    const pluginResult = await upgradePlugin(targetVersion);
+    if (!pluginResult.ok) {
+      console.error(
+        `Warning: CLI upgraded, but plugin upgrade failed: ${pluginResult.error.message}`,
+      );
+    } else {
+      console.log(`Upgraded plugin to ${targetVersion}`);
+    }
+    process.exit(0);
+  }
+
+  // config command
+  if (command === "config") {
+    await handleConfig();
     process.exit(0);
   }
 
   const standalone = hasFlag("standalone");
   const port = resolvePort();
 
-  // serve always needs source — it IS the daemon
+  // serve always starts daemon — sources come from config + CLI
   if (command === "serve") {
-    const sources = parseSources();
-    if (sources.length === 0) {
-      console.error("Missing --source <dir>");
-      process.exit(1);
+    const cliSources = parseSources();
+    const shouldSave = hasFlag("save");
+
+    // Load config tenants
+    const configSources: Array<{ path: string; name: string }> = [];
+    const configResult = await loadConfig();
+    if (!configResult.ok) {
+      console.error(`Warning: ${configResult.error.message}. Continuing with CLI sources only.`);
+    } else {
+      for (const [name, dir] of Object.entries(configResult.value.tenants)) {
+        configSources.push({ path: dir, name });
+      }
+    }
+
+    // Merge: CLI sources override config entries with the same name
+    const sourceMap = new Map<string, string>();
+    for (const src of configSources) {
+      sourceMap.set(src.name, src.path);
+    }
+    for (const src of cliSources) {
+      sourceMap.set(src.name, src.path);
     }
 
     const tm = new TenantManager();
-    for (const src of sources) {
-      const result = await tm.mount({ name: src.name, sourceDir: src.path });
-      if (!result.ok) {
-        console.error(`Failed to mount "${src.name}": ${result.error.message}`);
-        process.exit(1);
+    const mounted: string[] = [];
+    const skipped: Array<{ name: string; reason: string }> = [];
+
+    for (const [name, path] of sourceMap) {
+      const nameCheck = validateTenantName(name);
+      if (!nameCheck.ok) {
+        skipped.push({ name, reason: nameCheck.error.message });
+        console.error(`Warning: skipping "${name}": ${nameCheck.error.message}`);
+        continue;
       }
+
+      const result = await tm.mount({ name, sourceDir: path });
+      if (!result.ok) {
+        skipped.push({ name, reason: result.error.message });
+        console.error(`Warning: skipping "${name}": ${result.error.message}`);
+        continue;
+      }
+
       const report = result.value;
       console.error(
-        `[${src.name}] Ingested ${report.succeeded}/${report.total} files` +
+        `[${name}] Ingested ${report.succeeded}/${report.total} files` +
           (report.failed.length > 0 ? ` (${report.failed.length} failed)` : ""),
       );
       for (const f of report.failed) {
         console.error(`  ✗ ${f.file}: ${f.error.message}`);
       }
+      mounted.push(name);
     }
 
-    const portNum = parseInt(port, 10);
+    if (skipped.length > 0) {
+      console.error(
+        `\nSkipped ${skipped.length} tenant(s): ${skipped.map((s) => s.name).join(", ")}`,
+      );
+    }
+
+    // Persist CLI sources to config if --save
+    if (shouldSave && cliSources.length > 0) {
+      for (const src of cliSources) {
+        if (mounted.includes(src.name)) {
+          await configAddTenant(src.name, resolve(src.path));
+        }
+      }
+      console.error("Saved CLI sources to config");
+    }
+
+    const portNum = Number.parseInt(port, 10);
     const server = createServer({ port: portNum, tenantManager: tm });
     console.log(`Pramana serving on http://localhost:${server.port}`);
     return;
@@ -413,7 +621,7 @@ async function main() {
         process.exit(1);
       }
       const relType = getFlag("type");
-      const depth = parseInt(getFlag("depth") ?? "1", 10);
+      const depth = Number.parseInt(getFlag("depth") ?? "1", 10);
       const result = reader.traverse(slug, relType, depth);
       if (!result.ok) {
         console.error(result.error.message);

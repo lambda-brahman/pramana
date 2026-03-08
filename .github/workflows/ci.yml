@@ -44,6 +44,9 @@ jobs:
           bun build src/cli/index.ts --compile --target=bun-linux-arm64 --outfile pramana-linux-arm64
           bun build src/cli/index.ts --compile --target=bun-windows-x64 --outfile pramana-windows-x64.exe
 
+      - name: Bundle plugin
+        run: tar czf plugin.tar.gz -C plugin .
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,4 +57,5 @@ jobs:
             pramana-darwin-x64 \
             pramana-linux-x64 \
             pramana-linux-arm64 \
-            pramana-windows-x64.exe
+            pramana-windows-x64.exe \
+            plugin.tar.gz
