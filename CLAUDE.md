@@ -62,12 +62,8 @@ Every issue and PR should have at least one label.
 - `wontfix` — will not be addressed
 
 ## Releases
-- **Auto**: merging a `feat` or `fix` commit to `main` triggers `auto-release.yml`
-  - `feat` → minor bump, `fix` → patch bump
-  - Bumps `package.json`, `src/version.ts`, `plugin/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`
-  - Commits with `[skip ci]`, tags `vX.Y.Z`, pushes — CI then builds binaries from the tag
-- **Manual dispatch**: run `auto-release.yml` from GitHub Actions UI, choose patch/minor/major
-- **Local fallback**: `scripts/release.sh <version>` bumps, commits, tags, and pushes directly
+- Run `scripts/release.sh <version>` — bumps version files, commits, tags, and pushes
+- CI builds binaries and publishes the GitHub release from the `v*` tag
 
 ## Testing
 - `bun test test/unit/ test/e2e/` — full test suite
