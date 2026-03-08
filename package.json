@@ -14,6 +14,7 @@
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
     "format": "biome format --write src/",
+    "build": "scripts/build.sh",
     "typecheck": "tsc --noEmit",
     "prepare": "git config core.hooksPath .githooks"
   },
