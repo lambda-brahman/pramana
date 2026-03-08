@@ -11,6 +11,7 @@ type Props = {
   tenant: string;
   isActive: boolean;
   onSelectArtifact: (slug: string) => void;
+  onBack: () => void;
   height: number;
 };
 
@@ -19,6 +20,7 @@ export function ArtifactListView({
   tenant,
   isActive,
   onSelectArtifact,
+  onBack,
   height,
 }: Props) {
   const [artifacts, setArtifacts] = useState<ArtifactView[]>([]);
@@ -65,6 +67,11 @@ export function ArtifactListView({
         return;
       }
 
+      if (key.escape) {
+        onBack();
+        return;
+      }
+
       if (input === "j" || key.downArrow) {
         setSelectedIndex((i) => Math.min(i + 1, artifacts.length - 1));
       } else if (input === "k" || key.upArrow) {
@@ -86,10 +93,10 @@ export function ArtifactListView({
   if (loading) return <Text color={theme.muted}>Loading artifacts...</Text>;
   if (error) return <Text color={theme.error}>Error: {error}</Text>;
 
-  const listHeight = height - 3 - (filterMode ? 1 : 0);
+  const listHeight = height - 5 - (filterMode ? 1 : 0);
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>
       <Box marginBottom={1}>
         <Text bold color={theme.primary}>
           Artifacts
@@ -116,10 +123,14 @@ export function ArtifactListView({
         emptyMessage="No artifacts found"
         renderItem={(item, _index, isSelected) => (
           <Box>
-            <Text color={isSelected ? theme.selected : undefined} bold={isSelected}>
-              {isSelected ? ">" : " "}{" "}
+            <Text
+              color={isSelected ? theme.selected : undefined}
+              backgroundColor={isSelected ? theme.selectedBg : undefined}
+              bold={isSelected}
+            >
+              {" "}
+              {item.slug}
             </Text>
-            <Text color={isSelected ? theme.selected : undefined}>{item.slug}</Text>
             <Text color={theme.muted}> {item.title}</Text>
             {item.tags.length > 0 && <Text color={theme.tag}> [{item.tags.join(", ")}]</Text>}
             <Text color={theme.muted}>
@@ -131,7 +142,18 @@ export function ArtifactListView({
       />
 
       <Box marginTop={1}>
-        <Text color={theme.muted}>j/k navigate Enter view f filter g/G top/bottom</Text>
+        <Text>
+          <Text color={theme.hintKey}>[j/k]</Text>
+          <Text color={theme.hintDesc}> navigate </Text>
+          <Text color={theme.hintKey}>[Enter]</Text>
+          <Text color={theme.hintDesc}> view </Text>
+          <Text color={theme.hintKey}>[f]</Text>
+          <Text color={theme.hintDesc}> filter </Text>
+          <Text color={theme.hintKey}>[g/G]</Text>
+          <Text color={theme.hintDesc}> top/bottom </Text>
+          <Text color={theme.hintKey}>[Esc]</Text>
+          <Text color={theme.hintDesc}> back</Text>
+        </Text>
       </Box>
     </Box>
   );

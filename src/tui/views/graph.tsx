@@ -66,7 +66,6 @@ export function GraphView({
       setRootArtifact(rootResult.value);
       const root = rootResult.value;
 
-      // Build tree from outbound and inbound relationships
       const outNodes: TreeNode[] = root.relationships.map((r) => ({
         slug: r.target.split("#")[0]!,
         title: "",
@@ -87,7 +86,6 @@ export function GraphView({
         expanded: false,
       }));
 
-      // Load deeper levels via traverse
       if (depth > 1) {
         const traverseResult = await dataSource.traverse(tenant, slug, undefined, depth);
         if (traverseResult.ok) {
@@ -170,7 +168,6 @@ export function GraphView({
         const node = flatNodes[selectedIndex];
         if (node) onSelectArtifact(node.slug);
       } else if (input === "e" || key.rightArrow) {
-        // Expand/collapse
         const node = flatNodes[selectedIndex];
         if (node && node.children.length > 0) {
           node.expanded = !node.expanded;
@@ -189,7 +186,7 @@ export function GraphView({
 
   if (inputMode) {
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>
         <Text bold color={theme.primary}>
           Graph Traverse
         </Text>
@@ -203,7 +200,12 @@ export function GraphView({
           />
         </Box>
         <Box marginTop={1}>
-          <Text color={theme.muted}>Enter to traverse Esc back</Text>
+          <Text>
+            <Text color={theme.hintKey}>[Enter]</Text>
+            <Text color={theme.hintDesc}> traverse </Text>
+            <Text color={theme.hintKey}>[Esc]</Text>
+            <Text color={theme.hintDesc}> back</Text>
+          </Text>
         </Box>
       </Box>
     );
@@ -216,7 +218,7 @@ export function GraphView({
   const visibleNodes = flatNodes.slice(scrollOffset, scrollOffset + viewH);
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>
       <Box marginBottom={1}>
         <Text bold color={theme.primary}>
           Graph: {rootArtifact?.title ?? rootSlug}
@@ -226,7 +228,7 @@ export function GraphView({
 
       {/* Root node */}
       <Text color={theme.accent} bold>
-        {"●"} {rootSlug}
+        {"\u25cf"} {rootSlug}
       </Text>
 
       {/* Tree */}
@@ -237,19 +239,28 @@ export function GraphView({
           const actualIdx = scrollOffset + i;
           const isSelected = actualIdx === selectedIndex;
           const indent = "  ".repeat(node.depth);
-          const arrow = node.direction === "out" ? "→" : "←";
-          const prefix = node.children.length > 0 ? (node.expanded ? "▼" : "▶") : "─";
+          const arrow = node.direction === "out" ? "\u2192" : "\u2190";
+          const prefix =
+            node.children.length > 0 ? (node.expanded ? "\u25bc" : "\u25b6") : "\u2500";
           const relColor = node.relType === "depends-on" ? theme.dependsOn : theme.relatesTo;
 
           return (
             <Box key={`${node.slug}-${node.direction}-${actualIdx}`}>
-              <Text color={isSelected ? theme.selected : undefined} bold={isSelected}>
-                {isSelected ? ">" : " "}
+              <Text
+                color={isSelected ? theme.selected : undefined}
+                backgroundColor={isSelected ? theme.selectedBg : undefined}
+                bold={isSelected}
+              >
                 {indent}
                 {prefix}{" "}
               </Text>
               <Text color={relColor}>{arrow} </Text>
-              <Text color={isSelected ? theme.selected : undefined}>{node.slug}</Text>
+              <Text
+                color={isSelected ? theme.selected : undefined}
+                backgroundColor={isSelected ? theme.selectedBg : undefined}
+              >
+                {node.slug}
+              </Text>
               <Text color={theme.muted}> [{node.relType}]</Text>
               {node.title && <Text color={theme.muted}> {node.title}</Text>}
             </Box>
@@ -258,8 +269,19 @@ export function GraphView({
       )}
 
       <Box marginTop={1}>
-        <Text color={theme.muted}>
-          j/k nav Enter view e expand +/- depth s change root Esc back
+        <Text>
+          <Text color={theme.hintKey}>[j/k]</Text>
+          <Text color={theme.hintDesc}> nav </Text>
+          <Text color={theme.hintKey}>[Enter]</Text>
+          <Text color={theme.hintDesc}> view </Text>
+          <Text color={theme.hintKey}>[e]</Text>
+          <Text color={theme.hintDesc}> expand </Text>
+          <Text color={theme.hintKey}>[+/-]</Text>
+          <Text color={theme.hintDesc}> depth </Text>
+          <Text color={theme.hintKey}>[s]</Text>
+          <Text color={theme.hintDesc}> root </Text>
+          <Text color={theme.hintKey}>[Esc]</Text>
+          <Text color={theme.hintDesc}> back</Text>
         </Text>
       </Box>
     </Box>

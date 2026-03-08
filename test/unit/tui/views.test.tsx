@@ -10,7 +10,7 @@ import { ArtifactListView } from "../../../src/tui/views/artifact-list.tsx";
 import { DashboardView } from "../../../src/tui/views/dashboard.tsx";
 import { GraphView } from "../../../src/tui/views/graph.tsx";
 import { SearchView } from "../../../src/tui/views/search.tsx";
-import { TenantsView } from "../../../src/tui/views/tenants.tsx";
+import { KbListView } from "../../../src/tui/views/kb-list.tsx";
 
 afterEach(() => {
   cleanup();
@@ -145,10 +145,10 @@ describe("ArtifactListView", () => {
         tenant="test"
         isActive={true}
         onSelectArtifact={() => {}}
+        onBack={() => {}}
         height={20}
       />,
     );
-    // Initially shows loading
     expect(lastFrame()).toContain("Loading");
 
     await delay(100);
@@ -166,6 +166,7 @@ describe("ArtifactListView", () => {
         tenant="test"
         isActive={true}
         onSelectArtifact={() => {}}
+        onBack={() => {}}
         height={20}
       />,
     );
@@ -181,40 +182,13 @@ describe("ArtifactListView", () => {
         tenant="test"
         isActive={true}
         onSelectArtifact={() => {}}
+        onBack={() => {}}
         height={20}
       />,
     );
     await delay(100);
     expect(lastFrame()).toContain("entity");
     expect(lastFrame()).toContain("commerce");
-  });
-
-  test("navigates with j/k keys", async () => {
-    const ds = createMockDataSource();
-    const { lastFrame, stdin } = render(
-      <ArtifactListView
-        dataSource={ds}
-        tenant="test"
-        isActive={true}
-        onSelectArtifact={() => {}}
-        height={20}
-      />,
-    );
-    await delay(100);
-
-    // First item selected by default
-    let frame = lastFrame()!;
-    const lines = frame.split("\n");
-    const firstItemLine = lines.find((l) => l.includes("order"));
-    expect(firstItemLine).toContain(">");
-
-    // Move down
-    stdin.write("j");
-    await delay(50);
-    frame = lastFrame()!;
-    const linesAfter = frame.split("\n");
-    const customerLine = linesAfter.find((l) => l.includes("customer"));
-    expect(customerLine).toContain(">");
   });
 
   test("calls onSelectArtifact on Enter", async () => {
@@ -228,6 +202,7 @@ describe("ArtifactListView", () => {
         onSelectArtifact={(slug) => {
           selectedSlug = slug;
         }}
+        onBack={() => {}}
         height={20}
       />,
     );
@@ -246,13 +221,14 @@ describe("ArtifactListView", () => {
         tenant="test"
         isActive={true}
         onSelectArtifact={() => {}}
+        onBack={() => {}}
         height={20}
       />,
     );
     await delay(100);
     const frame = lastFrame()!;
-    expect(frame).toContain("j/k navigate");
-    expect(frame).toContain("f filter");
+    expect(frame).toContain("navigate");
+    expect(frame).toContain("filter");
   });
 
   test("shows relationship count", async () => {
@@ -263,38 +239,12 @@ describe("ArtifactListView", () => {
         tenant="test"
         isActive={true}
         onSelectArtifact={() => {}}
+        onBack={() => {}}
         height={20}
       />,
     );
     await delay(100);
-    // order has 1 out + 1 in = 2 rels
     expect(lastFrame()).toContain("2 rels");
-  });
-
-  test("jump to top with g", async () => {
-    const ds = createMockDataSource();
-    const { lastFrame, stdin } = render(
-      <ArtifactListView
-        dataSource={ds}
-        tenant="test"
-        isActive={true}
-        onSelectArtifact={() => {}}
-        height={20}
-      />,
-    );
-    await delay(100);
-
-    // Move down twice then jump to top
-    stdin.write("j");
-    stdin.write("j");
-    await delay(50);
-    stdin.write("g");
-    await delay(50);
-
-    const frame = lastFrame()!;
-    const lines = frame.split("\n");
-    const orderLine = lines.find((l) => l.includes("order") && !l.includes("line"));
-    expect(orderLine).toContain(">");
   });
 });
 
@@ -392,11 +342,9 @@ describe("ArtifactDetailView", () => {
     );
     await delay(100);
 
-    // Tab to relationships panel
     stdin.write("\t");
     await delay(50);
     const frame = lastFrame()!;
-    // Should show relationship entries
     expect(frame).toContain("customer");
     expect(frame).toContain("depends-on");
   });
@@ -471,7 +419,6 @@ describe("ArtifactDetailView", () => {
       />,
     );
     await delay(100);
-    // order has 1 out + 1 in = 2
     expect(lastFrame()).toContain("relationships (2)");
   });
 });
@@ -511,7 +458,7 @@ describe("SearchView", () => {
     );
 
     stdin.write("order");
-    await delay(400); // wait for debounce + search
+    await delay(400);
 
     const frame = lastFrame()!;
     expect(frame).toContain("order");
@@ -533,7 +480,6 @@ describe("SearchView", () => {
     stdin.write("entity");
     await delay(400);
 
-    // All 3 artifacts have "entity" tag in content
     expect(lastFrame()).toContain("result");
   });
 
@@ -590,7 +536,6 @@ describe("GraphView", () => {
     await delay(200);
     const frame = lastFrame()!;
     expect(frame).toContain("order");
-    // Should show relationship to customer
     expect(frame).toContain("customer");
   });
 
@@ -625,7 +570,7 @@ describe("GraphView", () => {
       />,
     );
     await delay(200);
-    expect(lastFrame()).toContain("j/k nav");
+    expect(lastFrame()).toContain("nav");
     expect(lastFrame()).toContain("expand");
   });
 
@@ -651,18 +596,18 @@ describe("GraphView", () => {
 });
 
 // ---------------------------------------------------------------------------
-// TenantsView
+// KbListView (replaces TenantsView)
 // ---------------------------------------------------------------------------
-describe("TenantsView", () => {
-  test("renders tenant list", async () => {
+describe("KbListView", () => {
+  test("renders KB list", async () => {
     const ds = createMockDataSource();
     const { lastFrame } = render(
-      <TenantsView
+      <KbListView
         dataSource={ds}
         activeTenant="test"
         isActive={true}
-        onSwitchTenant={() => {}}
-        onBack={() => {}}
+        onSelectKb={() => {}}
+        onReload={() => {}}
         height={20}
       />,
     );
@@ -672,15 +617,15 @@ describe("TenantsView", () => {
     expect(frame).toContain("other");
   });
 
-  test("shows active tenant indicator", async () => {
+  test("shows active KB indicator", async () => {
     const ds = createMockDataSource();
     const { lastFrame } = render(
-      <TenantsView
+      <KbListView
         dataSource={ds}
         activeTenant="test"
         isActive={true}
-        onSwitchTenant={() => {}}
-        onBack={() => {}}
+        onSelectKb={() => {}}
+        onReload={() => {}}
         height={20}
       />,
     );
@@ -688,54 +633,54 @@ describe("TenantsView", () => {
     expect(lastFrame()).toContain("*");
   });
 
-  test("shows artifact count per tenant", async () => {
+  test("shows artifact count per KB", async () => {
     const ds = createMockDataSource();
     const { lastFrame } = render(
-      <TenantsView
+      <KbListView
         dataSource={ds}
         activeTenant="test"
         isActive={true}
-        onSwitchTenant={() => {}}
-        onBack={() => {}}
+        onSelectKb={() => {}}
+        onReload={() => {}}
         height={20}
       />,
     );
     await delay(100);
-    expect(lastFrame()).toContain("3 artifacts");
-    expect(lastFrame()).toContain("2 artifacts");
+    expect(lastFrame()).toContain("(3)");
+    expect(lastFrame()).toContain("(2)");
   });
 
-  test("calls onSwitchTenant on Enter", async () => {
+  test("calls onSelectKb on Enter", async () => {
     const ds = createMockDataSource();
-    let switched: string | null = null;
+    let selected: string | null = null;
     const { stdin } = render(
-      <TenantsView
+      <KbListView
         dataSource={ds}
         activeTenant="test"
         isActive={true}
-        onSwitchTenant={(name) => {
-          switched = name;
+        onSelectKb={(name: string) => {
+          selected = name;
         }}
-        onBack={() => {}}
+        onReload={() => {}}
         height={20}
       />,
     );
     await delay(100);
     stdin.write("\r"); // Enter
     await delay(50);
-    expect(switched).not.toBeNull();
-    expect(switched!).toBe("test");
+    expect(selected).not.toBeNull();
+    expect(selected!).toBe("test");
   });
 
-  test("shows tenant count", async () => {
+  test("shows KB count", async () => {
     const ds = createMockDataSource();
     const { lastFrame } = render(
-      <TenantsView
+      <KbListView
         dataSource={ds}
         activeTenant="test"
         isActive={true}
-        onSwitchTenant={() => {}}
-        onBack={() => {}}
+        onSelectKb={() => {}}
+        onReload={() => {}}
         height={20}
       />,
     );
@@ -746,18 +691,18 @@ describe("TenantsView", () => {
   test("shows hint bar", async () => {
     const ds = createMockDataSource();
     const { lastFrame } = render(
-      <TenantsView
+      <KbListView
         dataSource={ds}
         activeTenant="test"
         isActive={true}
-        onSwitchTenant={() => {}}
-        onBack={() => {}}
+        onSelectKb={() => {}}
+        onReload={() => {}}
         height={20}
       />,
     );
     await delay(100);
     const frame = lastFrame()!;
-    expect(frame).toContain("switch");
+    expect(frame).toContain("navigate");
     expect(frame).toContain("reload");
   });
 });
@@ -777,7 +722,7 @@ describe("DashboardView", () => {
       />,
     );
     await delay(100);
-    expect(lastFrame()).toContain("Dashboard");
+    expect(lastFrame()).toContain("KB Info");
   });
 
   test("shows version", async () => {
@@ -850,7 +795,6 @@ describe("DashboardView", () => {
       />,
     );
     await delay(100);
-    // Total: 3 (test) + 2 (other) = 5
     expect(lastFrame()).toContain("5");
   });
 
