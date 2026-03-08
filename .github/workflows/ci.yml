@@ -25,9 +25,33 @@ jobs:
       - run: bun install
       - run: bun test test/unit/
 
+  test-binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary: ./pramana
+          - os: macos-latest
+            binary: ./pramana
+          - os: windows-latest
+            binary: ./pramana.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Build binary
+        run: scripts/build.sh
+        shell: bash
+      - name: Run smoke tests
+        run: bun test test/smoke/
+        env:
+          PRAMANA_BIN: ${{ matrix.binary }}
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, test-windows]
+    needs: [test, test-windows, test-binary]
     runs-on: ubuntu-latest
     permissions:
       contents: write
