@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#
+# commit-msg hook — validates conventional commit format
+#
+# Allowed:  type(scope): description   or   type: description
+# Types:    feat|fix|docs|refactor|test|chore|ci
+# Scopes:   engine|cli|plugin|author|build  (optional)
+# Also allows merge commits and reverts.
+
+msg=$(head -1 "$1")
+
+# Allow merge commits
+if [[ "$msg" =~ ^Merge ]]; then
+  exit 0
+fi
+
+# Allow revert commits
+if [[ "$msg" =~ ^Revert\ \" ]]; then
+  exit 0
+fi
+
+# Reject double-prefix mistakes like "fix: chore: ..."
+types="feat|fix|docs|refactor|test|chore|ci"
+if [[ "$msg" =~ ^($types)(\([a-z]+\))?:\ ($types) ]]; then
+  echo "ERROR: double-prefix detected in commit message."
+  echo "  $msg"
+  exit 1
+fi
+
+# Validate conventional commit format
+scopes="engine|cli|plugin|author|build"
+if [[ "$msg" =~ ^($types)(\(($scopes)\))?:\ .+ ]]; then
+  exit 0
+fi
+
+echo "ERROR: commit message does not follow conventional commit format."
+echo "  $msg"
+echo ""
+echo "Expected: type(scope): description  or  type: description"
+echo "Types:    feat, fix, docs, refactor, test, chore, ci"
+echo "Scopes:   engine, cli, plugin, author, build (optional)"
+exit 1

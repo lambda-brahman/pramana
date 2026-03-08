@@ -39,6 +39,12 @@
 - Fix branches: `fix/<short-description>`
 - Delete branches after merge
 
+## Pull Requests
+- One logical change per PR
+- Title follows conventional commit format
+- Link related issues (e.g. `Closes #7`)
+- Review PR description for LLM artifacts before submitting
+
 ## Releases
 - Update versions in `package.json` and `src/version.ts`
 - Create and push a tag named `v<version>` (for example `v0.9.0`)
@@ -50,4 +56,5 @@
 - `bun run lint` — biome check
 - `bun run typecheck` — TypeScript type checking
 - Pre-commit hook (`.githooks/pre-commit`): runs `bun run lint && bun test test/precommit/`
+- Commit-msg hook (`.githooks/commit-msg`): validates conventional commit format
 - Hook installed via `bun run prepare` (sets `core.hooksPath`)
