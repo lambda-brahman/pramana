@@ -10,6 +10,8 @@ import type {
 export type ArtifactView = {
   slug: string;
   title: string;
+  summary?: string;
+  aliases?: string[];
   tags: string[];
   relationships: Relationship[];
   inverseRelationships: Relationship[];
@@ -103,6 +105,8 @@ function toView(
   const view: ArtifactView = {
     slug: artifact.slug,
     title: artifact.title,
+    ...(artifact.summary ? { summary: artifact.summary } : {}),
+    ...(artifact.aliases ? { aliases: artifact.aliases } : {}),
     tags: artifact.tags,
     relationships: artifact.relationships,
     inverseRelationships,

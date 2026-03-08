@@ -8,6 +8,8 @@ import {
 export type FrontmatterData = {
   slug: string;
   title?: string;
+  summary?: string;
+  aliases?: string[];
   tags: string[];
   relationships: Relationship[];
   body: string;
@@ -42,9 +44,17 @@ export function parseFrontmatter(raw: string): Result<FrontmatterData, Frontmatt
 
   const relationships = normalizeRelationships(obj.relationships);
 
+  const summary =
+    typeof obj.summary === "string" && obj.summary.length > 0 ? obj.summary : undefined;
+  const aliases = Array.isArray(obj.aliases)
+    ? obj.aliases.filter((a): a is string => typeof a === "string")
+    : undefined;
+
   return ok({
     slug: obj.slug,
     title: typeof obj.title === "string" ? obj.title : undefined,
+    summary,
+    aliases: aliases && aliases.length > 0 ? aliases : undefined,
     tags,
     relationships,
     body: body!,
@@ -101,7 +111,7 @@ export function parseYaml(yaml: string): unknown {
           .filter((s) => s.length > 0);
         currentKey = null;
       } else {
-        result[currentKey] = trimmed;
+        result[currentKey] = stripQuotes(trimmed);
         currentKey = null;
       }
       continue;
@@ -143,4 +153,15 @@ export function parseYaml(yaml: string): unknown {
   }
 
   return result;
+}
+
+function stripQuotes(value: string): string {
+  if (value.length >= 2) {
+    const first = value[0];
+    const last = value[value.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return value.slice(1, -1);
+    }
+  }
+  return value;
 }

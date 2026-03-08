@@ -32,6 +32,8 @@ describe("Full pipeline: ingest → query", () => {
     expect(result.value).not.toBeNull();
     expect(result.value!.slug).toBe("order");
     expect(result.value!.title).toBe("Order");
+    expect(result.value!.summary).toBe("A customer's intent to purchase one or more products");
+    expect(result.value!.aliases).toEqual(["purchase-order", "sales-order", "transaction"]);
     expect(result.value!.tags).toContain("entity");
     expect(result.value!.tags).toContain("commerce");
     expect(result.value!.sections.length).toBeGreaterThanOrEqual(2);
@@ -51,6 +53,24 @@ describe("Full pipeline: ingest → query", () => {
     if (!result.ok) return;
     expect(result.value.length).toBeGreaterThanOrEqual(1);
     expect(result.value.some((r) => r.slug === "order")).toBe(true);
+  });
+
+  test("search by alias finds artifact", () => {
+    // "transaction" only appears in order.md aliases, not in title/content
+    const result = reader.search("transaction");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.length).toBeGreaterThanOrEqual(1);
+    expect(result.value.some((r) => r.slug === "order")).toBe(true);
+  });
+
+  test("search results include summary", () => {
+    const result = reader.search("purchase");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const orderResult = result.value.find((r) => r.slug === "order");
+    expect(orderResult).toBeDefined();
+    expect(orderResult!.summary).toBe("A customer's intent to purchase one or more products");
   });
 
   test("traverse order depends-on", () => {

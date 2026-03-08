@@ -97,4 +97,60 @@ Body content here.`;
     if (!result.ok) return;
     expect(result.value.body).toContain("Body content here.");
   });
+
+  test("extracts summary from frontmatter", () => {
+    const raw = `---
+slug: order
+summary: "A customer's intent to purchase one or more products"
+---
+
+# Order`;
+
+    const result = parseFrontmatter(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.summary).toBe("A customer's intent to purchase one or more products");
+  });
+
+  test("extracts aliases from frontmatter", () => {
+    const raw = `---
+slug: order
+aliases: [purchase-order, sales-order, transaction]
+---
+
+# Order`;
+
+    const result = parseFrontmatter(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.aliases).toEqual(["purchase-order", "sales-order", "transaction"]);
+  });
+
+  test("summary and aliases are undefined when absent", () => {
+    const raw = `---
+slug: minimal
+---
+
+# Minimal`;
+
+    const result = parseFrontmatter(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.summary).toBeUndefined();
+    expect(result.value.aliases).toBeUndefined();
+  });
+
+  test("strips quotes from summary value", () => {
+    const raw = `---
+slug: test
+summary: 'Single quoted summary'
+---
+
+Body.`;
+
+    const result = parseFrontmatter(raw);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.summary).toBe("Single quoted summary");
+  });
 });

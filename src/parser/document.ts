@@ -16,7 +16,15 @@ export function parseDocument(raw: string): Result<KnowledgeArtifact, DocumentEr
   const fm = parseFrontmatter(raw);
   if (!fm.ok) return fm;
 
-  const { slug, title: fmTitle, tags, relationships: fmRelationships, body } = fm.value;
+  const {
+    slug,
+    title: fmTitle,
+    summary,
+    aliases,
+    tags,
+    relationships: fmRelationships,
+    body,
+  } = fm.value;
 
   const titleMatch = body.match(TITLE_RE);
   const title = fmTitle || titleMatch?.[1]?.trim() || slug;
@@ -30,6 +38,8 @@ export function parseDocument(raw: string): Result<KnowledgeArtifact, DocumentEr
   const artifact = {
     slug,
     title,
+    ...(summary ? { summary } : {}),
+    ...(aliases ? { aliases } : {}),
     tags,
     relationships,
     sections,

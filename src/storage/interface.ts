@@ -6,6 +6,7 @@ export type StorageError = { type: "storage"; message: string };
 export type SearchResult = {
   slug: string;
   title: string;
+  summary?: string;
   snippet: string;
   rank: number;
 };

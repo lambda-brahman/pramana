@@ -7,6 +7,8 @@ const DDL = `
   CREATE TABLE IF NOT EXISTS artifacts (
     slug TEXT PRIMARY KEY,
     title TEXT NOT NULL,
+    summary TEXT,
+    aliases TEXT,
     tags TEXT NOT NULL,
     content TEXT NOT NULL,
     hash TEXT NOT NULL
@@ -33,6 +35,8 @@ const DDL = `
   CREATE VIRTUAL TABLE IF NOT EXISTS artifacts_fts USING fts5(
     slug,
     title,
+    summary,
+    aliases,
     content,
     tokenize='porter unicode61'
   );
@@ -64,12 +68,14 @@ export class SqlitePlugin implements StoragePlugin {
       const tx = this.db.transaction(() => {
         this.db
           .prepare(
-            `INSERT OR REPLACE INTO artifacts (slug, title, tags, content, hash)
-             VALUES (?, ?, ?, ?, ?)`,
+            `INSERT OR REPLACE INTO artifacts (slug, title, summary, aliases, tags, content, hash)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             artifact.slug,
             artifact.title,
+            artifact.summary ?? null,
+            artifact.aliases ? JSON.stringify(artifact.aliases) : null,
             JSON.stringify(artifact.tags),
             artifact.content,
             artifact.hash,
@@ -95,8 +101,16 @@ export class SqlitePlugin implements StoragePlugin {
 
         this.db.prepare(`DELETE FROM artifacts_fts WHERE slug = ?`).run(artifact.slug);
         this.db
-          .prepare(`INSERT INTO artifacts_fts (slug, title, content) VALUES (?, ?, ?)`)
-          .run(artifact.slug, artifact.title, artifact.content);
+          .prepare(
+            `INSERT INTO artifacts_fts (slug, title, summary, aliases, content) VALUES (?, ?, ?, ?, ?)`,
+          )
+          .run(
+            artifact.slug,
+            artifact.title,
+            artifact.summary ?? "",
+            artifact.aliases?.join(" ") ?? "",
+            artifact.content,
+          );
       });
 
       tx();
@@ -109,7 +123,9 @@ export class SqlitePlugin implements StoragePlugin {
   get(slug: string): Result<KnowledgeArtifact | null, StorageError> {
     try {
       const row = this.db
-        .prepare(`SELECT slug, title, tags, content, hash FROM artifacts WHERE slug = ?`)
+        .prepare(
+          `SELECT slug, title, summary, aliases, tags, content, hash FROM artifacts WHERE slug = ?`,
+        )
         .get(slug) as ArtifactRow | null;
 
       if (!row) return ok(null);
@@ -134,7 +150,7 @@ export class SqlitePlugin implements StoragePlugin {
 
       if (filter?.tags && filter.tags.length > 0) {
         rows = this.db
-          .prepare(`SELECT slug, title, tags, content, hash FROM artifacts`)
+          .prepare(`SELECT slug, title, summary, aliases, tags, content, hash FROM artifacts`)
           .all() as ArtifactRow[];
 
         rows = rows.filter((row) => {
@@ -143,7 +159,7 @@ export class SqlitePlugin implements StoragePlugin {
         });
       } else {
         rows = this.db
-          .prepare(`SELECT slug, title, tags, content, hash FROM artifacts`)
+          .prepare(`SELECT slug, title, summary, aliases, tags, content, hash FROM artifacts`)
           .all() as ArtifactRow[];
       }
 
@@ -194,11 +210,14 @@ export class SqlitePlugin implements StoragePlugin {
     try {
       const rows = this.db
         .prepare(
-          `SELECT slug, title, snippet(artifacts_fts, 2, '<mark>', '</mark>', '...', 64) as snippet,
-                  rank
-           FROM artifacts_fts
+          `SELECT f.slug, f.title,
+                  snippet(artifacts_fts, -1, '<mark>', '</mark>', '...', 64) as snippet,
+                  f.rank,
+                  a.summary
+           FROM artifacts_fts f
+           JOIN artifacts a ON a.slug = f.slug
            WHERE artifacts_fts MATCH ?
-           ORDER BY rank`,
+           ORDER BY f.rank`,
         )
         .all(query) as FtsRow[];
 
@@ -206,6 +225,7 @@ export class SqlitePlugin implements StoragePlugin {
         rows.map((r) => ({
           slug: r.slug,
           title: r.title,
+          ...(r.summary ? { summary: r.summary } : {}),
           snippet: r.snippet,
           rank: r.rank,
         })),
@@ -228,6 +248,8 @@ export class SqlitePlugin implements StoragePlugin {
 type ArtifactRow = {
   slug: string;
   title: string;
+  summary: string | null;
+  aliases: string | null;
   tags: string;
   content: string;
   hash: string;
@@ -252,12 +274,15 @@ type FtsRow = {
   title: string;
   snippet: string;
   rank: number;
+  summary: string | null;
 };
 
 function toArtifact(row: ArtifactRow, rels: RelRow[], secs: SecRow[]): KnowledgeArtifact {
   return {
     slug: row.slug,
     title: row.title,
+    ...(row.summary ? { summary: row.summary } : {}),
+    ...(row.aliases ? { aliases: JSON.parse(row.aliases) as string[] } : {}),
     tags: JSON.parse(row.tags),
     content: row.content,
     hash: row.hash,
