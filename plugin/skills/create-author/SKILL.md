@@ -118,12 +118,16 @@ Create the artifact following your persona's style and these format rules:
 ---
 slug: kebab-case-slug
 title: Human Readable Title
+summary: "One-line description of this concept for search discovery"
+aliases: [alternative-name, abbreviation, synonym]
 tags: [tag1, tag2]
 relationships:
   depends-on: [slug1]
   relates-to: [slug2]
 ---
 ```
+- `summary` (optional but encouraged): one-line description, indexed for search
+- `aliases` (optional): alternative names, synonyms, abbreviations — indexed for search so vocabulary gaps are bridged at the source
 
 **Body:** H1 title, H2 major sections, H3 subsections. No H4+.
 **Wikilinks:** `[[slug]]` for relates-to, `[[depends-on::slug]]` for dependencies.
@@ -138,6 +142,8 @@ pramana traverse <slug> --depth 1 --tenant <tenant>
 
 ### Quality checklist
 - Slug is kebab-case and unique
+- Summary is present (one-line description for search)
+- Aliases cover common synonyms, abbreviations, and legacy names
 - Tags follow existing conventions
 - All relationships point to existing artifacts
 - Sections use H2/H3 properly
