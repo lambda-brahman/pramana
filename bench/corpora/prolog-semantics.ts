@@ -1,0 +1,200 @@
+export type QueryEntry = {
+  query: string;
+  category: "exact" | "synonym" | "concept";
+  relevant: string[];
+  partiallyRelevant?: string[];
+};
+
+export const corpusPath = "/Users/sarath.soman/Dev/language-semantics-exp/pramana/";
+export const corpusName = "prolog-semantics";
+export const corpusSlugs = [
+  "term", "token-types", "substitution", "clause", "trail",
+  "unification", "knowledge-base", "choice-point", "lexer",
+  "parser", "repl", "resolution", "builtins",
+];
+
+export const queries: QueryEntry[] = [
+  // === EXACT (18) ===
+  {
+    query: "term functor arity compound atom variable",
+    category: "exact",
+    relevant: ["term"],
+    partiallyRelevant: ["clause", "unification"],
+  },
+  {
+    query: "token tag lexeme span tokenisation",
+    category: "exact",
+    relevant: ["token-types"],
+    partiallyRelevant: ["lexer"],
+  },
+  {
+    query: "substitution domain range idempotent monoid",
+    category: "exact",
+    relevant: ["substitution"],
+    partiallyRelevant: ["unification"],
+  },
+  {
+    query: "clause head body fact rule query",
+    category: "exact",
+    relevant: ["clause"],
+    partiallyRelevant: ["knowledge-base", "resolution"],
+  },
+  {
+    query: "trail undo log mark backtracking",
+    category: "exact",
+    relevant: ["trail"],
+    partiallyRelevant: ["choice-point", "substitution"],
+  },
+  {
+    query: "unify MGU most general unifier Martelli-Montanari",
+    category: "exact",
+    relevant: ["unification"],
+    partiallyRelevant: ["substitution"],
+  },
+  {
+    query: "knowledge base predicate indicator functor arity lookup",
+    category: "exact",
+    relevant: ["knowledge-base"],
+    partiallyRelevant: ["clause", "resolution"],
+  },
+  {
+    query: "choice point alternative list trail mark backtrack",
+    category: "exact",
+    relevant: ["choice-point"],
+    partiallyRelevant: ["trail", "resolution"],
+  },
+  {
+    query: "lexer finite-state transducer maximal munch",
+    category: "exact",
+    relevant: ["lexer"],
+    partiallyRelevant: ["token-types"],
+  },
+  {
+    query: "parser recursive descent LL(1) grammar clause",
+    category: "exact",
+    relevant: ["parser"],
+    partiallyRelevant: ["token-types", "lexer"],
+  },
+  {
+    query: "REPL read eval print loop consult query",
+    category: "exact",
+    relevant: ["repl"],
+    partiallyRelevant: ["knowledge-base", "resolution"],
+  },
+  {
+    query: "SLD resolution derivation refutation",
+    category: "exact",
+    relevant: ["resolution"],
+    partiallyRelevant: ["unification", "clause"],
+  },
+  {
+    query: "builtins is/2 write/1 assert/1 cut",
+    category: "exact",
+    relevant: ["builtins"],
+    partiallyRelevant: ["resolution"],
+  },
+  {
+    query: "list syntax dot cons nil head tail",
+    category: "exact",
+    relevant: ["term"],
+  },
+  {
+    query: "Horn clause definite clause positive literal",
+    category: "exact",
+    relevant: ["clause"],
+    partiallyRelevant: ["resolution"],
+  },
+  {
+    query: "occurs check cyclic substitution infinite term",
+    category: "exact",
+    relevant: ["unification"],
+  },
+  {
+    query: "quoted atom escape sequence line comment block comment",
+    category: "exact",
+    relevant: ["lexer"],
+    partiallyRelevant: ["token-types"],
+  },
+  {
+    query: "Herbrand universe ground term free algebra",
+    category: "exact",
+    relevant: ["term"],
+    partiallyRelevant: ["substitution"],
+  },
+
+  // === SYNONYM (7) ===
+  {
+    query: "variable binding mapping constraint notebook",
+    category: "synonym",
+    relevant: ["substitution"],
+    partiallyRelevant: ["unification", "trail"],
+  },
+  {
+    query: "pattern matching making two expressions equal",
+    category: "synonym",
+    relevant: ["unification"],
+    partiallyRelevant: ["substitution", "resolution"],
+  },
+  {
+    query: "branching alternatives search tree depth-first",
+    category: "synonym",
+    relevant: ["choice-point"],
+    partiallyRelevant: ["resolution"],
+  },
+  {
+    query: "tokenization scanning character stream splitting words",
+    category: "synonym",
+    relevant: ["lexer"],
+    partiallyRelevant: ["token-types"],
+  },
+  {
+    query: "program database storing facts and rules indexed",
+    category: "synonym",
+    relevant: ["knowledge-base"],
+    partiallyRelevant: ["clause"],
+  },
+  {
+    query: "interactive prompt user session answer display",
+    category: "synonym",
+    relevant: ["repl"],
+    partiallyRelevant: ["resolution"],
+  },
+  {
+    query: "built-in operations arithmetic side effects host language",
+    category: "synonym",
+    relevant: ["builtins"],
+    partiallyRelevant: ["resolution"],
+  },
+
+  // === CONCEPT (5) ===
+  {
+    query: "how does Prolog find answers to a query through proof search",
+    category: "concept",
+    relevant: ["resolution"],
+    partiallyRelevant: ["unification", "choice-point", "knowledge-base"],
+  },
+  {
+    query: "what happens when the engine needs to undo a wrong guess",
+    category: "concept",
+    relevant: ["trail", "choice-point"],
+    partiallyRelevant: ["substitution", "resolution"],
+  },
+  {
+    query: "how is source code converted into structured data for the interpreter",
+    category: "concept",
+    relevant: ["lexer", "parser"],
+    partiallyRelevant: ["token-types", "term", "clause"],
+  },
+  {
+    query: "why can't arithmetic and I/O be defined as normal clauses",
+    category: "concept",
+    relevant: ["builtins"],
+    partiallyRelevant: ["knowledge-base", "resolution"],
+  },
+  {
+    query: "what is the universal data representation in logic programming",
+    category: "concept",
+    relevant: ["term"],
+    partiallyRelevant: ["clause", "substitution"],
+  },
+];
