@@ -72,20 +72,20 @@ describe("App", () => {
     expect(frame).toContain("standalone");
   });
 
-  test("starts on list view", async () => {
+  test("starts on KB list view", async () => {
     const ds = createMockDataSource();
     const { lastFrame } = render(<App dataSource={ds} initialTenant="test" />);
     await delay(100);
-    expect(lastFrame()).toContain("Artifacts");
+    expect(lastFrame()).toContain("Knowledge Bases");
   });
 
-  test("shows artifact list on startup", async () => {
+  test("shows KB list on startup", async () => {
     const ds = createMockDataSource();
     const { lastFrame } = render(<App dataSource={ds} initialTenant="test" />);
     await delay(200);
     const frame = lastFrame()!;
-    expect(frame).toContain("order");
-    expect(frame).toContain("customer");
+    expect(frame).toContain("test");
+    expect(frame).toContain("Knowledge Bases");
   });
 
   test("shows help overlay on ? key", async () => {
@@ -117,120 +117,147 @@ describe("App", () => {
     expect(lastFrame()).not.toContain("Toggle help");
   });
 
-  test("switches to search on key 2", async () => {
+  test("navigates to KB context on Enter", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
       <App dataSource={ds} initialTenant="test" />,
     );
     await delay(100);
 
-    stdin.write("2");
+    stdin.write("\r"); // Enter to select KB
+    await delay(100);
+    const frame = lastFrame()!;
+    expect(frame).toContain("Browse artifacts");
+  });
+
+  test("navigates KB context > browse > artifact list", async () => {
+    const ds = createMockDataSource();
+    const { lastFrame, stdin } = render(
+      <App dataSource={ds} initialTenant="test" />,
+    );
+    await delay(100);
+
+    stdin.write("\r"); // Enter KB
+    await delay(100);
+    stdin.write("1"); // Browse artifacts
+    await delay(200);
+
+    const frame = lastFrame()!;
+    expect(frame).toContain("Artifacts");
+    expect(frame).toContain("order");
+    expect(frame).toContain("customer");
+  });
+
+  test("navigates KB context > search", async () => {
+    const ds = createMockDataSource();
+    const { lastFrame, stdin } = render(
+      <App dataSource={ds} initialTenant="test" />,
+    );
+    await delay(100);
+
+    stdin.write("\r"); // Enter KB
+    await delay(100);
+    stdin.write("2"); // Search
     await delay(50);
+
     const frame = lastFrame()!;
     expect(frame).toContain("Search");
     expect(frame).toContain("Type to search");
   });
 
-  test("switches to graph on key 3", async () => {
+  test("navigates KB context > graph", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
       <App dataSource={ds} initialTenant="test" />,
     );
     await delay(100);
 
-    stdin.write("3");
+    stdin.write("\r"); // Enter KB
+    await delay(100);
+    stdin.write("3"); // Graph
     await delay(50);
+
     expect(lastFrame()).toContain("Graph Traverse");
   });
 
-  test("switches to tenants on key 4", async () => {
+  test("navigates KB context > dashboard", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
       <App dataSource={ds} initialTenant="test" />,
     );
     await delay(100);
 
-    stdin.write("4");
+    stdin.write("\r"); // Enter KB
+    await delay(100);
+    stdin.write("i"); // Info/dashboard
     await delay(150);
-    expect(lastFrame()).toContain("Tenants");
+
+    expect(lastFrame()).toContain("KB Info");
   });
 
-  test("switches to dashboard on key 5", async () => {
+  test("Esc navigates back through stack", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
       <App dataSource={ds} initialTenant="test" />,
     );
     await delay(100);
 
-    stdin.write("5");
-    await delay(150);
-    expect(lastFrame()).toContain("Dashboard");
-  });
-
-  test("switches back to list on key 1", async () => {
-    const ds = createMockDataSource();
-    const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" />,
-    );
+    // KB list → KB context
+    stdin.write("\r");
     await delay(100);
+    expect(lastFrame()).toContain("Browse artifacts");
 
-    stdin.write("5"); // go to dashboard
-    await delay(100);
-    stdin.write("1"); // back to list
-    await delay(100);
-    expect(lastFrame()).toContain("Artifacts");
-  });
-
-  test("status bar updates on view change", async () => {
-    const ds = createMockDataSource();
-    const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" />,
-    );
-    await delay(100);
-
+    // KB context → artifact list
+    stdin.write("1");
+    await delay(200);
     expect(lastFrame()).toContain("Artifacts");
 
-    stdin.write("5");
+    // Esc back to KB context
+    stdin.write("\x1B");
     await delay(100);
-    expect(lastFrame()).toContain("Dashboard");
+    expect(lastFrame()).toContain("Browse artifacts");
+
+    // Esc back to KB list
+    stdin.write("\x1B");
+    await delay(100);
+    expect(lastFrame()).toContain("Knowledge Bases");
   });
 
-  test("/ key switches to search", async () => {
+  test("q from KB context goes back to KB list", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
       <App dataSource={ds} initialTenant="test" />,
     );
     await delay(100);
 
-    stdin.write("/");
-    await delay(50);
-    expect(lastFrame()).toContain("Search");
+    stdin.write("\r"); // Enter KB
+    await delay(100);
+    expect(lastFrame()).toContain("Browse artifacts");
+
+    stdin.write("q"); // back
+    await delay(100);
+    expect(lastFrame()).toContain("Knowledge Bases");
   });
 
-  test("t key switches to tenants", async () => {
+  test("status bar shows KB List on startup", async () => {
+    const ds = createMockDataSource();
+    const { lastFrame } = render(
+      <App dataSource={ds} initialTenant="test" />,
+    );
+    await delay(100);
+    expect(lastFrame()).toContain("KB List");
+  });
+
+  test("status bar updates on navigation", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
       <App dataSource={ds} initialTenant="test" />,
     );
     await delay(100);
 
-    stdin.write("t");
-    await delay(150);
-    expect(lastFrame()).toContain("Tenants");
-  });
-
-  test("q from non-list view returns to list", async () => {
-    const ds = createMockDataSource();
-    const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" />,
-    );
+    stdin.write("\r"); // Enter KB
     await delay(100);
-
-    stdin.write("5"); // dashboard
-    await delay(100);
-    stdin.write("q"); // should go back to list
-    await delay(100);
-    expect(lastFrame()).toContain("Artifacts");
+    expect(lastFrame()).toContain("KB Hub");
   });
 
   test("renders daemon mode in status bar", async () => {
@@ -239,5 +266,23 @@ describe("App", () => {
     const { lastFrame } = render(<App dataSource={ds} initialTenant="test" />);
     await delay(100);
     expect(lastFrame()).toContain("daemon");
+  });
+
+  test("breadcrumb shows navigation path", async () => {
+    const ds = createMockDataSource();
+    const { lastFrame, stdin } = render(
+      <App dataSource={ds} initialTenant="test" />,
+    );
+    await delay(100);
+
+    // Initially just "pramana"
+    expect(lastFrame()).toContain("pramana");
+
+    // Enter KB → shows tenant name in breadcrumb
+    stdin.write("\r");
+    await delay(100);
+    const frame = lastFrame()!;
+    expect(frame).toContain("pramana");
+    expect(frame).toContain("test");
   });
 });

@@ -99,10 +99,10 @@ export function SearchView({
     { isActive },
   );
 
-  const listHeight = height - 5;
+  const listHeight = height - 7;
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>
       <Box marginBottom={1}>
         <Text bold color={theme.primary}>
           Search{" "}
@@ -132,10 +132,12 @@ export function SearchView({
         renderItem={(item, _index, isSelected) => (
           <Box flexDirection="column">
             <Box>
-              <Text color={isSelected ? theme.selected : undefined} bold={isSelected}>
-                {isSelected ? ">" : " "}{" "}
-              </Text>
-              <Text color={isSelected ? theme.selected : undefined} bold>
+              <Text
+                color={isSelected ? theme.selected : undefined}
+                backgroundColor={isSelected ? theme.selectedBg : undefined}
+                bold={isSelected}
+              >
+                {" "}
                 {item.slug}
               </Text>
               <Text color={theme.muted}> {item.title}</Text>
@@ -152,10 +154,24 @@ export function SearchView({
       />
 
       <Box marginTop={1}>
-        <Text color={theme.muted}>
-          {inputFocused
-            ? "Enter/↓ to results Esc back"
-            : "j/k navigate Enter view ↑/Esc back to input"}
+        <Text>
+          {inputFocused ? (
+            <>
+              <Text color={theme.hintKey}>[Enter/\u2193]</Text>
+              <Text color={theme.hintDesc}> to results </Text>
+              <Text color={theme.hintKey}>[Esc]</Text>
+              <Text color={theme.hintDesc}> back</Text>
+            </>
+          ) : (
+            <>
+              <Text color={theme.hintKey}>[j/k]</Text>
+              <Text color={theme.hintDesc}> navigate </Text>
+              <Text color={theme.hintKey}>[Enter]</Text>
+              <Text color={theme.hintDesc}> view </Text>
+              <Text color={theme.hintKey}>[\u2191/Esc]</Text>
+              <Text color={theme.hintDesc}> back to input</Text>
+            </>
+          )}
         </Text>
       </Box>
     </Box>

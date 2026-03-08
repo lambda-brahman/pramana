@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { Box, Text } from "ink";
+import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 
 import { HelpOverlay } from "../../../src/tui/components/help-overlay.tsx";
@@ -78,7 +78,6 @@ describe("ScrollableList", () => {
       />,
     );
     const frame = lastFrame()!;
-    // Should show "more below" since 20 items > 5 height
     expect(frame).toContain("more below");
   });
 
@@ -117,14 +116,13 @@ describe("TextInput", () => {
     const { lastFrame } = render(
       <TextInput value="test" onChange={() => {}} isActive={true} />,
     );
-    // Active text input renders an inverse space for cursor
     const frame = lastFrame()!;
     expect(frame).toContain("test");
   });
 
   test("handles character input", async () => {
     let current = "";
-    const { stdin, lastFrame } = render(
+    const { stdin } = render(
       <TextInput value={current} onChange={(v) => (current = v)} />,
     );
     stdin.write("a");
@@ -149,7 +147,7 @@ describe("TextInput", () => {
 describe("StatusBar", () => {
   test("renders view name", () => {
     const { lastFrame } = render(
-      <StatusBar view="list" tenant="test" mode="standalone" />,
+      <StatusBar view="list" tenant="test" mode="standalone" depth={1} />,
     );
     const frame = lastFrame()!;
     expect(frame).toContain("Artifacts");
@@ -157,7 +155,7 @@ describe("StatusBar", () => {
 
   test("renders tenant name", () => {
     const { lastFrame } = render(
-      <StatusBar view="search" tenant="myknowledge" mode="daemon" />,
+      <StatusBar view="search" tenant="myknowledge" mode="daemon" depth={2} />,
     );
     const frame = lastFrame()!;
     expect(frame).toContain("myknowledge");
@@ -166,23 +164,23 @@ describe("StatusBar", () => {
 
   test("renders mode", () => {
     const { lastFrame } = render(
-      <StatusBar view="list" tenant="test" mode="daemon" />,
+      <StatusBar view="list" tenant="test" mode="daemon" depth={1} />,
     );
     expect(lastFrame()).toContain("daemon");
   });
 
   test("renders standalone mode", () => {
     const { lastFrame } = render(
-      <StatusBar view="list" tenant="test" mode="standalone" />,
+      <StatusBar view="list" tenant="test" mode="standalone" depth={1} />,
     );
     expect(lastFrame()).toContain("standalone");
   });
 
   test("renders help hint", () => {
     const { lastFrame } = render(
-      <StatusBar view="list" tenant="test" mode="standalone" />,
+      <StatusBar view="list" tenant="test" mode="standalone" depth={1} />,
     );
-    expect(lastFrame()).toContain("? help");
+    expect(lastFrame()).toContain("help");
   });
 
   test("renders all view types correctly", () => {
@@ -191,14 +189,15 @@ describe("StatusBar", () => {
       { name: "detail" as const, label: "Detail" },
       { name: "search" as const, label: "Search" },
       { name: "graph" as const, label: "Graph" },
-      { name: "tenants" as const, label: "Tenants" },
-      { name: "dashboard" as const, label: "Dashboard" },
+      { name: "kb-list" as const, label: "KB List" },
+      { name: "kb-context" as const, label: "KB Hub" },
+      { name: "dashboard" as const, label: "Info" },
     ];
 
     for (const v of views) {
       cleanup();
       const { lastFrame } = render(
-        <StatusBar view={v.name} tenant="t" mode="standalone" />,
+        <StatusBar view={v.name} tenant="t" mode="standalone" depth={1} />,
       );
       expect(lastFrame()).toContain(v.label);
     }
@@ -211,20 +210,17 @@ describe("StatusBar", () => {
 describe("HelpOverlay", () => {
   test("renders title", () => {
     const { lastFrame } = render(<HelpOverlay />);
-    // Title may get ANSI-overlapped in test terminal; check for identifiable content
     expect(lastFrame()).toContain("Toggle help");
   });
 
-  test("shows global keybindings", () => {
+  test("shows navigation keybindings", () => {
     const { lastFrame } = render(<HelpOverlay />);
     const frame = lastFrame()!;
-    expect(frame).toContain("Artifact list");
+    expect(frame).toContain("Browse artifacts");
     expect(frame).toContain("Search");
     expect(frame).toContain("Graph traverse");
-    expect(frame).toContain("Tenants");
-    expect(frame).toContain("Dashboard");
     expect(frame).toContain("Toggle help");
-    expect(frame).toContain("Back / Quit");
+    expect(frame).toContain("Go back one level");
   });
 
   test("shows list keybindings", () => {
@@ -254,6 +250,22 @@ describe("HelpOverlay", () => {
   test("shows dismiss hint", () => {
     const { lastFrame } = render(<HelpOverlay />);
     expect(lastFrame()).toContain("Press any key to dismiss");
+  });
+
+  test("shows KB list keybindings", () => {
+    const { lastFrame } = render(<HelpOverlay />);
+    const frame = lastFrame()!;
+    expect(frame).toContain("Enter KB");
+    expect(frame).toContain("Open source in file manager");
+    expect(frame).toContain("Reload KB");
+  });
+
+  test("shows graph keybindings", () => {
+    const { lastFrame } = render(<HelpOverlay />);
+    const frame = lastFrame()!;
+    expect(frame).toContain("Navigate tree");
+    expect(frame).toContain("Expand/collapse");
+    expect(frame).toContain("Change root");
   });
 });
 

@@ -39,15 +39,21 @@ export function DashboardView({ dataSource, activeTenant, isActive, onBack }: Pr
   const totalArtifacts = tenants.reduce((sum, t) => sum + t.artifactCount, 0);
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>
       <Box marginBottom={1}>
         <Text bold color={theme.primary}>
-          Dashboard
+          KB Info
         </Text>
       </Box>
 
       {/* Version & Mode */}
-      <Box flexDirection="column" marginBottom={1} borderStyle="single" paddingX={1}>
+      <Box
+        flexDirection="column"
+        marginBottom={1}
+        borderStyle="single"
+        borderColor={theme.border}
+        paddingX={1}
+      >
         <Box>
           <Box width={20}>
             <Text color={theme.muted}>Version</Text>
@@ -102,7 +108,10 @@ export function DashboardView({ dataSource, activeTenant, isActive, onBack }: Pr
       ))}
 
       <Box marginTop={1}>
-        <Text color={theme.muted}>Esc back</Text>
+        <Text>
+          <Text color={theme.hintKey}>[Esc]</Text>
+          <Text color={theme.hintDesc}> back</Text>
+        </Text>
       </Box>
     </Box>
   );

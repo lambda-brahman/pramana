@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from "ink";
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import type { ArtifactView } from "../../engine/reader.ts";
 import type { DataSource } from "../data-source.ts";
 import { theme } from "../theme.ts";
@@ -92,8 +92,7 @@ export function ArtifactDetailView({
         } else if (key.return) {
           const rel = allRels[relIndex];
           if (rel) {
-            const targetSlug = rel.direction === "out" ? rel.target : rel.target;
-            onNavigate(targetSlug.split("#")[0]!);
+            onNavigate(rel.target.split("#")[0]!);
           }
         }
       }
@@ -125,7 +124,7 @@ export function ArtifactDetailView({
   const visibleContent = contentLines.slice(scrollOffset, scrollOffset + visibleHeight);
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>
       {/* Header */}
       <Box marginBottom={1} flexDirection="column">
         <Text bold color={theme.primary}>
@@ -160,15 +159,15 @@ export function ArtifactDetailView({
           {visibleContent.map((line, i) => {
             const lineNum = scrollOffset + i;
             return (
-              <Text key={`L${lineNum}`} wrap="truncate">
-                {renderContentLine(line)}
-              </Text>
+              <Box key={`L${lineNum}`}>
+                <Text wrap="truncate">{renderContentLine(line)}</Text>
+              </Box>
             );
           })}
           {contentLines.length > visibleHeight && (
             <Text color={theme.muted}>
               [{scrollOffset + 1}-{Math.min(scrollOffset + visibleHeight, contentLines.length)}/
-              {contentLines.length}] j/k scroll d/u half-page
+              {contentLines.length}]
             </Text>
           )}
         </Box>
@@ -181,22 +180,34 @@ export function ArtifactDetailView({
           ) : (
             allRels.map((rel, i) => (
               <Box key={`${rel.direction}-${rel.target}-${rel.type}`}>
-                <Text color={i === relIndex ? theme.selected : undefined} bold={i === relIndex}>
-                  {i === relIndex ? ">" : " "}{" "}
+                <Text
+                  color={i === relIndex ? theme.selected : undefined}
+                  backgroundColor={i === relIndex ? theme.selectedBg : undefined}
+                  bold={i === relIndex}
+                >
+                  {" "}
                 </Text>
                 <Text color={rel.direction === "out" ? theme.dependsOn : theme.relatesTo}>
-                  {rel.direction === "out" ? "→" : "←"}{" "}
+                  {rel.direction === "out" ? " \u2192" : " \u2190"}{" "}
                 </Text>
                 <Text color={rel.type === "depends-on" ? theme.dependsOn : theme.relatesTo}>
                   [{rel.type}]{" "}
                 </Text>
-                <Text>{rel.target}</Text>
+                <Text
+                  color={i === relIndex ? theme.selected : undefined}
+                  backgroundColor={i === relIndex ? theme.selectedBg : undefined}
+                >
+                  {rel.target}
+                </Text>
               </Box>
             ))
           )}
           {allRels.length > 0 && (
             <Box marginTop={1}>
-              <Text color={theme.muted}>Enter to follow relationship</Text>
+              <Text>
+                <Text color={theme.hintKey}>[Enter]</Text>
+                <Text color={theme.hintDesc}> follow relationship</Text>
+              </Text>
             </Box>
           )}
         </Box>
@@ -209,18 +220,30 @@ export function ArtifactDetailView({
           ) : (
             artifact.sections.map((sec, i) => (
               <Box key={sec.id}>
-                <Text color={i === relIndex ? theme.selected : undefined} bold={i === relIndex}>
-                  {i === relIndex ? ">" : " "}{" "}
+                <Text
+                  color={i === relIndex ? theme.selected : undefined}
+                  backgroundColor={i === relIndex ? theme.selectedBg : undefined}
+                  bold={i === relIndex}
+                >
+                  {" "}
                 </Text>
                 <Text color={theme.muted}>{"  ".repeat(sec.level - 2)}</Text>
-                <Text>{sec.heading}</Text>
+                <Text
+                  color={i === relIndex ? theme.selected : undefined}
+                  backgroundColor={i === relIndex ? theme.selectedBg : undefined}
+                >
+                  {sec.heading}
+                </Text>
                 <Text color={theme.muted}> (line {sec.line})</Text>
               </Box>
             ))
           )}
           {artifact.sections.length > 0 && (
             <Box marginTop={1}>
-              <Text color={theme.muted}>Enter to jump to section</Text>
+              <Text>
+                <Text color={theme.hintKey}>[Enter]</Text>
+                <Text color={theme.hintDesc}> jump to section</Text>
+              </Text>
             </Box>
           )}
         </Box>
@@ -228,12 +251,96 @@ export function ArtifactDetailView({
 
       {/* Footer */}
       <Box marginTop={1}>
-        <Text color={theme.muted}>Esc back Tab switch panel</Text>
+        <Text>
+          <Text color={theme.hintKey}>[Esc]</Text>
+          <Text color={theme.hintDesc}> back </Text>
+          <Text color={theme.hintKey}>[Tab]</Text>
+          <Text color={theme.hintDesc}> switch panel </Text>
+          <Text color={theme.hintKey}>[j/k]</Text>
+          <Text color={theme.hintDesc}> scroll </Text>
+          <Text color={theme.hintKey}>[d/u]</Text>
+          <Text color={theme.hintDesc}> half-page</Text>
+        </Text>
       </Box>
     </Box>
   );
 }
 
-function renderContentLine(line: string): string {
-  return line;
+function renderContentLine(line: string): ReactNode {
+  // Headings
+  if (line.startsWith("### ")) {
+    return (
+      <Text color={theme.heading3} bold>
+        {line}
+      </Text>
+    );
+  }
+  if (line.startsWith("## ")) {
+    return (
+      <Text color={theme.heading2} bold>
+        {line}
+      </Text>
+    );
+  }
+  if (line.startsWith("# ")) {
+    return (
+      <Text color={theme.heading1} bold>
+        {line}
+      </Text>
+    );
+  }
+
+  // Render inline formatting
+  return renderInline(line);
+}
+
+function renderInline(text: string): ReactNode {
+  // Match code spans, bold, italic, and wikilinks
+  const parts: ReactNode[] = [];
+  let remaining = text;
+  let keyIdx = 0;
+
+  while (remaining.length > 0) {
+    // Code spans: `...`
+    const codeMatch = remaining.match(/^(.*?)`([^`]+)`/);
+    if (codeMatch) {
+      if (codeMatch[1]) parts.push(codeMatch[1]);
+      parts.push(
+        <Text key={`c${keyIdx++}`} color={theme.code}>
+          `{codeMatch[2]}`
+        </Text>,
+      );
+      remaining = remaining.slice(codeMatch[0].length);
+      continue;
+    }
+
+    // Bold: **...**
+    const boldMatch = remaining.match(/^(.*?)\*\*([^*]+)\*\*/);
+    if (boldMatch) {
+      if (boldMatch[1]) parts.push(boldMatch[1]);
+      parts.push(
+        <Text key={`b${keyIdx++}`} bold>
+          {boldMatch[2]}
+        </Text>,
+      );
+      remaining = remaining.slice(boldMatch[0].length);
+      continue;
+    }
+
+    // Wikilinks: [[...]]
+    const wikiMatch = remaining.match(/^(.*?)\[\[([^\]]+)\]\]/);
+    if (wikiMatch) {
+      if (wikiMatch[1]) parts.push(wikiMatch[1]);
+      parts.push(<Text key={`w${keyIdx++}`} color={theme.link}>{`[[${wikiMatch[2]}]]`}</Text>);
+      remaining = remaining.slice(wikiMatch[0].length);
+      continue;
+    }
+
+    // No more patterns — emit remaining text
+    parts.push(remaining);
+    break;
+  }
+
+  if (parts.length === 1) return parts[0];
+  return <Text>{parts}</Text>;
 }
