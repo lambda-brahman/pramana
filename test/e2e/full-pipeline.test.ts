@@ -47,25 +47,25 @@ describe("Full pipeline: ingest → query", () => {
     expect(result.value!.focusedSection!.heading).toBe("Attributes");
   });
 
-  test("search for purchase", () => {
-    const result = reader.search("purchase");
+  test("search for purchase", async () => {
+    const result = await reader.search("purchase");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.length).toBeGreaterThanOrEqual(1);
     expect(result.value.some((r) => r.slug === "order")).toBe(true);
   });
 
-  test("search by alias finds artifact", () => {
+  test("search by alias finds artifact", async () => {
     // "transaction" only appears in order.md aliases, not in title/content
-    const result = reader.search("transaction");
+    const result = await reader.search("transaction");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.length).toBeGreaterThanOrEqual(1);
     expect(result.value.some((r) => r.slug === "order")).toBe(true);
   });
 
-  test("search results include summary", () => {
-    const result = reader.search("purchase");
+  test("search results include summary", async () => {
+    const result = await reader.search("purchase");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const orderResult = result.value.find((r) => r.slug === "order");
