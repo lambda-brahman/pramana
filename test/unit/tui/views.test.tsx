@@ -126,6 +126,14 @@ function createMockDataSource(
         failed: [],
       });
     },
+
+    async addKb(_name, _sourceDir) {
+      return ok(undefined);
+    },
+
+    async removeKb(_name) {
+      return ok(undefined);
+    },
   };
 }
 
@@ -608,6 +616,7 @@ describe("KbListView", () => {
         isActive={true}
         onSelectKb={() => {}}
         onReload={() => {}}
+        onFormModeChange={() => {}}
         height={20}
       />,
     );
@@ -626,6 +635,7 @@ describe("KbListView", () => {
         isActive={true}
         onSelectKb={() => {}}
         onReload={() => {}}
+        onFormModeChange={() => {}}
         height={20}
       />,
     );
@@ -642,6 +652,7 @@ describe("KbListView", () => {
         isActive={true}
         onSelectKb={() => {}}
         onReload={() => {}}
+        onFormModeChange={() => {}}
         height={20}
       />,
     );
@@ -662,6 +673,7 @@ describe("KbListView", () => {
           selected = name;
         }}
         onReload={() => {}}
+        onFormModeChange={() => {}}
         height={20}
       />,
     );
@@ -681,6 +693,7 @@ describe("KbListView", () => {
         isActive={true}
         onSelectKb={() => {}}
         onReload={() => {}}
+        onFormModeChange={() => {}}
         height={20}
       />,
     );
@@ -697,6 +710,7 @@ describe("KbListView", () => {
         isActive={true}
         onSelectKb={() => {}}
         onReload={() => {}}
+        onFormModeChange={() => {}}
         height={20}
       />,
     );

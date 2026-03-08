@@ -226,10 +226,15 @@ describe("Single-tenant daemon", () => {
     expect(stdout).toContain("Usage:");
   });
 
-  test("no args shows usage and exits 0", async () => {
-    const { stdout, exitCode } = await runCli([]);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("Usage:");
+  test("no args launches TUI (same as pramana tui)", async () => {
+    const { stdout, stderr } = await runCli([]);
+    // Bare invocation now launches TUI instead of showing help.
+    // In CI (no TTY), Ink errors on raw mode — that proves the TUI path was taken.
+    expect(stdout).not.toContain("Usage:");
+    const triedTui = stdout.includes("Raw mode is not supported") ||
+      stderr.includes("Raw mode is not supported") ||
+      stdout.includes("Knowledge Bases");
+    expect(triedTui).toBe(true);
   });
 
   test("standalone ingestion prints report to stderr", async () => {

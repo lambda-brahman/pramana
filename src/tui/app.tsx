@@ -37,6 +37,7 @@ export function App({ dataSource, initialTenant }: Props) {
   const [navStack, setNavStack] = useState<NavEntry[]>([{ view: "kb-list" }]);
   const [tenant, setTenant] = useState(initialTenant);
   const [showHelp, setShowHelp] = useState(false);
+  const [isFormActive, setIsFormActive] = useState(false);
 
   const termHeight = stdout?.rows ?? 24;
   const contentHeight = termHeight - 4; // status bar + breadcrumb
@@ -117,7 +118,7 @@ export function App({ dataSource, initialTenant }: Props) {
         return;
       }
     },
-    { isActive: !isSearchActive && !showHelp },
+    { isActive: !isSearchActive && !showHelp && !isFormActive },
   );
 
   // Help dismissal
@@ -152,6 +153,7 @@ export function App({ dataSource, initialTenant }: Props) {
               navigateTo("kb-context");
             }}
             onReload={() => {}}
+            onFormModeChange={setIsFormActive}
             height={contentHeight}
           />
         )}

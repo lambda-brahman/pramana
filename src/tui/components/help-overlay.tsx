@@ -6,6 +6,8 @@ type Binding = { keys: string; description: string };
 const kbListBindings: Binding[] = [
   { keys: "j/k or arrows", description: "Navigate KBs" },
   { keys: "Enter", description: "Enter KB" },
+  { keys: "a", description: "Add knowledge base" },
+  { keys: "d", description: "Remove knowledge base" },
   { keys: "o", description: "Open source in file manager" },
   { keys: "r", description: "Reload KB" },
   { keys: "q", description: "Quit" },

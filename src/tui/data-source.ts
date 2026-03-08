@@ -1,3 +1,7 @@
+import {
+  addTenant as configAddTenant,
+  removeTenant as configRemoveTenant,
+} from "../config/index.ts";
 import type { BuildReport } from "../engine/builder.ts";
 import type { ArtifactView, ListFilter } from "../engine/reader.ts";
 import type { TenantInfo, TenantManager } from "../engine/tenant.ts";
@@ -18,6 +22,8 @@ export type DataSource = {
   list(tenant: string, filter?: ListFilter): Promise<Result<ArtifactView[], DataSourceError>>;
   listTenants(): Promise<Result<TenantInfo[], DataSourceError>>;
   reload(tenant: string): Promise<Result<BuildReport, DataSourceError>>;
+  addKb(name: string, sourceDir: string): Promise<Result<void, DataSourceError>>;
+  removeKb(name: string): Promise<Result<void, DataSourceError>>;
   mode: "daemon" | "standalone";
 };
 
@@ -69,6 +75,25 @@ export function createReaderDataSource(tm: TenantManager): DataSource {
       const result = await tm.reload(tenant);
       if (!result.ok) return err(dsErr(result.error.message));
       return ok(result.value);
+    },
+
+    async addKb(name, sourceDir) {
+      const mountResult = await tm.mount({ name, sourceDir });
+      if (!mountResult.ok) return err(dsErr(mountResult.error.message));
+      const configResult = await configAddTenant(name, sourceDir);
+      if (!configResult.ok) {
+        tm.unmount(name);
+        return err(dsErr(configResult.error.message));
+      }
+      return ok(undefined);
+    },
+
+    async removeKb(name) {
+      const unmountResult = tm.unmount(name);
+      if (!unmountResult.ok) return err(dsErr(unmountResult.error.message));
+      const configResult = await configRemoveTenant(name);
+      if (!configResult.ok) return err(dsErr(configResult.error.message));
+      return ok(undefined);
     },
   };
 }
@@ -142,6 +167,18 @@ export function createHttpDataSource(port: string): DataSource {
       );
       if (!result.ok) return result;
       return ok(result.value.report);
+    },
+
+    async addKb(name, sourceDir) {
+      const configResult = await configAddTenant(name, sourceDir);
+      if (!configResult.ok) return err(dsErr(configResult.error.message));
+      return ok(undefined);
+    },
+
+    async removeKb(name) {
+      const configResult = await configRemoveTenant(name);
+      if (!configResult.ok) return err(dsErr(configResult.error.message));
+      return ok(undefined);
     },
   };
 }
