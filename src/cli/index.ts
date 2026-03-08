@@ -59,6 +59,7 @@ Usage:
   pramana search <query> --source <dir> --tenant <name>
   pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] --tenant <name>
   pramana list --source <dir> [--tags <tag1,tag2>] --tenant <name>
+  pramana tui [--source <dir>[:name] ...] [--port 5111]
   pramana lint --source <dir> [--strict]
   pramana lint --tenant <name> [--strict]
   pramana reload --tenant <name>
@@ -485,6 +486,84 @@ async function main() {
 
   const standalone = hasFlag("standalone");
   const port = resolvePort();
+
+  // tui — interactive terminal interface
+  if (command === "tui") {
+    const { createHttpDataSource, createReaderDataSource } = await import("../tui/data-source.ts");
+    const { startTui } = await import("../tui/index.tsx");
+
+    // Try daemon first (unless --standalone)
+    if (!standalone) {
+      const reachable = await isServerReachable(port);
+      if (reachable) {
+        const ds = createHttpDataSource(port);
+        const tenantsResult = await ds.listTenants();
+        if (!tenantsResult.ok) {
+          console.error(`Could not list tenants: ${tenantsResult.error.message}`);
+          process.exit(1);
+        }
+        const tenants = tenantsResult.value;
+        if (tenants.length === 0) {
+          console.error("No tenants available on daemon");
+          process.exit(1);
+        }
+        const tenant = getFlag("tenant") ?? tenants[0]!.name;
+        await startTui(ds, tenant);
+        process.exit(0);
+      }
+    }
+
+    // Standalone mode: build from sources
+    const cliSources = parseSources();
+    const configSources: Array<{ path: string; name: string }> = [];
+    if (!hasFlag("no-config")) {
+      const configResult = await loadConfig();
+      if (configResult.ok) {
+        for (const [name, dir] of Object.entries(configResult.value.tenants)) {
+          configSources.push({ path: dir, name });
+        }
+      }
+    }
+
+    const sourceMap = new Map<string, string>();
+    for (const src of configSources) sourceMap.set(src.name, src.path);
+    for (const src of cliSources) sourceMap.set(src.name, src.path);
+
+    if (sourceMap.size === 0) {
+      console.error("No sources available. Use --source <dir>[:name] or configure tenants.");
+      process.exit(1);
+    }
+
+    const tm = new TenantManager();
+    for (const [name, path] of sourceMap) {
+      const nameCheck = validateTenantName(name);
+      if (!nameCheck.ok) {
+        console.error(`Warning: skipping "${name}": ${nameCheck.error.message}`);
+        continue;
+      }
+      const result = await tm.mount({ name, sourceDir: path });
+      if (!result.ok) {
+        console.error(`Warning: skipping "${name}": ${result.error.message}`);
+        continue;
+      }
+      const report = result.value;
+      console.error(
+        `[${name}] Ingested ${report.succeeded}/${report.total} files` +
+          (report.failed.length > 0 ? ` (${report.failed.length} failed)` : ""),
+      );
+    }
+
+    if (tm.tenantNames().length === 0) {
+      console.error("No tenants mounted successfully");
+      process.exit(1);
+    }
+
+    const ds = createReaderDataSource(tm);
+    const tenant = getFlag("tenant") ?? tm.tenantNames()[0]!;
+    await startTui(ds, tenant);
+    tm.close();
+    process.exit(0);
+  }
 
   // serve always starts daemon — sources come from config + CLI
   if (command === "serve") {
