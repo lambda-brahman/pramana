@@ -226,10 +226,11 @@ describe("Single-tenant daemon", () => {
     expect(stdout).toContain("Usage:");
   });
 
-  test("no args shows usage and exits 0", async () => {
-    const { stdout, exitCode } = await runCli([]);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("Usage:");
+  test("no args launches TUI (same as pramana tui)", async () => {
+    const { stdout } = await runCli([]);
+    // Bare invocation now launches TUI instead of showing help
+    expect(stdout).not.toContain("Usage:");
+    expect(stdout).toContain("KB List");
   });
 
   test("standalone ingestion prints report to stderr", async () => {

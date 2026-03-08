@@ -383,12 +383,10 @@ async function main() {
     process.exit(0);
   }
 
-  // Handle --help flag anywhere in args
-  if (args.includes("--help")) {
+  // Handle --help / -h flag anywhere in args
+  if (args.includes("--help") || args.includes("-h")) {
     usage(0);
   }
-
-  if (!command) usage(0);
 
   // version command
   if (command === "version") {
@@ -487,8 +485,8 @@ async function main() {
   const standalone = hasFlag("standalone");
   const port = resolvePort();
 
-  // tui — interactive terminal interface
-  if (command === "tui") {
+  // tui — interactive terminal interface (also default when no command given)
+  if (!command || command === "tui") {
     const { createHttpDataSource, createReaderDataSource } = await import("../tui/data-source.ts");
     const { startTui } = await import("../tui/index.tsx");
 
@@ -503,11 +501,7 @@ async function main() {
           process.exit(1);
         }
         const tenants = tenantsResult.value;
-        if (tenants.length === 0) {
-          console.error("No tenants available on daemon");
-          process.exit(1);
-        }
-        const tenant = getFlag("tenant") ?? tenants[0]!.name;
+        const tenant = tenants.length > 0 ? (getFlag("tenant") ?? tenants[0]!.name) : "";
         await startTui(ds, tenant);
         process.exit(0);
       }
@@ -529,11 +523,6 @@ async function main() {
     for (const src of configSources) sourceMap.set(src.name, src.path);
     for (const src of cliSources) sourceMap.set(src.name, src.path);
 
-    if (sourceMap.size === 0) {
-      console.error("No sources available. Use --source <dir>[:name] or configure tenants.");
-      process.exit(1);
-    }
-
     const tm = new TenantManager();
     for (const [name, path] of sourceMap) {
       const nameCheck = validateTenantName(name);
@@ -553,13 +542,8 @@ async function main() {
       );
     }
 
-    if (tm.tenantNames().length === 0) {
-      console.error("No tenants mounted successfully");
-      process.exit(1);
-    }
-
     const ds = createReaderDataSource(tm);
-    const tenant = getFlag("tenant") ?? tm.tenantNames()[0]!;
+    const tenant = tm.tenantNames().length > 0 ? (getFlag("tenant") ?? tm.tenantNames()[0]!) : "";
     await startTui(ds, tenant);
     tm.close();
     process.exit(0);

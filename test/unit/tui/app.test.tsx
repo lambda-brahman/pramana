@@ -54,6 +54,12 @@ function createMockDataSource(): DataSource {
     async reload(): Promise<Result<BuildReport, DataSourceError>> {
       return ok({ total: 2, succeeded: 2, failed: [] });
     },
+    async addKb() {
+      return ok(undefined);
+    },
+    async removeKb() {
+      return ok(undefined);
+    },
   };
 }
 

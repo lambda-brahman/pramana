@@ -110,6 +110,16 @@ export class TenantManager {
     return infos;
   }
 
+  unmount(name: string): Result<void, TenantError> {
+    const tenant = this.tenants.get(name);
+    if (!tenant) {
+      return err({ type: "tenant", message: `Tenant "${name}" not found` });
+    }
+    tenant.storage.close();
+    this.tenants.delete(name);
+    return ok(undefined);
+  }
+
   hasTenant(name: string): boolean {
     return this.tenants.has(name);
   }
