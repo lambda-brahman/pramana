@@ -11,6 +11,7 @@ import { TenantManager } from "../engine/tenant.ts";
 import { err, ok, type Result } from "../lib/result.ts";
 import { NAME_REGEX, RESERVED_NAMES } from "../lib/tenant-names.ts";
 import { compareSemver, VERSION } from "../version.ts";
+import { formatDiagnostics, lintFromDaemon, lintSource } from "./lint.ts";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -58,6 +59,8 @@ Usage:
   pramana search <query> --source <dir> --tenant <name>
   pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] --tenant <name>
   pramana list --source <dir> [--tags <tag1,tag2>] --tenant <name>
+  pramana lint --source <dir> [--strict]
+  pramana lint --tenant <name> [--strict]
   pramana reload --tenant <name>
   pramana config add <name> <dir>
   pramana config remove <name>
@@ -445,6 +448,41 @@ async function main() {
     process.exit(0);
   }
 
+  // lint command
+  if (command === "lint") {
+    const sourceDir = getFlag("source");
+    const tenant = getFlag("tenant");
+    const strict = hasFlag("strict");
+
+    if (!sourceDir && !tenant) {
+      console.error("Missing --source <dir> or --tenant <name>");
+      process.exit(1);
+    }
+
+    const result = tenant
+      ? await (async () => {
+          const port = resolvePort();
+          const reachable = await isServerReachable(port);
+          if (!reachable) {
+            console.error("No running daemon found. Use --source <dir> for offline lint.");
+            process.exit(1);
+          }
+          return lintFromDaemon(port, tenant);
+        })()
+      : await lintSource(resolve(sourceDir!));
+
+    if (!result.ok) {
+      console.error(result.error.message);
+      process.exit(1);
+    }
+
+    const report = result.value;
+    console.log(formatDiagnostics(report));
+
+    const hasErrors = strict ? report.errors + report.warnings > 0 : report.errors > 0;
+    process.exit(hasErrors ? 1 : 0);
+  }
+
   const standalone = hasFlag("standalone");
   const port = resolvePort();
 
@@ -453,14 +491,16 @@ async function main() {
     const cliSources = parseSources();
     const shouldSave = hasFlag("save");
 
-    // Load config tenants
+    // Load config tenants (skip with --no-config)
     const configSources: Array<{ path: string; name: string }> = [];
-    const configResult = await loadConfig();
-    if (!configResult.ok) {
-      console.error(`Warning: ${configResult.error.message}. Continuing with CLI sources only.`);
-    } else {
-      for (const [name, dir] of Object.entries(configResult.value.tenants)) {
-        configSources.push({ path: dir, name });
+    if (!hasFlag("no-config")) {
+      const configResult = await loadConfig();
+      if (!configResult.ok) {
+        console.error(`Warning: ${configResult.error.message}. Continuing with CLI sources only.`);
+      } else {
+        for (const [name, dir] of Object.entries(configResult.value.tenants)) {
+          configSources.push({ path: dir, name });
+        }
       }
     }
 

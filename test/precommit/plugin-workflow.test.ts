@@ -272,6 +272,7 @@ describe("Multi-tenant daemon", () => {
         "--source", `${FIXTURES_DIR}:commerce`,
         "--source", `${FIXTURES_ALT_DIR}:notes`,
         "--port", String(port),
+        "--no-config",
       ],
       { stdout: "pipe", stderr: "pipe" },
     );
