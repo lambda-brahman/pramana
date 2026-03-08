@@ -453,14 +453,16 @@ async function main() {
     const cliSources = parseSources();
     const shouldSave = hasFlag("save");
 
-    // Load config tenants
+    // Load config tenants (skip with --no-config)
     const configSources: Array<{ path: string; name: string }> = [];
-    const configResult = await loadConfig();
-    if (!configResult.ok) {
-      console.error(`Warning: ${configResult.error.message}. Continuing with CLI sources only.`);
-    } else {
-      for (const [name, dir] of Object.entries(configResult.value.tenants)) {
-        configSources.push({ path: dir, name });
+    if (!hasFlag("no-config")) {
+      const configResult = await loadConfig();
+      if (!configResult.ok) {
+        console.error(`Warning: ${configResult.error.message}. Continuing with CLI sources only.`);
+      } else {
+        for (const [name, dir] of Object.entries(configResult.value.tenants)) {
+          configSources.push({ path: dir, name });
+        }
       }
     }
 
