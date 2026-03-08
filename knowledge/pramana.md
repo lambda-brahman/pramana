@@ -3,7 +3,7 @@ slug: pramana
 title: Pramana
 tags: [engine, module]
 relationships:
-  depends-on: [knowledge-artifact, parser, storage, engine, api, cli, result-type, programming-model, claude-plugin, multi-tenant]
+  depends-on: [knowledge-artifact, parser, storage, engine, api, cli, tui, data-source, result-type, programming-model, claude-plugin, multi-tenant]
 ---
 
 # Pramana
@@ -31,19 +31,19 @@ Source Dir(s) (*.md)
                                   │   TenantManager      │
                                   │ mount/reload/route   │
                                   └──────────┬──────────┘
-                                      ┌──────┴──────┐
-                                      │             │
-                                   ┌──▼──┐    ┌────▼──┐
-                                   │ API │    │ CLI   │
-                                   │HTTP │    │stdout │
-                                   └──┬──┘    └──┬────┘
-                                      │          │
-                                   ┌──┴──────────┴────┐
-                                   │ Claude Plugin     │
-                                   │ daemon+client     │
-                                   │ +setup/query/     │
-                                   │  author agents    │
-                                   └──────────────────┘
+                                 ┌───────┬───┴───┐
+                                 │       │       │
+                              ┌──▼──┐ ┌──▼──┐ ┌──▼──────────┐
+                              │ API │ │ CLI │ │ TUI          │
+                              │HTTP │ │JSON │ │ ink/React    │
+                              └──┬──┘ └──┬──┘ │ DataSource   │
+                                 │       │    └──────────────┘
+                              ┌──┴───────┴────┐
+                              │ Claude Plugin  │
+                              │ daemon+client  │
+                              │ +setup/query/  │
+                              │  author agents │
+                              └────────────────┘
 ```
 
 ## Composition
@@ -58,6 +58,8 @@ Source Dir(s) (*.md)
 | [[multi-tenant]] | Namespace isolation | `TenantManager.{mount,reload,getReader}` |
 | [[api]] | HTTP surface | `Route → Reader op → JSON Response` (tenant-scoped) |
 | [[cli]] | CLI surface | `Command → lifecycle → JSON stdout` (with `--tenant`) |
+| [[data-source]] | Query transport abstraction | `DataSource = {get,search,traverse,list,listTenants,reload}` |
+| [[tui]] | Interactive terminal surface | 6 views via ink/React, keyboard-driven, `DataSource` only |
 | [[programming-model]] | Abstract machine | Types, interfaces, 14 laws, plugin contract |
 | [[claude-plugin]] | Claude integration | Daemon + CLI client + setup/query skills + author agents |
 

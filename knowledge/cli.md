@@ -3,7 +3,7 @@ slug: cli
 title: CLI
 tags: [cli, module]
 relationships:
-  depends-on: [pramana, engine, api, storage, multi-tenant]
+  depends-on: [pramana, engine, api, storage, multi-tenant, tui, data-source]
 ---
 
 # CLI
@@ -53,6 +53,21 @@ Entry point. Dispatches commands after a fixed lifecycle.
 5. if not reachable: fall back to standalone mode
 ```
 
+#### TUI mode
+
+```
+1. parse args → (sources[], port, tenant?)
+2. if not --standalone: check daemon reachable
+3. if reachable: ds = HttpDataSource(port), resolve tenants
+4. else: load config + CLI sources → TenantManager → ds = ReaderDataSource(tm)
+5. initialTenant = --tenant flag ∨ first tenant
+6. dynamically import ink/React (lazy — non-TUI commands never load React)
+7. render App(ds, initialTenant) → interactive session
+8. await exit → cleanup
+```
+
+See [[tui]] for full specification of views, keybindings, and [[data-source]] for the transport abstraction.
+
 ### Commands
 
 | Command | Dispatch | Options |
@@ -62,6 +77,7 @@ Entry point. Dispatches commands after a fixed lifecycle.
 | `search <query>` | `reader.search(query)` | `--tenant <name>` |
 | `traverse <slug>` | `reader.traverse(slug, type?, depth?)` | `--type <t>`, `--depth <n>`, `--tenant <name>` |
 | `list` | `reader.list(filter?)` | `--tags <t1,t2>`, `--tenant <name>` |
+| `tui` | `startTui(dataSource, tenant)` | `--source`, `--port`, `--standalone`, `--tenant` |
 | `reload` | `POST /v1/:tenant/reload` | `--tenant <name>` (daemon only) |
 
 ### Multi-source syntax
