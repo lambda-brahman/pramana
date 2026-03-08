@@ -46,7 +46,7 @@ export function createReaderDataSource(tm: TenantManager): DataSource {
     async search(tenant, query) {
       const r = tm.getReader(tenant);
       if (!r.ok) return err(dsErr(r.error.message));
-      const result = r.value.search(query);
+      const result = await r.value.search(query);
       if (!result.ok) return err(dsErr(result.error.message));
       return ok(result.value);
     },

@@ -94,10 +94,10 @@ async function buildCorpusAsync(corpusPath: string): Promise<{ db: SqlitePlugin;
   return { db, artifactCount: report.value.succeeded };
 }
 
-function runFts5Search(db: SqlitePlugin, query: string, preprocessor: (q: string) => string): RankedResult[] {
+async function runFts5Search(db: SqlitePlugin, query: string, preprocessor: (q: string) => string): Promise<RankedResult[]> {
   const processed = preprocessor(query);
   try {
-    const result = db.search(processed);
+    const result = await db.search(processed);
     if (!result.ok) return [];
     return result.value.map((r) => ({ slug: r.slug, score: -r.rank })); // rank is negative in FTS5 (lower = better)
   } catch {
@@ -141,15 +141,15 @@ async function runSemanticSearch(
   return scores.sort((a, b) => b.score - a.score);
 }
 
-function evaluateArm(
+async function evaluateArm(
   armName: ArmName,
   queries: QueryEntry[],
-  retrievalFn: (query: string) => RankedResult[],
-): ArmResult {
+  retrievalFn: (query: string) => RankedResult[] | Promise<RankedResult[]>,
+): Promise<ArmResult> {
   const perQuery: PerQueryMetrics[] = [];
 
   for (const q of queries) {
-    const results = retrievalFn(q.query);
+    const results = await retrievalFn(q.query);
     const retrieved = results.slice(0, TOP_K).map((r) => r.slug);
 
     const qr: QueryResult = {
@@ -181,17 +181,17 @@ async function runIteration(iterationNum: number): Promise<IterationResult> {
 
     // FTS5-raw
     console.log(`    Running fts5-raw...`);
-    arms.push(evaluateArm("fts5-raw", corpus.queries, (q) => runFts5Search(db, q, raw)));
+    arms.push(await evaluateArm("fts5-raw", corpus.queries, (q) => runFts5Search(db, q, raw)));
 
     // FTS5-or
     console.log(`    Running fts5-or...`);
-    const fts5OrArm = evaluateArm("fts5-or", corpus.queries, (q) => runFts5Search(db, q, orQuery));
+    const fts5OrArm = await evaluateArm("fts5-or", corpus.queries, (q) => runFts5Search(db, q, orQuery));
     arms.push(fts5OrArm);
 
     // Cache FTS5-or results for hybrid
     const fts5OrResults = new Map<string, RankedResult[]>();
     for (const q of corpus.queries) {
-      fts5OrResults.set(q.query, runFts5Search(db, q.query, orQuery));
+      fts5OrResults.set(q.query, await runFts5Search(db, q.query, orQuery));
     }
 
     // Embedding models
@@ -211,7 +211,7 @@ async function runIteration(iterationNum: number): Promise<IterationResult> {
 
       // Run queries and measure latency
       const queryStart = performance.now();
-      const semanticArm = evaluateArm(model.arm, corpus.queries, (q) => {
+      const semanticArm = await evaluateArm(model.arm, corpus.queries, (q) => {
         // Synchronous wrapper — we'll use pre-embedded query vectors below
         // For the benchmark, we run async inside the evaluator
         const queryVec = new Float32Array(0); // placeholder

@@ -23,7 +23,7 @@ export interface StorageReader {
 }
 
 export interface StorageSearcher {
-  search(query: string): Result<SearchResult[], StorageError>;
+  search(query: string): Promise<Result<SearchResult[], StorageError>>;
 }
 
 export interface StoragePlugin extends StorageWriter, StorageReader, StorageSearcher {

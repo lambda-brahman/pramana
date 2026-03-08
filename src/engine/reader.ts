@@ -43,8 +43,8 @@ export class Reader {
     return ok(toView(result.value, this.storage, sectionId));
   }
 
-  search(query: string): Result<SearchResult[], EngineError> {
-    const result = this.searcher.search(query);
+  async search(query: string): Promise<Result<SearchResult[], EngineError>> {
+    const result = await this.searcher.search(query);
     if (!result.ok) return mapError(result);
     return ok(result.value);
   }

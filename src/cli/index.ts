@@ -524,6 +524,7 @@ async function main() {
     for (const src of cliSources) sourceMap.set(src.name, src.path);
 
     const tm = new TenantManager();
+    await tm.initEmbedder();
     for (const [name, path] of sourceMap) {
       const nameCheck = validateTenantName(name);
       if (!nameCheck.ok) {
@@ -577,6 +578,7 @@ async function main() {
     }
 
     const tm = new TenantManager();
+    await tm.initEmbedder();
     const mounted: string[] = [];
     const skipped: Array<{ name: string; reason: string }> = [];
 
@@ -658,6 +660,7 @@ async function main() {
   const tenantName = getFlag("tenant") ?? basename(sourceDir);
 
   const tm = new TenantManager();
+  await tm.initEmbedder();
   const mountResult = await tm.mount({ name: tenantName, sourceDir });
   if (!mountResult.ok) {
     console.error(`Mount failed: ${mountResult.error.message}`);
@@ -707,7 +710,7 @@ async function main() {
         console.error("Missing query");
         process.exit(1);
       }
-      const result = reader.search(query);
+      const result = await reader.search(query);
       if (!result.ok) {
         console.error(result.error.message);
         process.exit(1);

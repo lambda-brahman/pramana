@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { err, ok, type Result } from "../lib/result.ts";
 import { NAME_REGEX, RESERVED_NAMES } from "../lib/tenant-names.ts";
+import { type Embedder, loadEmbedder } from "../storage/embedder.ts";
 import { SqlitePlugin } from "../storage/sqlite/index.ts";
 import { Builder, type BuildReport } from "./builder.ts";
 import { Reader } from "./reader.ts";
@@ -25,6 +26,21 @@ export type TenantInfo = {
 
 export class TenantManager {
   private tenants = new Map<string, TenantState>();
+  private embedder: Embedder | null = null;
+
+  async initEmbedder(modelId = "Xenova/gte-small"): Promise<void> {
+    const result = await loadEmbedder(modelId);
+    if (!result.ok) {
+      console.error(
+        `Warning: embedder init failed: ${result.error.message}. Continuing with FTS-only search.`,
+      );
+      return;
+    }
+    this.embedder = result.value.embedder;
+    console.error(
+      `Embedder loaded (${result.value.embedder.modelId}) in ${Math.round(result.value.loadTimeMs)}ms`,
+    );
+  }
 
   async mount(config: TenantConfig): Promise<Result<BuildReport, TenantError>> {
     const { name, sourceDir } = config;
@@ -151,6 +167,19 @@ export class TenantManager {
         type: "tenant",
         message: `Build failed: ${buildResult.error.message}`,
       });
+    }
+
+    if (this.embedder) {
+      const embResult = await storage.buildEmbeddings(this.embedder);
+      if (!embResult.ok) {
+        console.error(
+          `Warning: embedding build failed: ${embResult.error.message}. Using FTS-only search.`,
+        );
+      } else {
+        console.error(
+          `Embeddings built: ${embResult.value.count} artifacts in ${Math.round(embResult.value.timeMs)}ms`,
+        );
+      }
     }
 
     const reader = new Reader(storage, storage);

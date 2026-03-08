@@ -10,7 +10,7 @@ export function createServer(opts: ApiServerOptions) {
   return Bun.serve({
     port: opts.port,
 
-    fetch(req) {
+    async fetch(req) {
       const url = new URL(req.url);
       const path = url.pathname;
 
@@ -54,7 +54,7 @@ export function createServer(opts: ApiServerOptions) {
         const rest = tenantMatch[2]!;
         const result = tm.getReader(tenant);
         if (!result.ok) return json({ error: `Tenant "${tenant}" not found` }, 404);
-        return handleOperation(result.value, rest, url);
+        return await handleOperation(result.value, rest, url);
       }
 
       // Unscoped /v1/... paths → error with available tenant names
@@ -74,7 +74,7 @@ export function createServer(opts: ApiServerOptions) {
   });
 }
 
-function handleOperation(reader: Reader, opPath: string, url: URL): Response {
+async function handleOperation(reader: Reader, opPath: string, url: URL): Promise<Response> {
   // get/:slug/:section
   const sectionGet = opPath.match(/^get\/([^/]+)\/(.+)$/);
   if (sectionGet) {
@@ -99,7 +99,7 @@ function handleOperation(reader: Reader, opPath: string, url: URL): Response {
   if (opPath === "search") {
     const query = url.searchParams.get("q");
     if (!query) return json({ error: "Missing query parameter 'q'" }, 400);
-    const result = reader.search(query);
+    const result = await reader.search(query);
     if (!result.ok) return json({ error: result.error.message }, 500);
     return json(result.value);
   }

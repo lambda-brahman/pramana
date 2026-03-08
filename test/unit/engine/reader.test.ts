@@ -117,7 +117,7 @@ describe("Reader", () => {
     expect(result.value[0]!.slug).toBe("a");
   });
 
-  test("search returns ranked results", () => {
+  test("search returns ranked results", async () => {
     storage.store(
       makeArtifact({
         slug: "order",
@@ -126,7 +126,7 @@ describe("Reader", () => {
       })
     );
 
-    const result = reader.search("purchase");
+    const result = await reader.search("purchase");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.length).toBeGreaterThanOrEqual(1);
@@ -149,7 +149,7 @@ describe("Reader", () => {
     expect(result.value!.aliases).toEqual(["purchase-order", "PO"]);
   });
 
-  test("search results include summary", () => {
+  test("search results include summary", async () => {
     storage.store(
       makeArtifact({
         slug: "order",
@@ -159,7 +159,7 @@ describe("Reader", () => {
       })
     );
 
-    const result = reader.search("order");
+    const result = await reader.search("order");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.length).toBeGreaterThanOrEqual(1);

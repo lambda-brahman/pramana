@@ -127,7 +127,7 @@ describe("SqlitePlugin", () => {
     expect(inverse.value[0]!.type).toBe("depends-on");
   });
 
-  test("FTS search", () => {
+  test("FTS search", async () => {
     db.store(
       makeArtifact({
         slug: "order",
@@ -143,7 +143,7 @@ describe("SqlitePlugin", () => {
       })
     );
 
-    const results = db.search("purchase intent");
+    const results = await db.search("purchase intent");
     expect(results.ok).toBe(true);
     if (!results.ok) return;
     expect(results.value.length).toBeGreaterThanOrEqual(1);
@@ -175,7 +175,7 @@ describe("SqlitePlugin", () => {
     expect(got.value!.aliases).toBeUndefined();
   });
 
-  test("FTS search matches aliases", () => {
+  test("FTS search matches aliases", async () => {
     db.store(
       makeArtifact({
         slug: "order",
@@ -186,14 +186,14 @@ describe("SqlitePlugin", () => {
     );
 
     // "procurement" only appears in aliases, not in title/content
-    const results = db.search("procurement");
+    const results = await db.search("procurement");
     expect(results.ok).toBe(true);
     if (!results.ok) return;
     expect(results.value.length).toBeGreaterThanOrEqual(1);
     expect(results.value[0]!.slug).toBe("order");
   });
 
-  test("FTS search matches summary", () => {
+  test("FTS search matches summary", async () => {
     db.store(
       makeArtifact({
         slug: "order",
@@ -203,14 +203,14 @@ describe("SqlitePlugin", () => {
       })
     );
 
-    const results = db.search("intent purchase");
+    const results = await db.search("intent purchase");
     expect(results.ok).toBe(true);
     if (!results.ok) return;
     expect(results.value.length).toBeGreaterThanOrEqual(1);
     expect(results.value[0]!.slug).toBe("order");
   });
 
-  test("search results include summary", () => {
+  test("search results include summary", async () => {
     db.store(
       makeArtifact({
         slug: "order",
@@ -220,10 +220,54 @@ describe("SqlitePlugin", () => {
       })
     );
 
-    const results = db.search("order");
+    const results = await db.search("order");
     expect(results.ok).toBe(true);
     if (!results.ok) return;
     expect(results.value[0]!.summary).toBe("A purchase intent");
+  });
+
+  test("search uses OR semantics for multi-word queries", async () => {
+    db.store(
+      makeArtifact({
+        slug: "order",
+        title: "Order",
+        content: "An Order represents a customer's intent to purchase.",
+      })
+    );
+    db.store(
+      makeArtifact({
+        slug: "customer",
+        title: "Customer",
+        content: "A registered user who shops online.",
+      })
+    );
+
+    // "purchase intent" with AND would only match order
+    // With OR, both should potentially match but "order" has both terms
+    const results = await db.search("how does purchase work");
+    expect(results.ok).toBe(true);
+    if (!results.ok) return;
+    // Stop words stripped, OR query: "purchase OR work"
+    // "order" matches "purchase", so it should appear
+    expect(results.value.length).toBeGreaterThanOrEqual(1);
+    expect(results.value.some((r) => r.slug === "order")).toBe(true);
+  });
+
+  test("search without embeddings falls back to FTS-only", async () => {
+    db.store(
+      makeArtifact({
+        slug: "order",
+        title: "Order",
+        content: "An Order represents a customer's intent to purchase.",
+      })
+    );
+
+    // No buildEmbeddings called — should still return FTS results
+    const results = await db.search("purchase");
+    expect(results.ok).toBe(true);
+    if (!results.ok) return;
+    expect(results.value.length).toBeGreaterThanOrEqual(1);
+    expect(results.value[0]!.slug).toBe("order");
   });
 
   test("upsert replaces existing artifact", () => {
