@@ -1,0 +1,850 @@
+{
+  "corpus": {
+    "dir": "/Users/sarath.soman/Dev/pramana-cli-prama",
+    "artifacts": 13,
+    "buildTimeMs": 13.82991600000014
+  },
+  "model": {
+    "id": "Xenova/all-MiniLM-L6-v2",
+    "loadTimeMs": 2044.569583,
+    "embedTimeMs": 593.4985410000004,
+    "embedPerArtifactMs": 45.653733923076956
+  },
+  "memory": {
+    "rss": 451739648,
+    "heapUsed": 28858882
+  },
+  "latency": {
+    "fts5": {
+      "p50": 0.19708300000002055,
+      "p95": 0.6638749999997344,
+      "p99": 0.679834000000028
+    },
+    "semantic": {
+      "p50": 1.7199999999998,
+      "p95": 2.563832999999704,
+      "p99": 2.9359999999996944
+    }
+  },
+  "aggregates": {
+    "exact": {
+      "fts5": {
+        "meanP3": 0.6166666666666667,
+        "meanP5": 0.585,
+        "meanR5": 0.7166666666666666,
+        "mrr": 0.9
+      },
+      "semantic": {
+        "meanP3": 0.33333333333333337,
+        "meanP5": 0.25999999999999995,
+        "meanR5": 0.7833333333333333,
+        "mrr": 0.7616666666666667
+      }
+    },
+    "synonym": {
+      "fts5": {
+        "meanP3": 0.05,
+        "meanP5": 0.05,
+        "meanR5": 0.1,
+        "mrr": 0.05
+      },
+      "semantic": {
+        "meanP3": 0.4,
+        "meanP5": 0.26000000000000006,
+        "meanR5": 0.9666666666666666,
+        "mrr": 0.82
+      }
+    },
+    "concept": {
+      "fts5": {
+        "meanP3": 0,
+        "meanP5": 0,
+        "meanR5": 0,
+        "mrr": 0
+      },
+      "semantic": {
+        "meanP3": 0.4,
+        "meanP5": 0.32,
+        "meanR5": 0.6083333333333334,
+        "mrr": 0.7176190476190477
+      }
+    },
+    "all": {
+      "fts5": {
+        "meanP3": 0.22222222222222224,
+        "meanP5": 0.21166666666666664,
+        "meanR5": 0.2722222222222222,
+        "mrr": 0.31666666666666665
+      },
+      "semantic": {
+        "meanP3": 0.3777777777777778,
+        "meanP5": 0.2800000000000001,
+        "meanR5": 0.7861111111111111,
+        "mrr": 0.7664285714285713
+      }
+    }
+  },
+  "perQuery": [
+    {
+      "query": "StoragePlugin",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "programming-model",
+          "pramana",
+          "storage",
+          "cli"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 0.6666666666666666,
+        "rr": 1,
+        "ms": 0.679834000000028
+      },
+      "semantic": {
+        "top5": [
+          "multi-tenant",
+          "cli",
+          "pramana",
+          "tui",
+          "programming-model"
+        ],
+        "p3": 0,
+        "r5": 0.3333333333333333,
+        "rr": 0.2,
+        "ms": 2.9359999999996944
+      }
+    },
+    {
+      "query": "FTS5 full text search",
+      "category": "exact",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.1914999999999054
+      },
+      "semantic": {
+        "top5": [
+          "storage",
+          "engine",
+          "pramana",
+          "claude-plugin",
+          "parser"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.8753330000004098
+      }
+    },
+    {
+      "query": "TenantManager",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "engine",
+          "cli",
+          "pramana",
+          "multi-tenant",
+          "data-source"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 0.6638749999997344
+      },
+      "semantic": {
+        "top5": [
+          "multi-tenant",
+          "claude-plugin",
+          "pramana",
+          "data-source",
+          "cli"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 0.5,
+        "rr": 1,
+        "ms": 1.6447499999999309
+      }
+    },
+    {
+      "query": "wikilink parser",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "parser"
+        ],
+        "p3": 1,
+        "r5": 0.5,
+        "rr": 1,
+        "ms": 0.2782910000000811
+      },
+      "semantic": {
+        "top5": [
+          "knowledge-artifact",
+          "parser",
+          "programming-model",
+          "pramana",
+          "storage"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.965375000000222
+      }
+    },
+    {
+      "query": "Result type error handling",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "result-type",
+          "pramana",
+          "tui",
+          "engine"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 0.5,
+        "rr": 1,
+        "ms": 0.6570410000003903
+      },
+      "semantic": {
+        "top5": [
+          "result-type",
+          "programming-model",
+          "knowledge-artifact",
+          "pramana",
+          "api"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.7246660000000702
+      }
+    },
+    {
+      "query": "Builder build",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "engine",
+          "pramana",
+          "cli",
+          "multi-tenant",
+          "programming-model"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 0.53316599999971
+      },
+      "semantic": {
+        "top5": [
+          "claude-plugin",
+          "multi-tenant",
+          "cli",
+          "pramana",
+          "programming-model"
+        ],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0.16666666666666666,
+        "ms": 1.4792499999998654
+      }
+    },
+    {
+      "query": "ink React terminal",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "tui",
+          "pramana"
+        ],
+        "p3": 0.5,
+        "r5": 1,
+        "rr": 1,
+        "ms": 0.4040420000001177
+      },
+      "semantic": {
+        "top5": [
+          "tui",
+          "cli",
+          "pramana",
+          "multi-tenant",
+          "claude-plugin"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.45699999999988
+      }
+    },
+    {
+      "query": "CORS JSON API",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "api"
+        ],
+        "p3": 1,
+        "r5": 1,
+        "rr": 1,
+        "ms": 0.26554200000009587
+      },
+      "semantic": {
+        "top5": [
+          "api",
+          "data-source",
+          "pramana",
+          "cli",
+          "parser"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.6372919999998885
+      }
+    },
+    {
+      "query": "Zod schema validation",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "knowledge-artifact"
+        ],
+        "p3": 1,
+        "r5": 0.5,
+        "rr": 1,
+        "ms": 0.27254199999970297
+      },
+      "semantic": {
+        "top5": [
+          "knowledge-artifact",
+          "parser",
+          "programming-model",
+          "storage",
+          "pramana"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.6323750000001382
+      }
+    },
+    {
+      "query": "slug frontmatter",
+      "category": "exact",
+      "fts5": {
+        "top5": [
+          "parser",
+          "knowledge-artifact"
+        ],
+        "p3": 1,
+        "r5": 1,
+        "rr": 1,
+        "ms": 0.2980840000000171
+      },
+      "semantic": {
+        "top5": [
+          "multi-tenant",
+          "programming-model",
+          "engine",
+          "parser",
+          "knowledge-artifact"
+        ],
+        "p3": 0,
+        "r5": 1,
+        "rr": 0.25,
+        "ms": 2.4508749999999964
+      }
+    },
+    {
+      "query": "data model core type",
+      "category": "synonym",
+      "fts5": {
+        "top5": [
+          "pramana"
+        ],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.37445800000023155
+      },
+      "semantic": {
+        "top5": [
+          "programming-model",
+          "knowledge-artifact",
+          "result-type",
+          "storage",
+          "pramana"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.5489999999999782
+      }
+    },
+    {
+      "query": "markdown to structured data pipeline",
+      "category": "synonym",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.15933399999994435
+      },
+      "semantic": {
+        "top5": [
+          "parser",
+          "programming-model",
+          "pramana",
+          "knowledge-artifact",
+          "storage"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 0.6666666666666666,
+        "rr": 1,
+        "ms": 1.6668749999998909
+      }
+    },
+    {
+      "query": "database backend persistence layer",
+      "category": "synonym",
+      "fts5": {
+        "top5": [
+          "programming-model"
+        ],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.3257499999999709
+      },
+      "semantic": {
+        "top5": [
+          "pramana",
+          "multi-tenant",
+          "programming-model",
+          "data-source",
+          "storage"
+        ],
+        "p3": 0,
+        "r5": 1,
+        "rr": 0.2,
+        "ms": 1.682332999999744
+      }
+    },
+    {
+      "query": "command line tool interface",
+      "category": "synonym",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.1396669999999176
+      },
+      "semantic": {
+        "top5": [
+          "claude-plugin",
+          "cli",
+          "programming-model",
+          "pramana",
+          "parser"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 0.5,
+        "ms": 1.6066249999998945
+      }
+    },
+    {
+      "query": "web server HTTP endpoints",
+      "category": "synonym",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.13937499999974534
+      },
+      "semantic": {
+        "top5": [
+          "api",
+          "data-source",
+          "pramana",
+          "parser",
+          "programming-model"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.7199999999998
+      }
+    },
+    {
+      "query": "namespace isolation multiple knowledge bases",
+      "category": "synonym",
+      "fts5": {
+        "top5": [
+          "pramana",
+          "multi-tenant"
+        ],
+        "p3": 0.5,
+        "r5": 1,
+        "rr": 0.5,
+        "ms": 0.45166699999981574
+      },
+      "semantic": {
+        "top5": [
+          "knowledge-artifact",
+          "multi-tenant",
+          "pramana",
+          "programming-model",
+          "storage"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 0.5,
+        "ms": 1.880750000000262
+      }
+    },
+    {
+      "query": "graph walk relationship following",
+      "category": "synonym",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.14920799999981682
+      },
+      "semantic": {
+        "top5": [
+          "engine",
+          "programming-model",
+          "storage",
+          "pramana",
+          "knowledge-artifact"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.5747920000003433
+      }
+    },
+    {
+      "query": "terminal user interface interactive display",
+      "category": "synonym",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.1517919999996593
+      },
+      "semantic": {
+        "top5": [
+          "tui",
+          "cli",
+          "claude-plugin",
+          "pramana",
+          "programming-model"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.6660000000001673
+      }
+    },
+    {
+      "query": "AI assistant integration",
+      "category": "synonym",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.10529200000019046
+      },
+      "semantic": {
+        "top5": [
+          "claude-plugin",
+          "pramana",
+          "parser",
+          "cli",
+          "tui"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.4577500000000327
+      }
+    },
+    {
+      "query": "transport abstraction network vs local",
+      "category": "synonym",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.14562500000010914
+      },
+      "semantic": {
+        "top5": [
+          "data-source",
+          "result-type",
+          "tui",
+          "multi-tenant",
+          "pramana"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.7067090000000462
+      }
+    },
+    {
+      "query": "how does search work",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.13429200000018682
+      },
+      "semantic": {
+        "top5": [
+          "engine",
+          "storage",
+          "programming-model",
+          "data-source",
+          "pramana"
+        ],
+        "p3": 1,
+        "r5": 1,
+        "rr": 1,
+        "ms": 2.563832999999704
+      }
+    },
+    {
+      "query": "how are markdown files converted to queryable knowledge",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.20120800000040617
+      },
+      "semantic": {
+        "top5": [
+          "pramana",
+          "storage",
+          "parser",
+          "programming-model",
+          "knowledge-artifact"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 0.6666666666666666,
+        "rr": 1,
+        "ms": 2.200166000000081
+      }
+    },
+    {
+      "query": "what guarantees does the system provide",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.16533299999991868
+      },
+      "semantic": {
+        "top5": [
+          "result-type",
+          "data-source",
+          "multi-tenant",
+          "knowledge-artifact",
+          "tui"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 0.5,
+        "rr": 1,
+        "ms": 1.7206249999999272
+      }
+    },
+    {
+      "query": "how do I add a new knowledge base",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.1579580000002352
+      },
+      "semantic": {
+        "top5": [
+          "knowledge-artifact",
+          "pramana",
+          "multi-tenant",
+          "claude-plugin",
+          "storage"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 0.3333333333333333,
+        "rr": 0.3333333333333333,
+        "ms": 1.96225000000004
+      }
+    },
+    {
+      "query": "what happens when an artifact is stored",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.1685419999998885
+      },
+      "semantic": {
+        "top5": [
+          "data-source",
+          "programming-model",
+          "pramana",
+          "knowledge-artifact",
+          "multi-tenant"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 0.3333333333333333,
+        "rr": 0.5,
+        "ms": 1.8986249999998108
+      }
+    },
+    {
+      "query": "how does the system handle errors and failures",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.21262500000011642
+      },
+      "semantic": {
+        "top5": [
+          "result-type",
+          "pramana",
+          "parser",
+          "data-source",
+          "programming-model"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.9654169999998885
+      }
+    },
+    {
+      "query": "how can I browse artifacts visually",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.18920900000011898
+      },
+      "semantic": {
+        "top5": [
+          "storage",
+          "knowledge-artifact",
+          "engine",
+          "data-source",
+          "programming-model"
+        ],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0.14285714285714285,
+        "ms": 1.7585829999998168
+      }
+    },
+    {
+      "query": "how does Claude access domain knowledge",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.1506670000003396
+      },
+      "semantic": {
+        "top5": [
+          "claude-plugin",
+          "multi-tenant",
+          "knowledge-artifact",
+          "pramana",
+          "tui"
+        ],
+        "p3": 0.3333333333333333,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.5109999999999673
+      }
+    },
+    {
+      "query": "what is the relationship between artifacts",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.17108300000018062
+      },
+      "semantic": {
+        "top5": [
+          "knowledge-artifact",
+          "storage",
+          "programming-model",
+          "data-source",
+          "engine"
+        ],
+        "p3": 0.6666666666666666,
+        "r5": 1,
+        "rr": 1,
+        "ms": 1.4874170000002778
+      }
+    },
+    {
+      "query": "how does the system start up and serve requests",
+      "category": "concept",
+      "fts5": {
+        "top5": [],
+        "p3": 0,
+        "r5": 0,
+        "rr": 0,
+        "ms": 0.19708300000002055
+      },
+      "semantic": {
+        "top5": [
+          "data-source",
+          "claude-plugin",
+          "tui",
+          "multi-tenant",
+          "cli"
+        ],
+        "p3": 0,
+        "r5": 0.25,
+        "rr": 0.2,
+        "ms": 2.0732499999999163
+      }
+    }
+  ]
+}
