@@ -5,8 +5,8 @@ export type QueryEntry = {
   partiallyRelevant?: string[];
 };
 
-export const corpusPath = "/Users/sarath.soman/Dev/pramana-agent-poc/knowledge/";
-export const corpusName = "user-management";
+export const corpusPath = `${import.meta.dir}/../fixtures/corpus-b/`;
+export const corpusName = "corpus-b";
 export const corpusSlugs = [
   "create-user", "delete-user", "get-user", "list-users",
   "update-user-role", "validate-email", "check-active-sessions",

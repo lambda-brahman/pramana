@@ -5,8 +5,8 @@ export type QueryEntry = {
   partiallyRelevant?: string[];
 };
 
-export const corpusPath = "/Users/sarath.soman/Dev/pramana-cli-prama/";
-export const corpusName = "pramana-software";
+export const corpusPath = `${import.meta.dir}/../fixtures/corpus-a/`;
+export const corpusName = "corpus-a";
 export const corpusSlugs = [
   "api", "claude-plugin", "cli", "data-source", "engine",
   "knowledge-artifact", "multi-tenant", "parser", "pramana",

@@ -1,5 +1,5 @@
 {
-  "date": "2026-03-08T18:59:58.179Z",
+  "date": "2026-03-08T19:20:46.233Z",
   "config": {
     "iterations": 3,
     "topK": 5,
@@ -15,25 +15,22 @@
     ],
     "corpora": [
       {
-        "name": "pramana-software",
-        "path": "/Users/sarath.soman/Dev/pramana-cli-prama/",
+        "name": "corpus-a",
         "queryCount": 30
       },
       {
-        "name": "user-management",
-        "path": "/Users/sarath.soman/Dev/pramana-agent-poc/knowledge/",
+        "name": "corpus-b",
         "queryCount": 30
       },
       {
-        "name": "prolog-semantics",
-        "path": "/Users/sarath.soman/Dev/language-semantics-exp/pramana/",
+        "name": "corpus-c",
         "queryCount": 30
       }
     ]
   },
   "results": [
     {
-      "corpus": "pramana-software",
+      "corpus": "corpus-a",
       "arms": [
         {
           "arm": "fts5-raw",
@@ -2102,7 +2099,7 @@
       ]
     },
     {
-      "corpus": "user-management",
+      "corpus": "corpus-b",
       "arms": [
         {
           "arm": "fts5-raw",
@@ -4171,17 +4168,17 @@
       ]
     },
     {
-      "corpus": "prolog-semantics",
+      "corpus": "corpus-c",
       "arms": [
         {
           "arm": "fts5-raw",
           "aggregate": {
-            "p1": 0.7,
+            "p1": 0.6666666666666666,
             "p3": 0.3111111111111111,
             "p5": 0.20666666666666675,
             "r5": 0.4344444444444445,
-            "mrr": 0.7,
-            "ndcg5": 0.5433930257281411,
+            "mrr": 0.6833333333333333,
+            "ndcg5": 0.5355344389721881,
             "failureRate": 0.3
           },
           "perQuery": [
@@ -4298,12 +4295,12 @@
             {
               "query": "REPL read eval print loop consult query",
               "category": "exact",
-              "p1": 1,
+              "p1": 0,
               "p3": 0.3333333333333333,
               "p5": 0.2,
               "r5": 0.3333333333333333,
-              "mrr": 1,
-              "ndcg5": 0.6387878864795979,
+              "mrr": 0.5,
+              "ndcg5": 0.4030302838010049,
               "hasRelevantInTop5": true
             },
             {
@@ -4520,12 +4517,12 @@
         {
           "arm": "fts5-or",
           "aggregate": {
-            "p1": 0.7666666666666667,
+            "p1": 0.7333333333333333,
             "p3": 0.4888888888888889,
             "p5": 0.3600000000000001,
             "r5": 0.7216666666666666,
-            "mrr": 0.8,
-            "ndcg5": 0.7149324291950088,
+            "mrr": 0.7833333333333333,
+            "ndcg5": 0.7087326952127277,
             "failureRate": 0.16666666666666666
           },
           "perQuery": [
@@ -4559,7 +4556,7 @@
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.9502344167898356,
+              "ndcg5": 1,
               "hasRelevantInTop5": true
             },
             {
@@ -4642,12 +4639,12 @@
             {
               "query": "REPL read eval print loop consult query",
               "category": "exact",
-              "p1": 1,
+              "p1": 0,
               "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 0.6666666666666666,
-              "mrr": 1,
-              "ndcg5": 0.7984848580994974,
+              "mrr": 0.5,
+              "ndcg5": 0.5627272554209044,
               "hasRelevantInTop5": true
             },
             {
@@ -4865,11 +4862,11 @@
           "arm": "gte-small",
           "aggregate": {
             "p1": 0.8333333333333334,
-            "p3": 0.4888888888888889,
-            "p5": 0.3866666666666667,
-            "r5": 0.7894444444444445,
-            "mrr": 0.9011111111111111,
-            "ndcg5": 0.7631101791920422,
+            "p3": 0.522222222222222,
+            "p5": 0.4000000000000001,
+            "r5": 0.8172222222222222,
+            "mrr": 0.9027777777777779,
+            "ndcg5": 0.7792289683927786,
             "failureRate": 0
           },
           "perQuery": [
@@ -4899,11 +4896,11 @@
               "query": "substitution domain range idempotent monoid",
               "category": "exact",
               "p1": 1,
-              "p3": 0.3333333333333333,
+              "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.9238850086262381,
+              "ndcg5": 0.9502344167898356,
               "hasRelevantInTop5": true
             },
             {
@@ -4932,11 +4929,11 @@
               "query": "unify MGU most general unifier Martelli-Montanari",
               "category": "exact",
               "p1": 1,
-              "p3": 0.3333333333333333,
+              "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.7074887171046738,
+              "ndcg5": 0.7601875334318685,
               "hasRelevantInTop5": true
             },
             {
@@ -4947,7 +4944,7 @@
               "p5": 0.4,
               "r5": 0.6666666666666666,
               "mrr": 1,
-              "ndcg5": 0.762346330035624,
+              "ndcg5": 0.7763433706236033,
               "hasRelevantInTop5": true
             },
             {
@@ -4988,10 +4985,10 @@
               "category": "exact",
               "p1": 1,
               "p3": 0.6666666666666666,
-              "p5": 0.4,
-              "r5": 0.6666666666666666,
+              "p5": 0.6,
+              "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.7984848580994974,
+              "ndcg5": 0.9638614719361266,
               "hasRelevantInTop5": true
             },
             {
@@ -5023,8 +5020,8 @@
               "p3": 0,
               "p5": 0.2,
               "r5": 1,
-              "mrr": 0.2,
-              "ndcg5": 0.38685280723454163,
+              "mrr": 0.25,
+              "ndcg5": 0.43067655807339306,
               "hasRelevantInTop5": true
             },
             {
@@ -5120,10 +5117,10 @@
               "category": "synonym",
               "p1": 1,
               "p3": 0.3333333333333333,
-              "p5": 0.2,
-              "r5": 0.5,
+              "p5": 0.4,
+              "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.7601875334318685,
+              "ndcg5": 0.9072278740982787,
               "hasRelevantInTop5": true
             },
             {
@@ -5174,11 +5171,11 @@
               "query": "how is source code converted into structured data for the interpreter",
               "category": "concept",
               "p1": 1,
-              "p3": 0.3333333333333333,
+              "p3": 0.6666666666666666,
               "p5": 0.6,
               "r5": 0.6,
               "mrr": 1,
-              "ndcg5": 0.6997401316624849,
+              "ndcg5": 0.7340178372639096,
               "hasRelevantInTop5": true
             },
             {
@@ -5208,12 +5205,12 @@
         {
           "arm": "bge-small",
           "aggregate": {
-            "p1": 0.7666666666666667,
+            "p1": 0.8,
             "p3": 0.47777777777777775,
-            "p5": 0.3600000000000001,
-            "r5": 0.7522222222222221,
-            "mrr": 0.8622222222222222,
-            "ndcg5": 0.7250569850686525,
+            "p5": 0.38666666666666677,
+            "r5": 0.7977777777777778,
+            "mrr": 0.8805555555555556,
+            "ndcg5": 0.7647875856662937,
             "failureRate": 0
           },
           "perQuery": [
@@ -5247,7 +5244,7 @@
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.9072278740982787,
+              "ndcg5": 0.9238850086262381,
               "hasRelevantInTop5": true
             },
             {
@@ -5277,10 +5274,10 @@
               "category": "exact",
               "p1": 0,
               "p3": 0,
-              "p5": 0.2,
-              "r5": 0.5,
-              "mrr": 0.2,
-              "ndcg5": 0.14704034066641014,
+              "p5": 0.4,
+              "r5": 1,
+              "mrr": 0.25,
+              "ndcg5": 0.45777815652719006,
               "hasRelevantInTop5": true
             },
             {
@@ -5332,10 +5329,10 @@
               "category": "exact",
               "p1": 1,
               "p3": 0.6666666666666666,
-              "p5": 0.4,
-              "r5": 0.6666666666666666,
+              "p5": 0.6,
+              "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.7984848580994974,
+              "ndcg5": 0.9638614719361266,
               "hasRelevantInTop5": true
             },
             {
@@ -5363,12 +5360,12 @@
             {
               "query": "list syntax dot cons nil head tail",
               "category": "exact",
-              "p1": 0,
+              "p1": 1,
               "p3": 0.3333333333333333,
               "p5": 0.2,
               "r5": 1,
-              "mrr": 0.5,
-              "ndcg5": 0.6309297535714575,
+              "mrr": 1,
+              "ndcg5": 1,
               "hasRelevantInTop5": true
             },
             {
@@ -5423,7 +5420,7 @@
               "p5": 0.4,
               "r5": 0.6666666666666666,
               "mrr": 1,
-              "ndcg5": 0.5665108303518511,
+              "ndcg5": 0.5945049115278096,
               "hasRelevantInTop5": true
             },
             {
@@ -5519,10 +5516,10 @@
               "category": "concept",
               "p1": 1,
               "p3": 0.3333333333333333,
-              "p5": 0.4,
-              "r5": 0.4,
+              "p5": 0.6,
+              "r5": 0.6,
               "mrr": 1,
-              "ndcg5": 0.5212164491191416,
+              "ndcg5": 0.6997401316624849,
               "hasRelevantInTop5": true
             },
             {
@@ -5541,10 +5538,10 @@
               "category": "concept",
               "p1": 1,
               "p3": 0.3333333333333333,
-              "p5": 0.2,
-              "r5": 0.3333333333333333,
+              "p5": 0.4,
+              "r5": 0.6666666666666666,
               "mrr": 1,
-              "ndcg5": 0.6387878864795979,
+              "ndcg5": 0.762346330035624,
               "hasRelevantInTop5": true
             }
           ]
@@ -5552,12 +5549,12 @@
         {
           "arm": "bge-base",
           "aggregate": {
-            "p1": 0.7,
-            "p3": 0.4777777777777779,
-            "p5": 0.3600000000000001,
-            "r5": 0.7299999999999998,
-            "mrr": 0.8194444444444445,
-            "ndcg5": 0.7120028880329878,
+            "p1": 0.8333333333333334,
+            "p3": 0.5222222222222224,
+            "p5": 0.3866666666666667,
+            "r5": 0.7799999999999998,
+            "mrr": 0.8944444444444444,
+            "ndcg5": 0.7780010201007366,
             "failureRate": 0.03333333333333333
           },
           "perQuery": [
@@ -5565,11 +5562,11 @@
               "query": "term functor arity compound atom variable",
               "category": "exact",
               "p1": 1,
-              "p3": 0.3333333333333333,
+              "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 0.6666666666666666,
               "mrr": 1,
-              "ndcg5": 0.7763433706236033,
+              "ndcg5": 0.7984848580994974,
               "hasRelevantInTop5": true
             },
             {
@@ -5586,12 +5583,12 @@
             {
               "query": "substitution domain range idempotent monoid",
               "category": "exact",
-              "p1": 0,
+              "p1": 1,
               "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 1,
-              "mrr": 0.5,
-              "ndcg5": 0.66967181649423,
+              "mrr": 1,
+              "ndcg5": 1,
               "hasRelevantInTop5": true
             },
             {
@@ -5620,22 +5617,22 @@
               "query": "unify MGU most general unifier Martelli-Montanari",
               "category": "exact",
               "p1": 1,
-              "p3": 0.3333333333333333,
+              "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.9238850086262381,
+              "ndcg5": 0.9502344167898356,
               "hasRelevantInTop5": true
             },
             {
               "query": "knowledge base predicate indicator functor arity lookup",
               "category": "exact",
-              "p1": 0,
+              "p1": 1,
               "p3": 0.3333333333333333,
-              "p5": 0.2,
-              "r5": 0.3333333333333333,
-              "mrr": 0.5,
-              "ndcg5": 0.4030302838010049,
+              "p5": 0.4,
+              "r5": 0.6666666666666666,
+              "mrr": 1,
+              "ndcg5": 0.762346330035624,
               "hasRelevantInTop5": true
             },
             {
@@ -5676,10 +5673,10 @@
               "category": "exact",
               "p1": 1,
               "p3": 0.6666666666666666,
-              "p5": 0.4,
-              "r5": 0.6666666666666666,
+              "p5": 0.6,
+              "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.7984848580994974,
+              "ndcg5": 0.9638614719361266,
               "hasRelevantInTop5": true
             },
             {
@@ -5690,7 +5687,7 @@
               "p5": 0.4,
               "r5": 0.6666666666666666,
               "mrr": 1,
-              "ndcg5": 0.762346330035624,
+              "ndcg5": 0.7763433706236033,
               "hasRelevantInTop5": true
             },
             {
@@ -5701,7 +5698,7 @@
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.9502344167898356,
+              "ndcg5": 1,
               "hasRelevantInTop5": true
             },
             {
@@ -5733,8 +5730,8 @@
               "p3": 0.3333333333333333,
               "p5": 0.2,
               "r5": 1,
-              "mrr": 0.3333333333333333,
-              "ndcg5": 0.5,
+              "mrr": 0.5,
+              "ndcg5": 0.6309297535714575,
               "hasRelevantInTop5": true
             },
             {
@@ -5756,7 +5753,7 @@
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.9072278740982787,
+              "ndcg5": 0.9238850086262381,
               "hasRelevantInTop5": true
             },
             {
@@ -5764,10 +5761,10 @@
               "category": "synonym",
               "p1": 1,
               "p3": 0.3333333333333333,
-              "p5": 0.4,
-              "r5": 0.6666666666666666,
+              "p5": 0.6,
+              "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.762346330035624,
+              "ndcg5": 0.8999018141796293,
               "hasRelevantInTop5": true
             },
             {
@@ -5778,18 +5775,18 @@
               "p5": 0.4,
               "r5": 0.6666666666666666,
               "mrr": 1,
-              "ndcg5": 0.762346330035624,
+              "ndcg5": 0.7763433706236033,
               "hasRelevantInTop5": true
             },
             {
               "query": "branching alternatives search tree depth-first",
               "category": "synonym",
               "p1": 0,
-              "p3": 0,
+              "p3": 0.3333333333333333,
               "p5": 0.4,
               "r5": 1,
-              "mrr": 0.25,
-              "ndcg5": 0.4744352910551497,
+              "mrr": 0.3333333333333333,
+              "ndcg5": 0.543791241910304,
               "hasRelevantInTop5": true
             },
             {
@@ -5808,21 +5805,21 @@
               "category": "synonym",
               "p1": 1,
               "p3": 0.3333333333333333,
-              "p5": 0.2,
-              "r5": 0.5,
+              "p5": 0.4,
+              "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.7601875334318685,
+              "ndcg5": 0.9072278740982787,
               "hasRelevantInTop5": true
             },
             {
               "query": "interactive prompt user session answer display",
               "category": "synonym",
               "p1": 0,
-              "p3": 0.3333333333333333,
+              "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 1,
               "mrr": 0.5,
-              "ndcg5": 0.6433224083306327,
+              "ndcg5": 0.66967181649423,
               "hasRelevantInTop5": true
             },
             {
@@ -5833,7 +5830,7 @@
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.9072278740982787,
+              "ndcg5": 0.9238850086262381,
               "hasRelevantInTop5": true
             },
             {
@@ -5861,12 +5858,12 @@
             {
               "query": "how is source code converted into structured data for the interpreter",
               "category": "concept",
-              "p1": 0,
+              "p1": 1,
               "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 0.4,
-              "mrr": 0.5,
-              "ndcg5": 0.49392169351461673,
+              "mrr": 1,
+              "ndcg5": 0.71229144280931,
               "hasRelevantInTop5": true
             },
             {
@@ -5883,12 +5880,12 @@
             {
               "query": "what is the universal data representation in logic programming",
               "category": "concept",
-              "p1": 0,
+              "p1": 1,
               "p3": 0.3333333333333333,
               "p5": 0.2,
               "r5": 0.3333333333333333,
-              "mrr": 0.5,
-              "ndcg5": 0.4030302838010049,
+              "mrr": 1,
+              "ndcg5": 0.6387878864795979,
               "hasRelevantInTop5": true
             }
           ]
@@ -5897,11 +5894,11 @@
           "arm": "hybrid",
           "aggregate": {
             "p1": 0.9,
-            "p3": 0.5777777777777777,
+            "p3": 0.5888888888888889,
             "p5": 0.4333333333333335,
             "r5": 0.8811111111111111,
             "mrr": 0.9444444444444444,
-            "ndcg5": 0.8588556130233703,
+            "ndcg5": 0.862271093007949,
             "failureRate": 0
           },
           "perQuery": [
@@ -5935,7 +5932,7 @@
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.9502344167898356,
+              "ndcg5": 1,
               "hasRelevantInTop5": true
             },
             {
@@ -5964,11 +5961,11 @@
               "query": "unify MGU most general unifier Martelli-Montanari",
               "category": "exact",
               "p1": 1,
-              "p3": 0.3333333333333333,
+              "p3": 0.6666666666666666,
               "p5": 0.4,
               "r5": 1,
               "mrr": 1,
-              "ndcg5": 0.7074887171046738,
+              "ndcg5": 0.7601875334318685,
               "hasRelevantInTop5": true
             },
             {
@@ -6243,27 +6240,27 @@
   "modelStats": [
     {
       "modelId": "Xenova/gte-small",
-      "loadTimeMs": 118.55189549999886,
-      "rssBeforeMB": 1493.609375,
-      "rssAfterMB": 1722.4375,
-      "embedTimePerArtifactMs": 23.852206730769186,
-      "queryLatencyMs": 3.9904569333333715
+      "loadTimeMs": 133.76864599999953,
+      "rssBeforeMB": 2113.734375,
+      "rssAfterMB": 2238.5625,
+      "embedTimePerArtifactMs": 23.73062657692313,
+      "queryLatencyMs": 3.4881576499999936
     },
     {
       "modelId": "Xenova/bge-small-en-v1.5",
-      "loadTimeMs": 179.8823539999994,
-      "rssBeforeMB": 1744.46875,
-      "rssAfterMB": 1368.359375,
-      "embedTimePerArtifactMs": 24.93671469230783,
-      "queryLatencyMs": 5.20344514999997
+      "loadTimeMs": 126.25774999999885,
+      "rssBeforeMB": 2269.25,
+      "rssAfterMB": 2360.671875,
+      "embedTimePerArtifactMs": 25.687370230769233,
+      "queryLatencyMs": 4.679658333333373
     },
     {
       "modelId": "Xenova/bge-base-en-v1.5",
-      "loadTimeMs": 489.51822899999934,
-      "rssBeforeMB": 1245.265625,
-      "rssAfterMB": 1217.59375,
-      "embedTimePerArtifactMs": 73.02025965384621,
-      "queryLatencyMs": 12.469897900000069
+      "loadTimeMs": 360.13518700000077,
+      "rssBeforeMB": 2395.0625,
+      "rssAfterMB": 2552.53125,
+      "embedTimePerArtifactMs": 75.37124999999993,
+      "queryLatencyMs": 13.203435416666647
     }
   ]
 }

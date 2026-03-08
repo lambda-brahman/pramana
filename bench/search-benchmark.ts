@@ -6,11 +6,11 @@ import { raw, orQuery } from "./lib/fts5-preprocessor.ts";
 import { computePerQuery, aggregate, type QueryResult, type PerQueryMetrics, type AggregateMetrics } from "./lib/metrics.ts";
 import { bootstrapDifference } from "./lib/bootstrap.ts";
 import { rrf, type RankedResult } from "./lib/rrf.ts";
-import type { QueryEntry } from "./corpora/pramana-software.ts";
+import type { QueryEntry } from "./corpora/corpus-a.ts";
 
-import * as pramanaCorpus from "./corpora/pramana-software.ts";
-import * as userMgmtCorpus from "./corpora/user-management.ts";
-import * as prologCorpus from "./corpora/prolog-semantics.ts";
+import * as corpusA from "./corpora/corpus-a.ts";
+import * as corpusB from "./corpora/corpus-b.ts";
+import * as corpusC from "./corpora/corpus-c.ts";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -51,9 +51,9 @@ type IterationResult = {
 // ─── Constants ───────────────────────────────────────────────────────────
 
 const CORPORA: Corpus[] = [
-  { name: pramanaCorpus.corpusName, path: pramanaCorpus.corpusPath, slugs: pramanaCorpus.corpusSlugs, queries: pramanaCorpus.queries },
-  { name: userMgmtCorpus.corpusName, path: userMgmtCorpus.corpusPath, slugs: userMgmtCorpus.corpusSlugs, queries: userMgmtCorpus.queries },
-  { name: prologCorpus.corpusName, path: prologCorpus.corpusPath, slugs: prologCorpus.corpusSlugs, queries: prologCorpus.queries },
+  { name: corpusA.corpusName, path: corpusA.corpusPath, slugs: corpusA.corpusSlugs, queries: corpusA.queries },
+  { name: corpusB.corpusName, path: corpusB.corpusPath, slugs: corpusB.corpusSlugs, queries: corpusB.queries },
+  { name: corpusC.corpusName, path: corpusC.corpusPath, slugs: corpusC.corpusSlugs, queries: corpusC.queries },
 ];
 
 const EMBEDDING_MODELS = [
@@ -603,7 +603,7 @@ function generateJSON(result: IterationResult): object {
       topK: TOP_K,
       rrfKValues: RRF_K_VALUES,
       models: EMBEDDING_MODELS.map((m) => m.id),
-      corpora: CORPORA.map((c) => ({ name: c.name, path: c.path, queryCount: c.queries.length })),
+      corpora: CORPORA.map((c) => ({ name: c.name, queryCount: c.queries.length })),
     },
     results: result.corpusResults.map((cr) => ({
       corpus: cr.corpus,

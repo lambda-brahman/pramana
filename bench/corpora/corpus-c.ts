@@ -5,8 +5,8 @@ export type QueryEntry = {
   partiallyRelevant?: string[];
 };
 
-export const corpusPath = "/Users/sarath.soman/Dev/language-semantics-exp/pramana/";
-export const corpusName = "prolog-semantics";
+export const corpusPath = `${import.meta.dir}/../fixtures/corpus-c/`;
+export const corpusName = "corpus-c";
 export const corpusSlugs = [
   "term", "token-types", "substitution", "clause", "trail",
   "unification", "knowledge-base", "choice-point", "lexer",
