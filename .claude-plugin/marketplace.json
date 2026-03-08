@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Knowledge engineering tools for Claude",
-    "version": "0.8.1"
+    "version": "0.9.0"
   },
   "plugins": [
     {
       "name": "pramana",
       "source": "./plugin",
       "description": "Turn your expertise into a knowledge base Claude can search and build on",
-      "version": "0.8.1",
+      "version": "0.9.0",
       "author": {
         "name": "Lambda Brahman"
       },

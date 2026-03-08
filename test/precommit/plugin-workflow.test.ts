@@ -113,6 +113,24 @@ describe("Plugin structure validation", () => {
     expect(pluginJson.version).toBe(marketplace.plugins[0].version);
   });
 
+  test("all version files are in sync", () => {
+    const pkgJson = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "package.json"), "utf-8"));
+    const versionTs = fs.readFileSync(path.join(PROJECT_ROOT, "src/version.ts"), "utf-8");
+    const srcMatch = versionTs.match(/VERSION\s*=\s*"(\d+\.\d+\.\d+)"/);
+    expect(srcMatch).not.toBeNull();
+
+    const pkgVer = pkgJson.version;
+    const srcVer = srcMatch![1];
+    const plgVer = pluginJson.version;
+    const mktVer = marketplace.metadata.version;
+    const mktPlgVer = marketplace.plugins[0].version;
+
+    expect(srcVer).toBe(pkgVer);
+    expect(plgVer).toBe(pkgVer);
+    expect(mktVer).toBe(pkgVer);
+    expect(mktPlgVer).toBe(pkgVer);
+  });
+
   test("setup skill exists with valid frontmatter", () => {
     const skillPath = path.join(PROJECT_ROOT, "plugin/skills/setup/SKILL.md");
     expect(fs.existsSync(skillPath)).toBe(true);
