@@ -163,14 +163,13 @@ describe("Daemon mode", () => {
 });
 
 // ==========================================================================
-// Block 4: Embedder loading (catches native dep issues like #35)
+// Block 4: Embedder loading — WASM backend must work (#38)
 // ==========================================================================
 describe("Embedder loading", () => {
-  test("binary does not crash when embedder is exercised", async () => {
+  test("binary loads embedder without native dep errors", async () => {
     // Standalone search triggers the full pipeline including embedder.
-    // This test catches hard crashes (segfault, dlopen abort) — the binary
-    // must exit 0 even if the embedder falls back to FTS-only search.
-    // Once #35 is fixed, tighten this to assert no dlopen warnings in stderr.
+    // With the onnxruntime-node → onnxruntime-web build stub (#38),
+    // the WASM backend should load cleanly — no dlopen, no missing dylib.
     const proc = Bun.spawn(
       [PRAMANA_BIN, "search", "purchase", "--source", FIXTURES_DIR, "--standalone"],
       {
@@ -187,13 +186,8 @@ describe("Embedder loading", () => {
     expect(exitCode).toBe(0);
     expect(stdout.length).toBeGreaterThan(0);
 
-    // Track whether native deps load. If dlopen fails, the binary should
-    // degrade gracefully (FTS-only). Un-comment the strict check after #35.
-    if (stderr.includes("dlopen") || stderr.includes("libonnxruntime")) {
-      console.warn("ONNX native dep missing — embedder fell back to FTS-only (see #35)");
-    }
-    // TODO(#35): uncomment once native deps ship alongside binary
-    // expect(stderr).not.toContain("dlopen");
-    // expect(stderr).not.toContain("libonnxruntime");
+    // WASM backend should load without native dependency errors (#38)
+    expect(stderr).not.toContain("dlopen");
+    expect(stderr).not.toContain("libonnxruntime");
   }, 120_000); // 2 min timeout for potential model download
 });
