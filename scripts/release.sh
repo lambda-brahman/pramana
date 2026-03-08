@@ -46,9 +46,13 @@ if [ "$MODE" = "--tag" ]; then
 
   pkg_ver=$(grep '"version"' package.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
   src_ver=$(grep 'VERSION' src/version.ts | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+  plg_ver=$(grep '"version"' plugin/.claude-plugin/plugin.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+  mkt_ver=$(grep '"version"' .claude-plugin/marketplace.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
 
   [ "$pkg_ver" = "$VERSION" ] || die "package.json has $pkg_ver, expected $VERSION"
   [ "$src_ver" = "$VERSION" ] || die "src/version.ts has $src_ver, expected $VERSION"
+  [ "$plg_ver" = "$VERSION" ] || die "plugin.json has $plg_ver, expected $VERSION"
+  [ "$mkt_ver" = "$VERSION" ] || die "marketplace.json has $mkt_ver, expected $VERSION"
 
   if git tag --list "$TAG" | grep -q "$TAG"; then
     die "Tag $TAG already exists."
@@ -74,18 +78,20 @@ fi
 CURRENT=$(grep '"version"' package.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
 echo "Bumping $CURRENT -> $VERSION"
 
-# Update version files
+# Update all version files
 sed -i '' "s/\"version\": \"$CURRENT\"/\"version\": \"$VERSION\"/" package.json
-sed -i '' "s/VERSION = \"$CURRENT\"/VERSION = \"$VERSION\"/" src/version.ts
 
-# Handle version.ts being out of sync with package.json
 SRC_CURRENT=$(grep 'VERSION' src/version.ts | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
-if [ "$SRC_CURRENT" != "$VERSION" ]; then
-  sed -i '' "s/VERSION = \"$SRC_CURRENT\"/VERSION = \"$VERSION\"/" src/version.ts
-fi
+sed -i '' "s/VERSION = \"$SRC_CURRENT\"/VERSION = \"$VERSION\"/" src/version.ts
+
+PLG_CURRENT=$(grep '"version"' plugin/.claude-plugin/plugin.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+sed -i '' "s/\"version\": \"$PLG_CURRENT\"/\"version\": \"$VERSION\"/" plugin/.claude-plugin/plugin.json
+
+# marketplace.json has version in two places (metadata.version and plugins[].version)
+sed -i '' "s/\"version\": \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\"/\"version\": \"$VERSION\"/g" .claude-plugin/marketplace.json
 
 git checkout -b "$BRANCH"
-git add package.json src/version.ts
+git add package.json src/version.ts plugin/.claude-plugin/plugin.json .claude-plugin/marketplace.json
 git commit -m "chore: bump version to $VERSION"
 git push -u origin "$BRANCH"
 
@@ -100,7 +106,7 @@ gh pr create \
   --title "chore: bump version to $VERSION" \
   --body "$(cat <<EOF
 ## Summary
-- Bump version in \`package.json\` and \`src/version.ts\` to $VERSION
+- Bump version in \`package.json\`, \`src/version.ts\`, and \`plugin.json\` to $VERSION
 
 ${CHANGELOG:+## Changes since $PREV_TAG
 $CHANGELOG

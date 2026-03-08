@@ -31,8 +31,10 @@ jobs:
           VER="${TAG#v}"
           PKG=$(grep '"version"' package.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
           SRC=$(grep 'VERSION' src/version.ts | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
-          if [ "$PKG" != "$VER" ] || [ "$SRC" != "$VER" ]; then
-            echo "::error::Version mismatch — package.json=$PKG, version.ts=$SRC, expected=$VER"
+          PLG=$(grep '"version"' plugin/.claude-plugin/plugin.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+          MKT=$(grep '"version"' .claude-plugin/marketplace.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+          if [ "$PKG" != "$VER" ] || [ "$SRC" != "$VER" ] || [ "$PLG" != "$VER" ] || [ "$MKT" != "$VER" ]; then
+            echo "::error::Version mismatch — package.json=$PKG, version.ts=$SRC, plugin.json=$PLG, marketplace.json=$MKT, expected=$VER"
             exit 1
           fi
 
