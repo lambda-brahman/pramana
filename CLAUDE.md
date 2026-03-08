@@ -20,3 +20,26 @@
 - kebab-case file names
 - No classes where plain functions suffice
 - Tests co-located in test/ directory mirroring src/
+
+## Commits
+- Use conventional commits: `type(scope): description`
+- Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
+- Scopes: `engine`, `cli`, `plugin`, `author`, `build`
+- Omit the scope only when the change is cross-cutting or docs-only
+- Examples:
+  - `feat(plugin): add multi-tenant query routing`
+  - `fix(engine): handle empty frontmatter gracefully`
+  - `docs: update README with troubleshooting section`
+  - `chore(build): bump biome to 2.5`
+  - `test(cli): add reload lifecycle tests`
+
+## Branches
+- `main` is always releasable
+- Feature branches: `feat/<short-description>`
+- Fix branches: `fix/<short-description>`
+- Delete branches after merge
+
+## Releases
+- Update versions in `package.json` and `src/version.ts`
+- Create and push a tag named `v<version>` (for example `v0.9.0`)
+- Tagged CI builds the binaries and publishes the GitHub release artifacts
