@@ -43,3 +43,11 @@
 - Update versions in `package.json` and `src/version.ts`
 - Create and push a tag named `v<version>` (for example `v0.9.0`)
 - Tagged CI builds the binaries and publishes the GitHub release artifacts
+
+## Testing
+- `bun test test/unit/ test/e2e/` — full test suite
+- `bun test test/precommit/` — fast pre-commit subset
+- `bun run lint` — biome check
+- `bun run typecheck` — TypeScript type checking
+- Pre-commit hook (`.githooks/pre-commit`): runs `bun run lint && bun test test/precommit/`
+- Hook installed via `bun run prepare` (sets `core.hooksPath`)
