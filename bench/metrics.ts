@@ -1,7 +1,7 @@
 export type RankedResult = { slug: string; score: number };
 
 /**
- * Precision@k — fraction of top-k results that are relevant.
+ * Precision@k -- fraction of top-k results that are relevant.
  */
 export function precisionAtK(results: RankedResult[], relevant: string[], k: number): number {
   const topK = results.slice(0, k);
@@ -11,7 +11,14 @@ export function precisionAtK(results: RankedResult[], relevant: string[], k: num
 }
 
 /**
- * Recall@k — fraction of relevant documents found in top-k.
+ * Precision@1 convenience alias.
+ */
+export function precisionAt1(results: RankedResult[], relevant: string[]): number {
+  return precisionAtK(results, relevant, 1);
+}
+
+/**
+ * Recall@k -- fraction of relevant documents found in top-k.
  */
 export function recallAtK(results: RankedResult[], relevant: string[], k: number): number {
   if (relevant.length === 0) return 1;
@@ -21,7 +28,7 @@ export function recallAtK(results: RankedResult[], relevant: string[], k: number
 }
 
 /**
- * Mean Reciprocal Rank — 1 / position of first relevant result.
+ * Mean Reciprocal Rank -- 1 / position of first relevant result.
  */
 export function reciprocalRank(results: RankedResult[], relevant: string[]): number {
   for (let i = 0; i < results.length; i++) {
@@ -36,12 +43,19 @@ export function reciprocalRank(results: RankedResult[], relevant: string[]): num
  * Aggregate metrics across a set of queries.
  */
 export function aggregate(
-  perQuery: Array<{ precisionAt3: number; precisionAt5: number; recallAt5: number; rr: number }>,
-): { meanP3: number; meanP5: number; meanR5: number; mrr: number } {
+  perQuery: Array<{
+    precisionAt1: number;
+    precisionAt3: number;
+    precisionAt5: number;
+    recallAt5: number;
+    rr: number;
+  }>,
+): { meanP1: number; meanP3: number; meanP5: number; meanR5: number; mrr: number } {
   const n = perQuery.length;
-  if (n === 0) return { meanP3: 0, meanP5: 0, meanR5: 0, mrr: 0 };
+  if (n === 0) return { meanP1: 0, meanP3: 0, meanP5: 0, meanR5: 0, mrr: 0 };
 
   return {
+    meanP1: perQuery.reduce((s, q) => s + q.precisionAt1, 0) / n,
     meanP3: perQuery.reduce((s, q) => s + q.precisionAt3, 0) / n,
     meanP5: perQuery.reduce((s, q) => s + q.precisionAt5, 0) / n,
     meanR5: perQuery.reduce((s, q) => s + q.recallAt5, 0) / n,

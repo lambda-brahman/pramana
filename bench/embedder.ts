@@ -1,21 +1,31 @@
 import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
 
-const MODEL_ID = "Xenova/all-MiniLM-L6-v2";
+export type Embedder = {
+  embed(text: string): Promise<Float32Array>;
+  modelId: string;
+};
 
-let extractor: FeatureExtractionPipeline | null = null;
-
-export async function loadModel(): Promise<{ loadTimeMs: number }> {
+/**
+ * Load a sentence-transformer model and return an Embedder instance.
+ * Each call creates a new pipeline — callers can switch models by
+ * calling loadModel() again with a different ID.
+ */
+export async function loadModel(modelId: string): Promise<{ embedder: Embedder; loadTimeMs: number }> {
   const start = performance.now();
-  extractor = await pipeline("feature-extraction", MODEL_ID, {
+  const extractor: FeatureExtractionPipeline = await pipeline("feature-extraction", modelId, {
     dtype: "fp32",
   });
-  return { loadTimeMs: performance.now() - start };
-}
+  const loadTimeMs = performance.now() - start;
 
-export async function embed(text: string): Promise<Float32Array> {
-  if (!extractor) throw new Error("Model not loaded — call loadModel() first");
-  const output = await extractor(text, { pooling: "mean", normalize: true });
-  return new Float32Array(output.data as Float64Array);
+  const embedder: Embedder = {
+    modelId,
+    async embed(text: string): Promise<Float32Array> {
+      const output = await extractor(text, { pooling: "mean", normalize: true });
+      return new Float32Array(output.data as Float64Array);
+    },
+  };
+
+  return { embedder, loadTimeMs };
 }
 
 export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
