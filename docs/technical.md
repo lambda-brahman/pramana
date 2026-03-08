@@ -134,76 +134,51 @@ All endpoints return JSON with `Content-Type: application/json` and CORS headers
 
 Unscoped paths (e.g. `GET /v1/list`) return a 400 error listing available tenant names.
 
-## Example Knowledge Bases
+## Author Agents
 
-Pramana includes three example knowledge bases in the `examples/` directory. Each demonstrates how to structure artifacts, use relationships, and build dependency chains for a different domain.
+Authors are agent personas that define how knowledge artifacts should be written. Each author captures domain expertise, writing style, structural conventions, and quality standards.
 
-### Law — Tort Law Basics
+### `_meta/` directory convention
 
-Four artifacts covering the elements of negligence in tort law. Designed for legal professionals, paralegals, and law students.
+The `_meta/` directory inside a knowledge source contains skill-layer metadata — files that are used by the plugin skills but are **not** indexed as domain knowledge by the engine. The builder explicitly skips `_meta/` during ingestion.
 
-| Artifact | Tags | Relationships |
-|----------|------|---------------|
-| `negligence` | concept, tort | depends-on: duty-of-care, breach, causation |
-| `duty-of-care` | concept, tort | relates-to: negligence |
-| `breach` | concept, tort | depends-on: duty-of-care |
-| `causation` | concept, tort | depends-on: breach |
+### Author file convention
 
-**Dependency chain:** Negligence depends on all three elements. Causation depends on breach, which depends on duty-of-care. Asking "what is negligence?" traverses the full chain.
+Authors are stored as `_meta/author-<name>.md` in the knowledge source directory. Each file is a Claude-compatible agent definition:
 
-```
-/pramana:setup ./examples/law
-/pramana:query "what is negligence?"
-/pramana:query "what does negligence depend on?"
-```
+```markdown
+---
+name: author-<name>
+description: <what this author agent does>
+model: inherit
+---
 
-### Recipes — Cooking Techniques & Dishes
-
-Four artifacts showing how cooking techniques build on each other. Universally relatable, great for demos.
-
-| Artifact | Tags | Relationships |
-|----------|------|---------------|
-| `roux` | technique, base | — |
-| `bechamel` | sauce, french | depends-on: roux |
-| `lasagna` | dish, italian | depends-on: bechamel |
-| `mac-and-cheese` | dish, comfort | depends-on: bechamel, roux |
-
-**Dependency chain:** Roux is the foundation. Bechamel depends on roux. Both dishes depend on bechamel. Asking "how do I make lasagna?" traverses down to the roux technique.
-
-```
-/pramana:setup ./examples/recipes
-/pramana:query "how do I make lasagna from scratch?"
-/pramana:query "what do I need to know before making bechamel?"
+<system prompt defining the author's persona, style, and standards>
 ```
 
-### Software Architecture — Microservices
+The YAML frontmatter provides agent metadata. The markdown body is the agent's system prompt — its complete identity and instructions for artifact creation.
 
-Four artifacts modeling a microservice system. Designed for developers and engineering teams.
+### How authors work
 
-| Artifact | Tags | Relationships |
-|----------|------|---------------|
-| `api-gateway` | service, infrastructure | depends-on: auth-service, rate-limiter |
-| `auth-service` | service, security | relates-to: user-service |
-| `user-service` | service, core | relates-to: auth-service |
-| `rate-limiter` | service, infrastructure | relates-to: api-gateway |
+- **`create-author`** builds an author agent through interactive elicitation. The user answers open-ended questions about their domain, style, and standards. Claude synthesizes the answers into an agent definition file. This skill has `disable-model-invocation: true` — only users can invoke it.
+- **`author`** loads a named author as a sub-agent persona. It reads the author's agent file from disk, adopts the persona, and creates artifacts according to its standards. This skill is model-invocable — agents like OpenClaw can use it autonomously.
 
-**Dependency chain:** API gateway depends on auth and rate limiting. Auth relates to user service. Asking "what happens when a request hits the API?" traverses from gateway through auth and rate limiting.
+### Discovery
 
-```
-/pramana:setup ./examples/architecture
-/pramana:query "what happens when a request hits the API gateway?"
-/pramana:query "what services does the API gateway depend on?"
-```
+Authors are discovered by reading the source directory directly (`ls _meta/author-*.md`), not via the Pramana API. They are source files, not indexed artifacts.
 
-### Verifying examples manually
+### Multiple authors
 
-```bash
-pramana serve --source ./examples/law:law --port 4000 &
-curl http://localhost:4000/v1/law/list | jq length                                    # 4
-curl http://localhost:4000/v1/law/get/negligence | jq .slug                           # "negligence"
-curl "http://localhost:4000/v1/law/traverse/negligence?type=depends-on" | jq '.[].slug'  # duty-of-care, breach, causation
-kill %1
-```
+Each tenant can have multiple authors for different purposes:
+- `_meta/author-api-docs.md` — API reference documentation
+- `_meta/author-tutorial.md` — step-by-step tutorials
+- `_meta/author-architecture.md` — architecture decision records
+
+There is no default author. The `--author` flag selects which one to use. If omitted, the user is asked to pick from available authors.
+
+### Safety gate
+
+The `author` skill requires an author to exist before it can create artifacts. An admin must first interactively build one via `create-author`. This prevents agents from creating artifacts without quality standards being defined.
 
 ## Development
 

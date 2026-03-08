@@ -20,6 +20,9 @@ export class Builder {
       const files: string[] = [];
 
       for await (const file of glob.scan({ cwd: sourceDir, absolute: true })) {
+        // Skip _meta/ directory — contains skill-layer metadata, not domain knowledge
+        const relative = file.slice(sourceDir.length + 1);
+        if (relative.startsWith("_meta/") || relative.startsWith("_meta\\")) continue;
         files.push(file);
       }
 

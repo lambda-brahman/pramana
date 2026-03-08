@@ -131,11 +131,20 @@ describe("Plugin structure validation", () => {
     expect(content).not.toContain("disable-model-invocation");
   });
 
-  test("author skill exists with valid frontmatter", () => {
+  test("author skill exists with valid frontmatter and is auto-invocable", () => {
     const skillPath = path.join(PROJECT_ROOT, "plugin/skills/author/SKILL.md");
     expect(fs.existsSync(skillPath)).toBe(true);
     const content = fs.readFileSync(skillPath, "utf-8");
     expect(content).toContain("name: author");
+    expect(content).toContain("user_invocable: true");
+    expect(content).not.toContain("disable-model-invocation");
+  });
+
+  test("create-author skill exists with valid frontmatter", () => {
+    const skillPath = path.join(PROJECT_ROOT, "plugin/skills/create-author/SKILL.md");
+    expect(fs.existsSync(skillPath)).toBe(true);
+    const content = fs.readFileSync(skillPath, "utf-8");
+    expect(content).toContain("name: create-author");
     expect(content).toContain("user_invocable: true");
     expect(content).toContain("disable-model-invocation: true");
   });
@@ -625,39 +634,71 @@ describe("Author workflow with temp directory", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("get _meta-author -> 404 before profile", async () => {
-    const { exitCode } = await runClient(["get", "_meta-author", "--tenant", "authoring"]);
-    expect(exitCode).toBe(1);
+  test("no author agent files exist initially", () => {
+    const metaDir = path.join(tmpDir, "_meta");
+    const exists = fs.existsSync(metaDir);
+    if (exists) {
+      const authors = fs.readdirSync(metaDir).filter((f) => f.startsWith("author-"));
+      expect(authors).toHaveLength(0);
+    }
   });
 
-  test("create author profile, reload, verify", async () => {
+  test("create author agent file on disk", () => {
     const metaDir = path.join(tmpDir, "_meta");
     fs.mkdirSync(metaDir, { recursive: true });
     fs.writeFileSync(
-      path.join(metaDir, "author.md"),
+      path.join(metaDir, "author-domain.md"),
       [
         "---",
-        "slug: _meta-author",
-        "tags: [meta]",
+        "name: author-domain",
+        "description: Domain knowledge author for commerce systems",
+        "model: inherit",
         "---",
         "",
-        "# Author Profile",
+        "You are a domain knowledge expert specializing in commerce systems.",
         "",
-        "## Preferences",
+        "## Style",
         "",
-        "Domain expert in commerce systems.",
+        "Write in a clear, formal style with precise definitions.",
         "",
       ].join("\n"),
     );
 
+    expect(fs.existsSync(path.join(metaDir, "author-domain.md"))).toBe(true);
+  });
+
+  test("author agent files are NOT ingested into Pramana index", async () => {
+    // Reload after creating the author agent file
     const reload = await runClient(["reload", "--tenant", "authoring"]);
     expect(reload.exitCode).toBe(0);
 
-    const { stdout, exitCode } = await runClient(["get", "_meta-author", "--tenant", "authoring"]);
+    // The author agent file should not appear as an artifact
+    const { stdout, exitCode } = await runClient(["list", "--tenant", "authoring"]);
     expect(exitCode).toBe(0);
-    const data = JSON.parse(stdout);
-    expect(data.slug).toBe("_meta-author");
-    expect(data.tags).toContain("meta");
+    const data = JSON.parse(stdout) as Array<{ slug: string }>;
+    const slugs = data.map((a) => a.slug);
+    expect(slugs).not.toContain("author-domain");
+    expect(slugs).not.toContain("_meta-author-domain");
+  });
+
+  test("multiple author agent files coexist on disk", () => {
+    const metaDir = path.join(tmpDir, "_meta");
+    fs.writeFileSync(
+      path.join(metaDir, "author-api-docs.md"),
+      [
+        "---",
+        "name: author-api-docs",
+        "description: API documentation author",
+        "model: inherit",
+        "---",
+        "",
+        "You are an API documentation specialist.",
+        "",
+      ].join("\n"),
+    );
+
+    const authors = fs.readdirSync(metaDir).filter((f) => f.startsWith("author-"));
+    expect(authors.sort()).toEqual(["author-api-docs.md", "author-domain.md"]);
   });
 
   test("create new artifact, reload, verify", async () => {

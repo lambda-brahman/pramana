@@ -1,9 +1,8 @@
 ---
 name: author
-description: Create or update knowledge artifacts with auto-profile elicitation
+description: Create or update knowledge artifacts using an existing author agent
 args: tenant topic
 user_invocable: true
-disable-model-invocation: true
 ---
 
 # Pramana Author
@@ -21,56 +20,40 @@ Scan existing artifacts to understand:
 - What tags and naming conventions are used
 - The overall domain and scope
 
-## Step 2: Check for author profile
+## Step 2: Resolve author
+
+Find the source directory for this tenant, then scan for available author agents:
 
 ```bash
-pramana get _meta-author [--tenant <name>]
+ls <source-dir>/_meta/author-*.md 2>/dev/null
 ```
 
-The author profile (`_meta/author.md` in the knowledge directory) captures the user's domain expertise, writing style, and quality standards.
-
-**If the profile exists**: Read it and use it to guide artifact creation.
-
-**If the profile does not exist (404)**: Proceed to Step 3 to elicit one.
-
-## Step 3: Elicit author profile (if missing)
-
-Ask the user these domain-agnostic questions:
-
-1. **Domain**: "What domain does this knowledge base cover? (e.g., law, music theory, software architecture)"
-2. **Principles**: "What core principles guide your thinking in this domain? What do you consider non-negotiable?"
-3. **Style**: "How do you prefer knowledge to be structured? (e.g., formal definitions first, examples first, narrative, reference-style)"
-4. **Completeness**: "What makes a piece of knowledge 'done' in your view? What must every artifact include?"
-5. **Audience**: "Who is the intended reader? What can you assume they know?"
-
-Create `_meta/author.md` in the knowledge directory:
-
-```markdown
----
-slug: _meta-author
-title: Author Profile
-tags: [meta]
----
-
-# Author Profile
-
-## Domain
-[User's answer]
-
-## Principles
-[User's answer]
-
-## Style
-[User's answer]
-
-## Completeness criteria
-[User's answer]
-
-## Audience
-[User's answer]
+### If `--author <name>` was provided:
+Read the specified author agent file:
+```bash
+cat <source-dir>/_meta/author-<name>.md
+```
+If the file doesn't exist, **STOP** and instruct the user:
+```
+Author "author-<name>" not found. Create it first:
+/pramana:create-author <tenant> <name>
 ```
 
-Then reload: `pramana reload [--tenant <name>]`
+### If `--author` was not provided:
+- **If authors exist**: List them and ask the user which one to use.
+- **If no authors exist**: **STOP** and instruct the user:
+  ```
+  No author agents found. Create one first:
+  /pramana:create-author <tenant> <author-name>
+  ```
+
+## Step 3: Become the author agent
+
+Read the author's agent file from disk. The file has two parts:
+- **YAML frontmatter** — agent metadata (name, description, model)
+- **Markdown body** — the agent's system prompt (persona, style, conventions, quality standards)
+
+Adopt the markdown body as your persona for artifact creation. Think, write, and structure knowledge according to this persona's instructions.
 
 ## Step 4: Research connections
 
@@ -92,7 +75,7 @@ Identify:
 
 ## Step 5: Draft the artifact
 
-Create the artifact file following Pramana conventions:
+Create the artifact as the author agent, following the persona's style, conventions, and quality standards.
 
 ### Slug rules
 - Lowercase, kebab-case: `my-topic-name`
@@ -116,7 +99,7 @@ relationships:
 - **H2**: Major sections (Attributes, Rules, Behavior, Examples, etc.)
 - **H3**: Subsections within H2s
 - **Wikilinks**: `[[slug]]` for relates-to, `[[depends-on::slug]]` for dependencies
-- Content should match the author profile's style preferences
+- Content should match the author agent's style and conventions
 
 ### Quality checklist
 - [ ] Slug is kebab-case and unique
@@ -124,7 +107,7 @@ relationships:
 - [ ] All relationships point to existing artifacts (or planned ones)
 - [ ] Sections use H2/H3 properly (no H4+, no skipped levels)
 - [ ] Wikilinks connect to related concepts
-- [ ] Content matches author profile's completeness criteria
+- [ ] Content matches the author agent's quality standards
 
 ## Step 6: Save and reload
 
@@ -149,4 +132,4 @@ pramana traverse <new-slug> --depth 1 [--tenant <name>]
 - Parse the first argument as the tenant name if provided
 - If no tenant specified and multiple tenants exist, ask the user which tenant to write to
 - Always use `--tenant` in commands when working with a specific tenant
-- The `_meta/author.md` profile is per-tenant (each knowledge base can have different authoring standards)
+- Author agents are per-tenant (each knowledge base can have different authoring standards)

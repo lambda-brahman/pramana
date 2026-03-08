@@ -161,11 +161,21 @@ These links are optional — the `relationships` header is what Pramana uses to 
 
 ## Let Claude write knowledge for you
 
+First, create an author agent that captures your writing standards:
+
 ```
-/pramana:author "API rate limiting policy"
+/pramana:create-author commerce api-docs
 ```
 
-The first time you use this, Claude asks five questions about your domain, writing style, and quality standards. Then it drafts new artifacts that fit your knowledge base — with proper connections to existing artifacts.
+Claude asks open-ended questions about your domain expertise, writing style, and quality standards, then saves an author agent. You can create multiple authors for different purposes (e.g., API reference vs tutorials).
+
+Then use the author to create artifacts:
+
+```
+/pramana:author commerce --author api-docs "API rate limiting policy"
+```
+
+Claude adopts the author's persona and drafts artifacts that match your standards — with proper connections to existing artifacts.
 
 ## Multiple knowledge bases
 
@@ -204,16 +214,6 @@ curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install
 ```
 
 See [Releases](https://github.com/lambda-brahman/pramana/releases) for binaries.
-
-## Try it with examples
-
-Pramana ships with example knowledge bases (law, recipes, software architecture) you can try immediately:
-
-```
-/pramana:setup ./examples/recipes
-```
-
-See [examples/](examples/) for all available domains, or the [technical reference](docs/technical.md#example-knowledge-bases) for details.
 
 ## Further reading
 
