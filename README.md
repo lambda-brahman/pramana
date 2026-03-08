@@ -172,7 +172,7 @@ Claude asks open-ended questions about your domain expertise, writing style, and
 Then use the author to create artifacts:
 
 ```
-/pramana:author commerce --author api-docs "API rate limiting policy"
+/pramana:write commerce --author api-docs "API rate limiting policy"
 ```
 
 Claude adopts the author's persona and drafts artifacts that match your standards — with proper connections to existing artifacts.

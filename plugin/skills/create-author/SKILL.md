@@ -101,5 +101,5 @@ Write the agent definition file to disk. No reload is needed — authors are not
 Confirm to the user:
 ```
 Author agent "author-<name>" saved to <source-dir>/_meta/author-<name>.md
-Use it with: /pramana:author <tenant> --author <name> <topic>
+Use it with: /pramana:write <tenant> --author <name> <topic>
 ```

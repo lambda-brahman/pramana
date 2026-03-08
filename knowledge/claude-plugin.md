@@ -24,13 +24,13 @@ pramana search "jazz" --tenant music       # connects to running daemon
     │
 /pramana:setup ./law-kb                    # start daemon, report ingestion
 /pramana:query law "negligence?"           # semantic query with tenant
-/pramana:author law "tort liability"       # create artifact, auto-profile
+/pramana:write law "tort liability"        # create artifact, auto-profile
 ```
 
 Three layers:
 1. **Daemon**: `pramana serve` — persistent process, supports multi-tenant
 2. **CLI client mode**: commands detect running server → HTTP client; fallback to rebuild
-3. **Skills**: teach Claude how to set up, query, and author knowledge
+3. **Skills**: teach Claude how to set up, query, and write knowledge
 
 ## Skills
 
@@ -49,7 +49,7 @@ Teaches Claude semantic querying:
 - Token management (section reads over full artifacts)
 - Multi-tenant awareness (discover tenants, route queries)
 
-### /pramana:author
+### /pramana:write
 
 Guides Claude through artifact creation:
 - Check for author profile (`_meta/author.md`)
@@ -67,7 +67,7 @@ Each tenant can have an author profile at `_meta/author.md` (slug: `_meta-author
 - Completeness criteria
 - Target audience
 
-The profile is elicited on first `/pramana:author` invocation and used to guide all subsequent artifact creation.
+The profile is elicited on first `/pramana:write` invocation and used to guide all subsequent artifact creation.
 
 ## Server discovery
 
@@ -122,7 +122,7 @@ plugin/
     │   └── SKILL.md         # semantic query guidance
     ├── setup/
     │   └── SKILL.md         # daemon setup guidance
-    └── author/
+    └── write/
         └── SKILL.md         # artifact authoring guidance
 ```
 
@@ -132,6 +132,6 @@ plugin/
 
 **CP2. Graceful degradation**: if no daemon is running and `--source` is provided, fall back to standalone mode silently. If neither is available, exit with error.
 
-**CP3. Skill as semantic layer**: the skill prompts shape Claude's behavior. Setup teaches daemon management, query teaches token-efficient retrieval, author teaches knowledge creation with profile-guided quality.
+**CP3. Skill as semantic layer**: the skill prompts shape Claude's behavior. Setup teaches daemon management, query teaches token-efficient retrieval, write teaches knowledge creation with profile-guided quality.
 
 **CP4. Zero coupling**: the plugin uses only Bash tool calls to invoke CLI commands. No MCP server, no custom protocol, no SDK dependency.

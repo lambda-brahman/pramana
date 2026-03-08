@@ -116,5 +116,5 @@ Pramana daemon is running on port 5111.
 - Query with: pramana get <slug> --tenant <name>
 - Use /pramana:query to search the knowledge base
 - Use /pramana:create-author to set up your author agent
-- Use /pramana:author to create new artifacts
+- Use /pramana:write to create new artifacts
 ```

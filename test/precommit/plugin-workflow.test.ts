@@ -131,11 +131,11 @@ describe("Plugin structure validation", () => {
     expect(content).not.toContain("disable-model-invocation");
   });
 
-  test("author skill exists with valid frontmatter and is auto-invocable", () => {
-    const skillPath = path.join(PROJECT_ROOT, "plugin/skills/author/SKILL.md");
+  test("write skill exists with valid frontmatter and is auto-invocable", () => {
+    const skillPath = path.join(PROJECT_ROOT, "plugin/skills/write/SKILL.md");
     expect(fs.existsSync(skillPath)).toBe(true);
     const content = fs.readFileSync(skillPath, "utf-8");
-    expect(content).toContain("name: author");
+    expect(content).toContain("name: write");
     expect(content).toContain("user_invocable: true");
     expect(content).not.toContain("disable-model-invocation");
   });

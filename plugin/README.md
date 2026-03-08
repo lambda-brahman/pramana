@@ -70,14 +70,14 @@ Each author is a distinct agent persona — you can have multiple authors per kn
 
 This skill is **explicit only** (`disable-model-invocation`) because it requires interactive conversation with the user.
 
-### Author — automatic
+### Write — automatic
 
 ```
-/pramana:author commerce --author api-docs billing  # author with "api-docs" agent
-/pramana:author commerce billing                    # asks user to pick an author
+/pramana:write commerce --author api-docs billing  # write with "api-docs" agent
+/pramana:write commerce billing                    # asks user to pick an author
 ```
 
-Creates new knowledge artifacts using an existing author agent. The author skill loads the named author's persona and writes artifacts according to its style, conventions, and quality standards.
+Creates new knowledge artifacts using an existing author agent. The write skill loads the named author's persona and writes artifacts according to its style, conventions, and quality standards.
 
 **Requires an existing author agent** — if none exist, Claude instructs you to create one first via `/pramana:create-author`. This ensures artifacts are always written to defined quality standards.
 
@@ -90,7 +90,7 @@ This skill is **auto-invocable** — Claude can use it autonomously when it dete
 | query | Yes | Yes | Claude should reach for domain knowledge whenever relevant |
 | setup | No | Yes | Starts a daemon — user should ask for this explicitly |
 | create-author | No | Yes | Interactive elicitation — user must participate |
-| author | Yes | Yes | Autonomous artifact creation (requires existing author) |
+| write | Yes | Yes | Autonomous artifact creation (requires existing author) |
 
 ## Architecture
 

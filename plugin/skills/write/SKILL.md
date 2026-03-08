@@ -1,11 +1,11 @@
 ---
-name: author
+name: write
 description: Create or update knowledge artifacts using an existing author agent
 args: tenant topic
 user_invocable: true
 ---
 
-# Pramana Author
+# Pramana Write
 
 You are creating or updating a knowledge artifact in a Pramana knowledge base. The user wants to write about: **$ARGUMENTS**
 
@@ -83,14 +83,17 @@ Create the artifact as the author agent, following the persona's style, conventi
 - Descriptive but concise (2-4 words ideal)
 
 ### Frontmatter
+
+The parser enforces these requirements:
+
 ```yaml
 ---
-slug: <kebab-case-slug>
-title: <Human Readable Title>
-tags: [<domain-tag>, <type-tag>]
+slug: <kebab-case-slug>           # REQUIRED — non-empty, kebab-case, unique per corpus
+title: <Human Readable Title>     # Optional (falls back to first H1, then slug) — always set explicitly
+tags: [<domain-tag>, <type-tag>]  # Array (empty if absent)
 relationships:
-  depends-on: [<slug1>, <slug2>]
-  relates-to: [<slug3>]
+  depends-on: [<slug1>, <slug2>]  # Keys must be valid RelType: "depends-on" | "relates-to"
+  relates-to: [<slug3>]           # Values: string or string[]
 ---
 ```
 
@@ -98,7 +101,9 @@ relationships:
 - **H1**: Title (matches frontmatter title)
 - **H2**: Major sections (Attributes, Rules, Behavior, Examples, etc.)
 - **H3**: Subsections within H2s
+- **No H4+**: Too granular for graph addressing (sections only track H2/H3)
 - **Wikilinks**: `[[slug]]` for relates-to, `[[depends-on::slug]]` for dependencies
+- **Section IDs**: Derived as kebab-case of heading text
 - Content should match the author agent's style and conventions
 
 ### Quality checklist
@@ -108,6 +113,7 @@ relationships:
 - [ ] Sections use H2/H3 properly (no H4+, no skipped levels)
 - [ ] Wikilinks connect to related concepts
 - [ ] Content matches the author agent's quality standards
+- [ ] Relationship keys are valid RelType (`depends-on` | `relates-to`) — invalid types are silently dropped
 
 ## Step 6: Save and reload
 
@@ -121,6 +127,8 @@ Verify the artifact was ingested:
 ```bash
 pramana get <new-slug> [--tenant <name>]
 ```
+
+If ingestion fails, read the error (frontmatter/validation/read), fix, and retry.
 
 Check that relationships resolve:
 ```bash
