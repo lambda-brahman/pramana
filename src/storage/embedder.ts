@@ -1,4 +1,4 @@
-import { type FeatureExtractionPipeline, pipeline } from "@huggingface/transformers";
+import type { FeatureExtractionPipeline } from "@huggingface/transformers";
 import { err, ok, type Result } from "../lib/result.ts";
 
 export type Embedder = {
@@ -22,6 +22,7 @@ export async function loadEmbedder(
   modelId: string,
 ): Promise<Result<{ embedder: Embedder; loadTimeMs: number }, EmbedderError>> {
   try {
+    const { pipeline } = await import("@huggingface/transformers");
     const start = performance.now();
     const extractor: FeatureExtractionPipeline = await pipeline("feature-extraction", modelId, {
       dtype: "fp32",
