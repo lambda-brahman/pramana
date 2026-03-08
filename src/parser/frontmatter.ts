@@ -70,7 +70,7 @@ function normalizeRelationships(raw: unknown): Relationship[] {
   return result;
 }
 
-function parseYaml(yaml: string): unknown {
+export function parseYaml(yaml: string): unknown {
   const result: Record<string, unknown> = {};
   const lines = yaml.split("\n");
   let currentKey: string | null = null;
