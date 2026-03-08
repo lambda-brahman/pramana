@@ -1,0 +1,43 @@
+name: Auto-tag release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  tag:
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'chore/release-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from branch name
+        id: version
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          TAG="${BRANCH#chore/release-}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Verify version files
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VER="${TAG#v}"
+          PKG=$(grep '"version"' package.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+          SRC=$(grep 'VERSION' src/version.ts | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+          if [ "$PKG" != "$VER" ] || [ "$SRC" != "$VER" ]; then
+            echo "::error::Version mismatch — package.json=$PKG, version.ts=$SRC, expected=$VER"
+            exit 1
+          fi
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
