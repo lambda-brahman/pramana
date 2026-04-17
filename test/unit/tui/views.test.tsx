@@ -617,6 +617,8 @@ describe("KbListView", () => {
         onSelectKb={() => {}}
         onReload={() => {}}
         onFormModeChange={() => {}}
+        onSwapDataSource={() => {}}
+        port="5111"
         height={20}
       />,
     );
@@ -636,6 +638,8 @@ describe("KbListView", () => {
         onSelectKb={() => {}}
         onReload={() => {}}
         onFormModeChange={() => {}}
+        onSwapDataSource={() => {}}
+        port="5111"
         height={20}
       />,
     );
@@ -653,6 +657,8 @@ describe("KbListView", () => {
         onSelectKb={() => {}}
         onReload={() => {}}
         onFormModeChange={() => {}}
+        onSwapDataSource={() => {}}
+        port="5111"
         height={20}
       />,
     );
@@ -674,6 +680,8 @@ describe("KbListView", () => {
         }}
         onReload={() => {}}
         onFormModeChange={() => {}}
+        onSwapDataSource={() => {}}
+        port="5111"
         height={20}
       />,
     );
@@ -694,6 +702,8 @@ describe("KbListView", () => {
         onSelectKb={() => {}}
         onReload={() => {}}
         onFormModeChange={() => {}}
+        onSwapDataSource={() => {}}
+        port="5111"
         height={20}
       />,
     );
@@ -711,6 +721,8 @@ describe("KbListView", () => {
         onSelectKb={() => {}}
         onReload={() => {}}
         onFormModeChange={() => {}}
+        onSwapDataSource={() => {}}
+        port="5111"
         height={20}
       />,
     );

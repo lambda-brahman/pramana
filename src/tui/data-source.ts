@@ -1,10 +1,11 @@
 import {
   addTenant as configAddTenant,
   removeTenant as configRemoveTenant,
+  loadConfig,
 } from "../config/index.ts";
 import type { BuildReport } from "../engine/builder.ts";
 import type { ArtifactView, ListFilter } from "../engine/reader.ts";
-import type { TenantInfo, TenantManager } from "../engine/tenant.ts";
+import { type TenantInfo, TenantManager } from "../engine/tenant.ts";
 import { err, ok, type Result } from "../lib/result.ts";
 import type { SearchResult } from "../storage/interface.ts";
 
@@ -96,6 +97,20 @@ export function createReaderDataSource(tm: TenantManager): DataSource {
       return ok(undefined);
     },
   };
+}
+
+export async function createStandaloneFromConfig(): Promise<Result<DataSource, DataSourceError>> {
+  const tm = new TenantManager();
+  await tm.initEmbedder();
+
+  const configResult = await loadConfig();
+  if (configResult.ok) {
+    for (const [name, dir] of Object.entries(configResult.value.tenants)) {
+      await tm.mount({ name, sourceDir: dir });
+    }
+  }
+
+  return ok(createReaderDataSource(tm));
 }
 
 export function createHttpDataSource(port: string): DataSource {

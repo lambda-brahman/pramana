@@ -6,8 +6,9 @@ export type ApiServerOptions = { port: number; tenantManager: TenantManager };
 
 export function createServer(opts: ApiServerOptions) {
   const tm = opts.tenantManager;
+  let server: ReturnType<typeof Bun.serve>;
 
-  return Bun.serve({
+  server = Bun.serve({
     port: opts.port,
 
     async fetch(req) {
@@ -20,8 +21,16 @@ export function createServer(opts: ApiServerOptions) {
       }
 
       // POST /v1/:tenant/reload
+      // POST /v1/shutdown
       // POST /v1/reload → error
       if (req.method === "POST") {
+        if (path === "/v1/shutdown") {
+          setTimeout(() => {
+            server.stop(true);
+            process.exit(0);
+          }, 50);
+          return json({ status: "shutting-down" });
+        }
         const tenantReloadMatch = path.match(/^\/v1\/([^/]+)\/reload$/);
         if (tenantReloadMatch) {
           const tenant = tenantReloadMatch[1]!;
@@ -72,6 +81,8 @@ export function createServer(opts: ApiServerOptions) {
       return json({ error: "Not found" }, 404);
     },
   });
+
+  return server;
 }
 
 async function handleOperation(reader: Reader, opPath: string, url: URL): Promise<Response> {

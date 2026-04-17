@@ -2,11 +2,16 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { Box, Text, useInput } from "ink";
 import { useCallback, useEffect, useState } from "react";
+import { isDaemonRunning, startDaemon, stopDaemon } from "../../daemon/lifecycle.ts";
 import type { TenantInfo } from "../../engine/tenant.ts";
 import { NAME_REGEX, RESERVED_NAMES } from "../../lib/tenant-names.ts";
 import { ScrollableList } from "../components/scrollable-list.tsx";
 import { TextInput } from "../components/text-input.tsx";
-import type { DataSource } from "../data-source.ts";
+import {
+  createHttpDataSource,
+  createStandaloneFromConfig,
+  type DataSource,
+} from "../data-source.ts";
 import { KB_LIST_CHROME, KB_LIST_FORM_LINES } from "../layout.ts";
 import { openInFileManager } from "../platform.ts";
 import { theme } from "../theme.ts";
@@ -17,6 +22,8 @@ type Mode =
   | { type: "adding-dir"; name: string; value: string; error: string | null }
   | { type: "confirming-delete"; name: string };
 
+type DaemonState = "checking" | "running" | "stopped" | "starting" | "stopping";
+
 type Props = {
   dataSource: DataSource;
   activeTenant: string;
@@ -24,6 +31,8 @@ type Props = {
   onSelectKb: (name: string) => void;
   onReload: () => void;
   onFormModeChange: (active: boolean) => void;
+  onSwapDataSource: (ds: DataSource) => void;
+  port: string;
   height: number;
 };
 
@@ -41,6 +50,8 @@ export function KbListView({
   isActive,
   onSelectKb,
   onFormModeChange,
+  onSwapDataSource,
+  port,
   height,
 }: Props) {
   const [tenants, setTenants] = useState<TenantInfo[]>([]);
@@ -49,6 +60,7 @@ export function KbListView({
   const [reloading, setReloading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>({ type: "normal" });
+  const [daemonState, setDaemonState] = useState<DaemonState>("checking");
 
   const isFormMode = mode.type !== "normal";
 
@@ -74,6 +86,12 @@ export function KbListView({
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    isDaemonRunning(port).then((running) => {
+      setDaemonState(running ? "running" : "stopped");
+    });
+  }, [port]);
 
   // Normal mode keybindings
   useInput(
@@ -103,6 +121,39 @@ export function KbListView({
             }
             setReloading(null);
             load();
+          });
+        }
+      } else if (input === "S") {
+        if (daemonState === "stopped") {
+          setDaemonState("starting");
+          setMessage("Starting daemon...");
+          startDaemon(port).then((result) => {
+            if (!result.ok) {
+              setMessage(`Start failed: ${result.error.message}`);
+              setDaemonState("stopped");
+              return;
+            }
+            onSwapDataSource(createHttpDataSource(port));
+            setDaemonState("running");
+            setMessage(`Daemon started on port ${port}`);
+          });
+        } else if (daemonState === "running") {
+          setDaemonState("stopping");
+          setMessage("Stopping daemon, switching to standalone...");
+          createStandaloneFromConfig().then(async (standaloneResult) => {
+            if (!standaloneResult.ok) {
+              setMessage(`Failed to build standalone: ${standaloneResult.error.message}`);
+              setDaemonState("running");
+              return;
+            }
+            onSwapDataSource(standaloneResult.value);
+            const stopResult = await stopDaemon(port);
+            if (!stopResult.ok) {
+              setMessage(`Warning: ${stopResult.error.message}. Switched to standalone.`);
+            } else {
+              setMessage("Daemon stopped — standalone mode");
+            }
+            setDaemonState("stopped");
           });
         }
       } else if (input === "a") {
@@ -224,6 +275,12 @@ export function KbListView({
           Knowledge Bases
         </Text>
         <Text color={theme.muted}> ({tenants.length})</Text>
+        <Text> </Text>
+        {daemonState === "running" && <Text color={theme.success}>● daemon :{port}</Text>}
+        {daemonState === "stopped" && <Text color={theme.muted}>○ standalone</Text>}
+        {(daemonState === "starting" ||
+          daemonState === "stopping" ||
+          daemonState === "checking") && <Text color={theme.accent}>◌ {daemonState}...</Text>}
       </Box>
 
       <ScrollableList
@@ -322,6 +379,11 @@ export function KbListView({
               <Text color={theme.hintDesc}> finder </Text>
               <Text color={theme.hintKey}>[r]</Text>
               <Text color={theme.hintDesc}> reload </Text>
+              <Text color={theme.hintKey}>[S]</Text>
+              <Text color={theme.hintDesc}>
+                {" "}
+                {daemonState === "running" ? "stop daemon" : "start daemon"}{" "}
+              </Text>
               <Text color={theme.hintKey}>[?]</Text>
               <Text color={theme.hintDesc}> help </Text>
               <Text color={theme.hintKey}>[q]</Text>

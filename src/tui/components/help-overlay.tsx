@@ -10,6 +10,7 @@ const kbListBindings: Binding[] = [
   { keys: "d", description: "Remove knowledge base" },
   { keys: "o", description: "Open source in file manager" },
   { keys: "r", description: "Reload KB" },
+  { keys: "S", description: "Start/stop daemon" },
   { keys: "q", description: "Quit" },
 ];
 
