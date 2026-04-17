@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { ArtifactView } from "../../engine/reader.ts";
 import { TextInput } from "../components/text-input.tsx";
 import type { DataSource } from "../data-source.ts";
+import { GRAPH_CHROME } from "../layout.ts";
 import { theme } from "../theme.ts";
 
 type TreeNode = {
@@ -136,7 +137,7 @@ export function GraphView({
 
   // Keep selected visible
   useEffect(() => {
-    const viewH = height - 7;
+    const viewH = height - GRAPH_CHROME;
     if (selectedIndex < scrollOffset) {
       setScrollOffset(selectedIndex);
     } else if (selectedIndex >= scrollOffset + viewH) {
@@ -214,7 +215,7 @@ export function GraphView({
   if (loading) return <Text color={theme.muted}>Loading graph for {rootSlug}...</Text>;
   if (error) return <Text color={theme.error}>Error: {error}</Text>;
 
-  const viewH = height - 7;
+  const viewH = height - GRAPH_CHROME;
   const visibleNodes = flatNodes.slice(scrollOffset, scrollOffset + viewH);
 
   return (

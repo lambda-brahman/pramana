@@ -4,6 +4,7 @@ import { Breadcrumb } from "./components/breadcrumb.tsx";
 import { HelpOverlay } from "./components/help-overlay.tsx";
 import { StatusBar } from "./components/status-bar.tsx";
 import type { DataSource } from "./data-source.ts";
+import { APP_CHROME_LINES } from "./layout.ts";
 import { ArtifactDetailView } from "./views/artifact-detail.tsx";
 import { ArtifactListView } from "./views/artifact-list.tsx";
 import { DashboardView } from "./views/dashboard.tsx";
@@ -40,7 +41,7 @@ export function App({ dataSource, initialTenant }: Props) {
   const [isFormActive, setIsFormActive] = useState(false);
 
   const termHeight = stdout?.rows ?? 24;
-  const contentHeight = termHeight - 4; // status bar + breadcrumb
+  const contentHeight = termHeight - APP_CHROME_LINES;
 
   const current = navStack[navStack.length - 1]!;
   const view = current.view;

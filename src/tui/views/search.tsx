@@ -4,6 +4,7 @@ import type { SearchResult } from "../../storage/interface.ts";
 import { ScrollableList } from "../components/scrollable-list.tsx";
 import { TextInput } from "../components/text-input.tsx";
 import type { DataSource } from "../data-source.ts";
+import { SEARCH_CHROME, SEARCH_RESULT_COUNT_LINES } from "../layout.ts";
 import { theme } from "../theme.ts";
 
 type Props = {
@@ -99,7 +100,8 @@ export function SearchView({
     { isActive },
   );
 
-  const listHeight = height - 7;
+  const resultCountLines = results.length > 0 ? SEARCH_RESULT_COUNT_LINES : 0;
+  const listHeight = height - SEARCH_CHROME - resultCountLines;
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>
@@ -144,9 +146,9 @@ export function SearchView({
               <Text color={theme.accent}> (rank: {item.rank.toFixed(1)})</Text>
             </Box>
             {item.snippet && (
-              <Text color={theme.muted} wrap="truncate">
+              <Text color={theme.muted} wrap="wrap">
                 {"  "}
-                {item.snippet.slice(0, 120)}
+                {item.snippet}
               </Text>
             )}
           </Box>

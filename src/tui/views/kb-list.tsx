@@ -7,6 +7,7 @@ import { NAME_REGEX, RESERVED_NAMES } from "../../lib/tenant-names.ts";
 import { ScrollableList } from "../components/scrollable-list.tsx";
 import { TextInput } from "../components/text-input.tsx";
 import type { DataSource } from "../data-source.ts";
+import { KB_LIST_CHROME, KB_LIST_FORM_LINES } from "../layout.ts";
 import { openInFileManager } from "../platform.ts";
 import { theme } from "../theme.ts";
 
@@ -213,8 +214,8 @@ export function KbListView({
 
   if (loading) return <Text color={theme.muted}>Loading knowledge bases...</Text>;
 
-  const formLines = isFormMode ? 3 : 0;
-  const listHeight = height - 5 - formLines;
+  const formLines = isFormMode ? KB_LIST_FORM_LINES : 0;
+  const listHeight = height - KB_LIST_CHROME - formLines;
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>
