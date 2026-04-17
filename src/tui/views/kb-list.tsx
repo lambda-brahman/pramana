@@ -32,7 +32,7 @@ type Props = {
   onReload: () => void;
   onFormModeChange: (active: boolean) => void;
   onSwapDataSource: (ds: DataSource) => void;
-  port: string;
+  port: number;
   height: number;
 };
 

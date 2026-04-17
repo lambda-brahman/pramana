@@ -262,7 +262,7 @@ export async function lintSource(sourceDir: string): Promise<Result<LintReport, 
 }
 
 export async function lintFromDaemon(
-  port: string,
+  port: number,
   tenant: string,
 ): Promise<Result<LintReport, LintError>> {
   try {

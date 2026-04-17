@@ -15,7 +15,7 @@ describe("createHttpDataSource", () => {
     tm = new TenantManager();
     await tm.mount({ name: "test", sourceDir: FIXTURES_DIR });
     server = createServer({ port: 0, tenantManager: tm });
-    ds = createHttpDataSource(String(server.port));
+    ds = createHttpDataSource(server.port!);
   });
 
   afterAll(() => {
