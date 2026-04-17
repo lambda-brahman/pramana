@@ -1,3 +1,7 @@
+// ⚠️  These constants are hand-counted from the JSX tree of each view.
+// When you add/remove margins, borders, or chrome elements in a view component,
+// update the corresponding constant here AND the comment breakdown.
+// See #43 (render tests) and #47 (constant drift detection) for automation tracking.
 // Vertical lines consumed by app chrome (breadcrumb + status bar with border-top)
 export const APP_CHROME_LINES = 3;
 

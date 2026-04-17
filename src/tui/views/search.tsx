@@ -146,7 +146,7 @@ export function SearchView({
               <Text color={theme.accent}> (rank: {item.rank.toFixed(1)})</Text>
             </Box>
             {item.snippet && (
-              <Text color={theme.muted} wrap="wrap">
+              <Text color={theme.muted} wrap="truncate">
                 {"  "}
                 {item.snippet}
               </Text>

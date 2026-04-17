@@ -73,7 +73,11 @@ export function ArtifactDetailView({
 
       if (panel === "content") {
         const contentLines = artifact?.content.split("\n") ?? [];
-        const maxScroll = Math.max(0, contentLines.length - (height - ARTIFACT_DETAIL_CHROME));
+        const maxScroll = Math.max(
+          0,
+          contentLines.length -
+            (height - ARTIFACT_DETAIL_CHROME - ARTIFACT_DETAIL_SCROLL_INDICATOR),
+        );
         if (input === "j" || key.downArrow) {
           setScrollOffset((s) => Math.min(s + 1, maxScroll));
         } else if (input === "k" || key.upArrow) {
@@ -161,7 +165,7 @@ export function ArtifactDetailView({
             const lineNum = scrollOffset + i;
             return (
               <Box key={`L${lineNum}`}>
-                <Text wrap="wrap">{renderContentLine(line)}</Text>
+                <Text wrap="truncate">{renderContentLine(line)}</Text>
               </Box>
             );
           })}
