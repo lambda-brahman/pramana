@@ -1,5 +1,5 @@
 import { Box, useApp, useInput, useStdout } from "ink";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Breadcrumb } from "./components/breadcrumb.tsx";
 import { HelpOverlay } from "./components/help-overlay.tsx";
 import { StatusBar } from "./components/status-bar.tsx";
@@ -30,15 +30,24 @@ type NavEntry = {
 type Props = {
   dataSource: DataSource;
   initialTenant: string;
+  port: string;
 };
 
-export function App({ dataSource, initialTenant }: Props) {
+export function App({ dataSource: initialDataSource, initialTenant, port }: Props) {
   const { exit } = useApp();
   const { stdout } = useStdout();
+  const [dataSource, setDataSource] = useState<DataSource>(initialDataSource);
   const [navStack, setNavStack] = useState<NavEntry[]>([{ view: "kb-list" }]);
   const [tenant, setTenant] = useState(initialTenant);
   const [showHelp, setShowHelp] = useState(false);
   const [isFormActive, setIsFormActive] = useState(false);
+
+  const swapDataSource = useCallback((ds: DataSource) => {
+    setDataSource((prev) => {
+      prev.close();
+      return ds;
+    });
+  }, []);
 
   const termHeight = stdout?.rows ?? 24;
   const contentHeight = termHeight - APP_CHROME_LINES;
@@ -155,6 +164,8 @@ export function App({ dataSource, initialTenant }: Props) {
             }}
             onReload={() => {}}
             onFormModeChange={setIsFormActive}
+            onSwapDataSource={swapDataSource}
+            port={port}
             height={contentHeight}
           />
         )}

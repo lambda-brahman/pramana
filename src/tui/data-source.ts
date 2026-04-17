@@ -1,10 +1,11 @@
 import {
   addTenant as configAddTenant,
   removeTenant as configRemoveTenant,
+  loadConfig,
 } from "../config/index.ts";
 import type { BuildReport } from "../engine/builder.ts";
 import type { ArtifactView, ListFilter } from "../engine/reader.ts";
-import type { TenantInfo, TenantManager } from "../engine/tenant.ts";
+import { type TenantInfo, TenantManager } from "../engine/tenant.ts";
 import { err, ok, type Result } from "../lib/result.ts";
 import type { SearchResult } from "../storage/interface.ts";
 
@@ -24,6 +25,7 @@ export type DataSource = {
   reload(tenant: string): Promise<Result<BuildReport, DataSourceError>>;
   addKb(name: string, sourceDir: string): Promise<Result<void, DataSourceError>>;
   removeKb(name: string): Promise<Result<void, DataSourceError>>;
+  close(): void;
   mode: "daemon" | "standalone";
 };
 
@@ -34,6 +36,10 @@ function dsErr(message: string): DataSourceError {
 export function createReaderDataSource(tm: TenantManager): DataSource {
   return {
     mode: "standalone",
+
+    close() {
+      tm.close();
+    },
 
     async get(tenant, slug) {
       const r = tm.getReader(tenant);
@@ -98,6 +104,29 @@ export function createReaderDataSource(tm: TenantManager): DataSource {
   };
 }
 
+export async function createStandaloneFromConfig(): Promise<
+  Result<{ ds: DataSource; mountFailures: string[] }, DataSourceError>
+> {
+  const tm = new TenantManager();
+  await tm.initEmbedder();
+
+  const configResult = await loadConfig();
+  if (!configResult.ok) {
+    tm.close();
+    return err(dsErr(configResult.error.message));
+  }
+
+  const mountFailures: string[] = [];
+  for (const [name, dir] of Object.entries(configResult.value.tenants)) {
+    const result = await tm.mount({ name, sourceDir: dir });
+    if (!result.ok) {
+      mountFailures.push(name);
+    }
+  }
+
+  return ok({ ds: createReaderDataSource(tm), mountFailures });
+}
+
 export function createHttpDataSource(port: string): DataSource {
   const baseUrl = `http://localhost:${port}`;
 
@@ -116,6 +145,8 @@ export function createHttpDataSource(port: string): DataSource {
 
   return {
     mode: "daemon",
+
+    close() {},
 
     async get(tenant, slug) {
       const parts = slug.split("#");

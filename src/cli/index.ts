@@ -502,7 +502,7 @@ async function main() {
         }
         const tenants = tenantsResult.value;
         const tenant = tenants.length > 0 ? (getFlag("tenant") ?? tenants[0]!.name) : "";
-        await startTui(ds, tenant);
+        await startTui(ds, tenant, port);
         process.exit(0);
       }
     }
@@ -545,7 +545,7 @@ async function main() {
 
     const ds = createReaderDataSource(tm);
     const tenant = tm.tenantNames().length > 0 ? (getFlag("tenant") ?? tm.tenantNames()[0]!) : "";
-    await startTui(ds, tenant);
+    await startTui(ds, tenant, port);
     tm.close();
     process.exit(0);
   }
