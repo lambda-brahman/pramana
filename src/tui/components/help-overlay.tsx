@@ -61,6 +61,7 @@ const globalBindings: Binding[] = [
 ];
 
 function BindingGroup({ title, bindings }: { title: string; bindings: Binding[] }) {
+  const keyPad = Math.max(...bindings.map((b) => b.keys.length)) + 3;
   return (
     <Box flexDirection="column" marginBottom={1}>
       <Text bold color={theme.accent}>
@@ -68,9 +69,7 @@ function BindingGroup({ title, bindings }: { title: string; bindings: Binding[] 
       </Text>
       {bindings.map((b) => (
         <Box key={b.keys}>
-          <Box width={22}>
-            <Text color={theme.hintKey}> {b.keys}</Text>
-          </Box>
+          <Text color={theme.hintKey}>{` ${b.keys}`.padEnd(keyPad)}</Text>
           <Text color={theme.hintDesc}>{b.description}</Text>
         </Box>
       ))}

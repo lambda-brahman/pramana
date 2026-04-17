@@ -5,6 +5,9 @@ import { VERSION } from "../../version.ts";
 import type { DataSource } from "../data-source.ts";
 import { theme } from "../theme.ts";
 
+const INFO_LABELS = ["Version", "Mode", "Active tenant", "Total tenants", "Total artifacts"];
+const INFO_LABEL_PAD = Math.max(...INFO_LABELS.map((l) => l.length)) + 2;
+
 type Props = {
   dataSource: DataSource;
   activeTenant: string;
@@ -55,35 +58,25 @@ export function DashboardView({ dataSource, activeTenant, isActive, onBack }: Pr
         paddingX={1}
       >
         <Box>
-          <Box width={20}>
-            <Text color={theme.muted}>Version</Text>
-          </Box>
+          <Text color={theme.muted}>{"Version".padEnd(INFO_LABEL_PAD)}</Text>
           <Text>pramana {VERSION}</Text>
         </Box>
         <Box>
-          <Box width={20}>
-            <Text color={theme.muted}>Mode</Text>
-          </Box>
+          <Text color={theme.muted}>{"Mode".padEnd(INFO_LABEL_PAD)}</Text>
           <Text color={dataSource.mode === "daemon" ? theme.success : theme.accent}>
             {dataSource.mode}
           </Text>
         </Box>
         <Box>
-          <Box width={20}>
-            <Text color={theme.muted}>Active tenant</Text>
-          </Box>
+          <Text color={theme.muted}>{"Active tenant".padEnd(INFO_LABEL_PAD)}</Text>
           <Text color={theme.success}>{activeTenant}</Text>
         </Box>
         <Box>
-          <Box width={20}>
-            <Text color={theme.muted}>Total tenants</Text>
-          </Box>
+          <Text color={theme.muted}>{"Total tenants".padEnd(INFO_LABEL_PAD)}</Text>
           <Text>{tenants.length}</Text>
         </Box>
         <Box>
-          <Box width={20}>
-            <Text color={theme.muted}>Total artifacts</Text>
-          </Box>
+          <Text color={theme.muted}>{"Total artifacts".padEnd(INFO_LABEL_PAD)}</Text>
           <Text>{totalArtifacts}</Text>
         </Box>
       </Box>
@@ -94,7 +87,7 @@ export function DashboardView({ dataSource, activeTenant, isActive, onBack }: Pr
       </Text>
       {tenants.map((t) => (
         <Box key={t.name} marginLeft={1}>
-          <Box width={20}>
+          <Box flexShrink={0} marginRight={2}>
             <Text
               color={t.name === activeTenant ? theme.success : undefined}
               bold={t.name === activeTenant}
@@ -102,8 +95,9 @@ export function DashboardView({ dataSource, activeTenant, isActive, onBack }: Pr
               {t.name}
             </Text>
           </Box>
-          <Text color={theme.muted}>{t.artifactCount} artifacts</Text>
-          <Text color={theme.muted}> | {t.sourceDir}</Text>
+          <Text color={theme.muted}>
+            {t.artifactCount} artifacts | {t.sourceDir}
+          </Text>
         </Box>
       ))}
 

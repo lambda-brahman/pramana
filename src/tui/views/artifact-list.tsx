@@ -4,6 +4,7 @@ import type { ArtifactView } from "../../engine/reader.ts";
 import { ScrollableList } from "../components/scrollable-list.tsx";
 import { TextInput } from "../components/text-input.tsx";
 import type { DataSource } from "../data-source.ts";
+import { ARTIFACT_LIST_CHROME, ARTIFACT_LIST_FILTER_LINES } from "../layout.ts";
 import { theme } from "../theme.ts";
 
 type Props = {
@@ -93,7 +94,7 @@ export function ArtifactListView({
   if (loading) return <Text color={theme.muted}>Loading artifacts...</Text>;
   if (error) return <Text color={theme.error}>Error: {error}</Text>;
 
-  const listHeight = height - 5 - (filterMode ? 1 : 0);
+  const listHeight = height - ARTIFACT_LIST_CHROME - (filterMode ? ARTIFACT_LIST_FILTER_LINES : 0);
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor={theme.border} paddingX={1}>

@@ -2,6 +2,7 @@ import { Box, Text, useInput } from "ink";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import type { ArtifactView } from "../../engine/reader.ts";
 import type { DataSource } from "../data-source.ts";
+import { ARTIFACT_DETAIL_CHROME, ARTIFACT_DETAIL_SCROLL_INDICATOR } from "../layout.ts";
 import { theme } from "../theme.ts";
 
 type Panel = "content" | "relationships" | "sections";
@@ -72,7 +73,11 @@ export function ArtifactDetailView({
 
       if (panel === "content") {
         const contentLines = artifact?.content.split("\n") ?? [];
-        const maxScroll = Math.max(0, contentLines.length - (height - 8));
+        const maxScroll = Math.max(
+          0,
+          contentLines.length -
+            (height - ARTIFACT_DETAIL_CHROME - ARTIFACT_DETAIL_SCROLL_INDICATOR),
+        );
         if (input === "j" || key.downArrow) {
           setScrollOffset((s) => Math.min(s + 1, maxScroll));
         } else if (input === "k" || key.upArrow) {
@@ -120,7 +125,7 @@ export function ArtifactDetailView({
   if (!artifact) return <Text color={theme.error}>Not found: {slug}</Text>;
 
   const contentLines = artifact.content.split("\n");
-  const visibleHeight = height - 8;
+  const visibleHeight = height - ARTIFACT_DETAIL_CHROME - ARTIFACT_DETAIL_SCROLL_INDICATOR;
   const visibleContent = contentLines.slice(scrollOffset, scrollOffset + visibleHeight);
 
   return (
