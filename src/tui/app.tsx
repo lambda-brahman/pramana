@@ -30,7 +30,7 @@ type NavEntry = {
 type Props = {
   dataSource: DataSource;
   initialTenant: string;
-  port: string;
+  port: number;
 };
 
 export function App({ dataSource: initialDataSource, initialTenant, port }: Props) {

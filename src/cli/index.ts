@@ -206,11 +206,11 @@ async function upgradePlugin(version: string): Promise<Result<void, CliError>> {
   return ok(undefined);
 }
 
-function resolvePort(): string {
-  return getFlag("port") ?? process.env.PRAMANA_PORT ?? "5111";
+function resolvePort(): number {
+  return Number.parseInt(getFlag("port") ?? process.env.PRAMANA_PORT ?? "5111", 10);
 }
 
-async function isServerReachable(port: string): Promise<boolean> {
+async function isServerReachable(port: number): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1000);
@@ -224,7 +224,7 @@ async function isServerReachable(port: string): Promise<boolean> {
   }
 }
 
-async function httpClient(port: string): Promise<void> {
+async function httpClient(port: number): Promise<void> {
   const baseUrl = `http://localhost:${port}`;
   const tenant = getFlag("tenant");
   const prefix = tenant ? `${baseUrl}/v1/${tenant}` : `${baseUrl}/v1`;
@@ -624,8 +624,7 @@ async function main() {
       console.error("Saved CLI sources to config");
     }
 
-    const portNum = Number.parseInt(port, 10);
-    const server = createServer({ port: portNum, tenantManager: tm });
+    const server = createServer({ port, tenantManager: tm });
     console.log(`Pramana serving on http://localhost:${server.port}`);
     return;
   }

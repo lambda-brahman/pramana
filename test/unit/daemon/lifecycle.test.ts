@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-const TEST_PORT = "59876";
+const TEST_PORT = 59876;
 
 function mockFetch(fn: (...args: unknown[]) => unknown) {
   global.fetch = fn as unknown as typeof fetch;

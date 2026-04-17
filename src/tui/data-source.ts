@@ -127,7 +127,7 @@ export async function createStandaloneFromConfig(): Promise<
   return ok({ ds: createReaderDataSource(tm), mountFailures });
 }
 
-export function createHttpDataSource(port: string): DataSource {
+export function createHttpDataSource(port: number): DataSource {
   const baseUrl = `http://localhost:${port}`;
 
   async function fetchJson<T>(url: string, method = "GET"): Promise<Result<T, DataSourceError>> {

@@ -71,7 +71,7 @@ function delay(ms: number) {
 describe("App", () => {
   test("renders with status bar showing initial tenant", async () => {
     const ds = createMockDataSource();
-    const { lastFrame } = render(<App dataSource={ds} initialTenant="test" port="5111" />);
+    const { lastFrame } = render(<App dataSource={ds} initialTenant="test" port={5111} />);
     await delay(100);
     const frame = lastFrame()!;
     expect(frame).toContain("pramana");
@@ -81,14 +81,14 @@ describe("App", () => {
 
   test("starts on KB list view", async () => {
     const ds = createMockDataSource();
-    const { lastFrame } = render(<App dataSource={ds} initialTenant="test" port="5111" />);
+    const { lastFrame } = render(<App dataSource={ds} initialTenant="test" port={5111} />);
     await delay(100);
     expect(lastFrame()).toContain("Knowledge Bases");
   });
 
   test("shows KB list on startup", async () => {
     const ds = createMockDataSource();
-    const { lastFrame } = render(<App dataSource={ds} initialTenant="test" port="5111" />);
+    const { lastFrame } = render(<App dataSource={ds} initialTenant="test" port={5111} />);
     await delay(200);
     const frame = lastFrame()!;
     expect(frame).toContain("test");
@@ -98,7 +98,7 @@ describe("App", () => {
   test("shows help overlay on ? key", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -111,7 +111,7 @@ describe("App", () => {
   test("dismisses help overlay on any key", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -127,7 +127,7 @@ describe("App", () => {
   test("navigates to KB context on Enter", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -140,7 +140,7 @@ describe("App", () => {
   test("navigates KB context > browse > artifact list", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -158,7 +158,7 @@ describe("App", () => {
   test("navigates KB context > search", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -175,7 +175,7 @@ describe("App", () => {
   test("navigates KB context > graph", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -190,7 +190,7 @@ describe("App", () => {
   test("navigates KB context > dashboard", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -205,7 +205,7 @@ describe("App", () => {
   test("Esc navigates back through stack", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -233,7 +233,7 @@ describe("App", () => {
   test("q from KB context goes back to KB list", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -249,7 +249,7 @@ describe("App", () => {
   test("status bar shows KB List on startup", async () => {
     const ds = createMockDataSource();
     const { lastFrame } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
     expect(lastFrame()).toContain("KB List");
@@ -258,7 +258,7 @@ describe("App", () => {
   test("status bar updates on navigation", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
@@ -270,7 +270,7 @@ describe("App", () => {
   test("renders daemon mode in status bar", async () => {
     const ds = createMockDataSource();
     (ds as { mode: string }).mode = "daemon";
-    const { lastFrame } = render(<App dataSource={ds} initialTenant="test" port="5111" />);
+    const { lastFrame } = render(<App dataSource={ds} initialTenant="test" port={5111} />);
     await delay(100);
     expect(lastFrame()).toContain("daemon");
   });
@@ -278,7 +278,7 @@ describe("App", () => {
   test("breadcrumb shows navigation path", async () => {
     const ds = createMockDataSource();
     const { lastFrame, stdin } = render(
-      <App dataSource={ds} initialTenant="test" port="5111" />,
+      <App dataSource={ds} initialTenant="test" port={5111} />,
     );
     await delay(100);
 
