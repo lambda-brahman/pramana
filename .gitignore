@@ -40,3 +40,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Claude task files
 .claude-task
 .claude-start.sh
+
+# Claude Code operational layer — lives in the separate private pramana-ops repo,
+# symlinked into .claude/. See pramana-ops/README.md for setup.
+/.claude/

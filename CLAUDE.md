@@ -1,7 +1,7 @@
 # Pramana — Knowledge Engine
 
 ## Runtime
-- Bun (not Node.js)
+- Bun (not Node.js) — pinned via `.bun-version` (matches CI). Install with `curl -fsSL https://bun.sh/install | bash -s -- bun-v$(cat .bun-version)`.
 - `bun test` for tests
 - `bun:sqlite` for SQLite
 - `Bun.serve()` for HTTP
