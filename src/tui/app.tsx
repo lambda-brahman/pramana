@@ -43,7 +43,10 @@ export function App({ dataSource: initialDataSource, initialTenant, port }: Prop
   const [isFormActive, setIsFormActive] = useState(false);
 
   const swapDataSource = useCallback((ds: DataSource) => {
-    setDataSource(ds);
+    setDataSource((prev) => {
+      prev.close();
+      return ds;
+    });
   }, []);
 
   const termHeight = stdout?.rows ?? 24;

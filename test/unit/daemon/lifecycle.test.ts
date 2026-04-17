@@ -77,6 +77,25 @@ describe("startDaemon", () => {
     if (!result.ok) expect(result.error.message).toContain("did not start");
     expect(spawnMock).toHaveBeenCalledTimes(1);
   });
+
+  test("returns ok when daemon starts after a few failed polls", async () => {
+    let callCount = 0;
+    mockFetch(
+      mock(async () => {
+        callCount++;
+        if (callCount <= 4) throw new Error("ECONNREFUSED");
+        return new Response('{"version":"v1.0.0"}', { status: 200 });
+      }),
+    );
+    const spawnMock = mock(() => ({ unref: mock(() => {}) }));
+    Bun.spawn = spawnMock as unknown as typeof Bun.spawn;
+
+    const { startDaemon } = await import("../../../src/daemon/lifecycle.ts");
+    const result = await startDaemon(TEST_PORT);
+    expect(result.ok).toBe(true);
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    expect(callCount).toBeGreaterThan(4);
+  });
 });
 
 describe("stopDaemon", () => {
@@ -122,5 +141,31 @@ describe("stopDaemon", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.message).toContain("did not stop");
     expect(shutdownCalled).toBe(true);
+  });
+
+  test("returns ok when daemon stops after shutdown request", async () => {
+    let shutdownCalled = false;
+    let pollCount = 0;
+    mockFetch(
+      mock(async (url: unknown, opts?: unknown) => {
+        const urlStr = typeof url === "string" ? url : String(url);
+        const method = (opts as RequestInit | undefined)?.method;
+        if (method === "POST" && urlStr.includes("/v1/shutdown")) {
+          shutdownCalled = true;
+          return new Response('{"status":"shutting-down"}', { status: 200 });
+        }
+        pollCount++;
+        if (pollCount <= 3) {
+          return new Response('{"version":"v1.0.0"}', { status: 200 });
+        }
+        throw new Error("ECONNREFUSED");
+      }),
+    );
+
+    const { stopDaemon } = await import("../../../src/daemon/lifecycle.ts");
+    const result = await stopDaemon(TEST_PORT);
+    expect(result.ok).toBe(true);
+    expect(shutdownCalled).toBe(true);
+    expect(pollCount).toBeGreaterThan(1);
   });
 });

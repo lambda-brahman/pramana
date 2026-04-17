@@ -60,6 +60,7 @@ function createMockDataSource(): DataSource {
     async removeKb() {
       return ok(undefined);
     },
+    close() {},
   };
 }
 

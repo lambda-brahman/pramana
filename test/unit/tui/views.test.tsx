@@ -134,6 +134,8 @@ function createMockDataSource(
     async removeKb(_name) {
       return ok(undefined);
     },
+
+    close() {},
   };
 }
 

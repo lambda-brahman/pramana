@@ -54,6 +54,7 @@ function createDataSource(artifact: ArtifactView): DataSource {
     async removeKb() {
       return ok(undefined);
     },
+    close() {},
   };
 }
 

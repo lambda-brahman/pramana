@@ -146,12 +146,18 @@ export function KbListView({
               setDaemonState("running");
               return;
             }
-            onSwapDataSource(standaloneResult.value);
+            onSwapDataSource(standaloneResult.value.ds);
             const stopResult = await stopDaemon(port);
+            const mountWarning =
+              standaloneResult.value.mountFailures.length > 0
+                ? ` (failed to mount: ${standaloneResult.value.mountFailures.join(", ")})`
+                : "";
             if (!stopResult.ok) {
-              setMessage(`Warning: ${stopResult.error.message}. Switched to standalone.`);
+              setMessage(
+                `Warning: ${stopResult.error.message}. Switched to standalone.${mountWarning}`,
+              );
             } else {
-              setMessage("Daemon stopped — standalone mode");
+              setMessage(`Daemon stopped — standalone mode${mountWarning}`);
             }
             setDaemonState("stopped");
           });

@@ -10,6 +10,7 @@ export function createServer(opts: ApiServerOptions) {
 
   server = Bun.serve({
     port: opts.port,
+    hostname: "127.0.0.1",
 
     async fetch(req) {
       const url = new URL(req.url);
@@ -27,6 +28,7 @@ export function createServer(opts: ApiServerOptions) {
         if (path === "/v1/shutdown") {
           setTimeout(() => {
             server.stop(true);
+            tm.close();
             process.exit(0);
           }, 50);
           return json({ status: "shutting-down" });
