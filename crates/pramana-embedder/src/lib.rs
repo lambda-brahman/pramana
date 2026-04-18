@@ -62,8 +62,13 @@ impl Embedder {
 
         let mut all_embeddings = Vec::with_capacity(texts.len());
         for chunk in texts.chunks(DEFAULT_BATCH_SIZE) {
-            let mut chunk_result =
-                run_inference(&mut session, &self.tokenizer, chunk, self.config.dim)?;
+            let mut chunk_result = run_inference(
+                &mut session,
+                &self.tokenizer,
+                chunk,
+                self.config.dim,
+                self.config.output_index,
+            )?;
             all_embeddings.append(&mut chunk_result);
         }
         Ok(all_embeddings)
@@ -105,9 +110,9 @@ fn load_tokenizer(cache_dir: &Path, config: &ModelConfig) -> Result<Tokenizer, E
         strategy: PaddingStrategy::BatchLongest,
         direction: PaddingDirection::Right,
         pad_to_multiple_of: None,
-        pad_id: 0,
+        pad_id: config.pad_id,
         pad_type_id: 0,
-        pad_token: "[PAD]".into(),
+        pad_token: config.pad_token.into(),
     }));
 
     Ok(tokenizer)
@@ -130,6 +135,7 @@ fn run_inference(
     tokenizer: &Tokenizer,
     texts: &[&str],
     expected_dim: usize,
+    output_index: usize,
 ) -> Result<Vec<Vec<f32>>, EmbedError> {
     let encodings = tokenizer
         .encode_batch(texts.to_vec(), true)
@@ -161,11 +167,21 @@ fn run_inference(
     let token_type_ids = Tensor::from_array(type_ids)
         .map_err(|e| EmbedError::Inference(format!("token_type_ids tensor: {e}")))?;
 
+    // Inputs are bound positionally (input_ids, attention_mask, token_type_ids).
+    // gte-small and bge-small exports follow this ordering. Named binding had API
+    // issues in ort rc.10 — tracked in #123 for the stable upgrade.
     let outputs = session
         .run(ort::inputs![input_ids, attention_mask, token_type_ids])
         .map_err(|e| EmbedError::Inference(format!("session.run: {e}")))?;
 
-    let (shape, raw) = outputs[0]
+    if output_index >= outputs.len() {
+        return Err(EmbedError::Inference(format!(
+            "output_index {output_index} out of bounds: model produced {} output(s)",
+            outputs.len()
+        )));
+    }
+
+    let (shape, raw) = outputs[output_index]
         .try_extract_tensor::<f32>()
         .map_err(|e| EmbedError::Inference(format!("extract tensor: {e}")))?;
 
@@ -279,5 +295,18 @@ mod tests {
     fn default_batch_size_is_positive() {
         assert!(DEFAULT_BATCH_SIZE > 0);
         assert_eq!(DEFAULT_BATCH_SIZE, 64);
+    }
+
+    #[test]
+    fn model_config_pad_defaults() {
+        let cfg = ModelConfig::for_model("Xenova/gte-small");
+        assert_eq!(cfg.pad_id, 0);
+        assert_eq!(cfg.pad_token, "[PAD]");
+    }
+
+    #[test]
+    fn model_config_output_index_default() {
+        let cfg = ModelConfig::for_model("Xenova/gte-small");
+        assert_eq!(cfg.output_index, 0);
     }
 }
