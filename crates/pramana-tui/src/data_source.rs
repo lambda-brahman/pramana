@@ -140,6 +140,32 @@ impl DataSource {
         }
     }
 
+    pub fn traverse(
+        &self,
+        tenant: &str,
+        from: &str,
+        rel_type: Option<&str>,
+        depth: usize,
+    ) -> Result<Vec<ArtifactView>, TuiError> {
+        match self {
+            DataSource::Standalone(tm) => {
+                let reader = tm.reader(tenant)?;
+                Ok(reader.traverse(from, rel_type, depth, None)?)
+            }
+            DataSource::Daemon { port } => {
+                let mut url =
+                    format!("http://localhost:{port}/v1/{tenant}/traverse/{from}?depth={depth}");
+                if let Some(rt) = rel_type {
+                    url.push_str(&format!("&type={}", urlencoded(rt)));
+                }
+                let body = daemon_get(&url)?;
+                let artifacts: Vec<ArtifactView> =
+                    serde_json::from_str(&body).map_err(|e| TuiError::Http(e.to_string()))?;
+                Ok(artifacts)
+            }
+        }
+    }
+
     pub fn check_daemon(port: u16) -> bool {
         ureq::get(&format!("http://localhost:{port}/v1/version"))
             .timeout(std::time::Duration::from_secs(1))

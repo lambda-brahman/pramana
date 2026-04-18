@@ -4,6 +4,7 @@ use crate::io_worker::{IoHandle, IoResponse};
 use crate::views::artifact_detail::{
     handle_detail_input, render_artifact_detail, ArtifactDetailView, DetailAction,
 };
+use crate::views::graph::{handle_graph_input, render_graph, GraphAction, GraphView};
 use crate::views::kb_list::{handle_kb_list_input, render_kb_list, KbListAction, KbListView};
 use crate::views::search::{handle_search_input, render_search, SearchAction, SearchView};
 use crate::widgets::breadcrumb::Breadcrumb;
@@ -21,6 +22,7 @@ pub enum View {
     KbList,
     Search,
     ArtifactDetail { slug: String },
+    Graph { from: String },
 }
 
 struct NavEntry {
@@ -37,11 +39,13 @@ pub struct App {
     pub kb_list: KbListView,
     pub search: SearchView,
     pub detail: ArtifactDetailView,
+    pub graph: GraphView,
     pub show_help: bool,
     pub should_quit: bool,
     pub last_content_height: u16,
     search_generation: u64,
     get_generation: u64,
+    graph_generation: u64,
     health_check_in_flight: bool,
 }
 
@@ -60,11 +64,13 @@ impl App {
             kb_list: KbListView::new(),
             search: SearchView::new(),
             detail: ArtifactDetailView::new(),
+            graph: GraphView::new(),
             show_help: false,
             should_quit: false,
             last_content_height: 20,
             search_generation: 0,
             get_generation: 0,
+            graph_generation: 0,
             health_check_in_flight: false,
         };
         app.refresh_tenants();
@@ -104,6 +110,10 @@ impl App {
                     segments.push(self.active_tenant.clone());
                     segments.push(slug.clone());
                 }
+                View::Graph { from } => {
+                    segments.push(self.active_tenant.clone());
+                    segments.push(format!("graph:{from}"));
+                }
             }
         }
         segments
@@ -114,6 +124,7 @@ impl App {
             View::KbList => "kb-list",
             View::Search => "search",
             View::ArtifactDetail { .. } => "detail",
+            View::Graph { .. } => "graph",
         }
     }
 
@@ -146,6 +157,7 @@ impl App {
                 View::KbList => self.handle_kb_list_event(key),
                 View::Search => self.handle_search_event(key),
                 View::ArtifactDetail { .. } => self.handle_detail_event(key),
+                View::Graph { .. } => self.handle_graph_event(key),
             }
         }
     }
@@ -210,8 +222,59 @@ impl App {
             DetailAction::NavigateTo(slug) => {
                 self.navigate_to_artifact(&slug);
             }
+            DetailAction::OpenGraph => {
+                if let Some(artifact) = &self.detail.artifact {
+                    let slug = artifact.slug.clone();
+                    self.navigate_to_graph(&slug);
+                }
+            }
             DetailAction::None => {}
         }
+    }
+
+    fn handle_graph_event(&mut self, key: KeyEvent) {
+        if key.code == KeyCode::Char('?') {
+            self.show_help = true;
+            return;
+        }
+
+        let action = handle_graph_input(&mut self.graph, key);
+        match action {
+            GraphAction::Back => self.pop_view(),
+            GraphAction::NavigateTo(slug) => {
+                self.navigate_to_artifact(&slug);
+            }
+            GraphAction::Reroot(slug) => {
+                self.navigate_to_graph(&slug);
+            }
+            GraphAction::DepthChanged => {
+                let slug = self.graph.from_slug.clone();
+                let depth = self.graph.depth;
+                self.refresh_graph(&slug, depth);
+            }
+            GraphAction::None => {}
+        }
+    }
+
+    fn navigate_to_graph(&mut self, slug: &str) {
+        self.graph_generation += 1;
+        let depth = self.graph.depth.max(1);
+        self.io.spawn_graph_traverse(
+            self.active_tenant.clone(),
+            slug.to_string(),
+            depth,
+            self.graph_generation,
+        );
+    }
+
+    fn refresh_graph(&mut self, slug: &str, depth: usize) {
+        self.graph_generation += 1;
+        self.io.spawn_graph_traverse(
+            self.active_tenant.clone(),
+            slug.to_string(),
+            depth,
+            self.graph_generation,
+        );
     }
 
     fn navigate_to_artifact(&mut self, slug: &str) {
@@ -308,6 +371,30 @@ impl App {
                     }
                     self.refresh_tenants();
                 }
+                IoResponse::GraphData {
+                    generation,
+                    slug,
+                    depth,
+                    result,
+                } => {
+                    if generation == self.graph_generation {
+                        match *result {
+                            Ok((root, traversed)) => {
+                                let is_reroot = !matches!(self.current_view(), View::Graph { .. });
+                                self.graph = GraphView::new();
+                                self.graph.depth = depth;
+                                self.graph.set_root(&root, &traversed);
+                                if is_reroot {
+                                    self.push_view(View::Graph { from: slug });
+                                }
+                            }
+                            Err(e) => {
+                                self.graph.error_message =
+                                    Some(format!("Failed to load graph: {e}"));
+                            }
+                        }
+                    }
+                }
                 IoResponse::RemoveKb { name, result } => {
                     match result {
                         Ok(()) => {
@@ -377,6 +464,7 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
         View::KbList => render_kb_list(&mut app.kb_list, content_area, buf, &app.active_tenant),
         View::Search => render_search(&mut app.search, content_area, buf),
         View::ArtifactDetail { .. } => render_artifact_detail(&mut app.detail, content_area, buf),
+        View::Graph { .. } => render_graph(&mut app.graph, content_area, buf),
     }
 
     // Status bar
@@ -418,6 +506,15 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
                 ("0", "Reset scroll"),
                 ("Tab", "Cycle panels"),
                 ("Enter", "Follow link"),
+                ("g", "Graph view"),
+                ("Esc/q", "Back"),
+                ("?", "Toggle help"),
+            ],
+            View::Graph { .. } => vec![
+                ("j/k", "Navigate"),
+                ("Enter", "View artifact"),
+                ("g", "Re-root graph"),
+                ("+/-", "Change depth"),
                 ("Esc/q", "Back"),
                 ("?", "Toggle help"),
             ],

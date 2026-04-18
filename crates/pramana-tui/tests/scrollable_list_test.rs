@@ -126,6 +126,210 @@ mod golden_snapshots {
     }
 }
 
+mod graph_view {
+    use super::*;
+
+    fn make_test_app_with_graph() -> App {
+        let ds = DataSource::Standalone(Box::new(pramana_engine::TenantManager::new()));
+        let mut app = App::new(ds, 5111, None);
+
+        let root = pramana_engine::ArtifactView {
+            slug: "order".into(),
+            title: "Order".into(),
+            summary: None,
+            aliases: None,
+            tags: vec![],
+            relationships: vec![
+                pramana_engine::Relationship {
+                    target: "customer".into(),
+                    kind: "depends-on".into(),
+                    line: None,
+                    section: None,
+                },
+                pramana_engine::Relationship {
+                    target: "product".into(),
+                    kind: "depends-on".into(),
+                    line: None,
+                    section: None,
+                },
+            ],
+            inverse_relationships: vec![pramana_engine::Relationship {
+                target: "invoice".into(),
+                kind: "relates-to".into(),
+                line: None,
+                section: None,
+            }],
+            sections: vec![],
+            content: String::new(),
+            hash: "abc".into(),
+            focused_section: None,
+        };
+
+        let traversed = vec![
+            pramana_engine::ArtifactView {
+                slug: "customer".into(),
+                title: "Customer entity".into(),
+                summary: None,
+                aliases: None,
+                tags: vec![],
+                relationships: vec![],
+                inverse_relationships: vec![],
+                sections: vec![],
+                content: String::new(),
+                hash: "def".into(),
+                focused_section: None,
+            },
+            pramana_engine::ArtifactView {
+                slug: "product".into(),
+                title: "Product catalog item".into(),
+                summary: None,
+                aliases: None,
+                tags: vec![],
+                relationships: vec![],
+                inverse_relationships: vec![],
+                sections: vec![],
+                content: String::new(),
+                hash: "ghi".into(),
+                focused_section: None,
+            },
+        ];
+
+        app.graph.set_root(&root, &traversed);
+        app
+    }
+
+    #[test]
+    fn graph_view_snapshot() {
+        let mut app = make_test_app_with_graph();
+        app.graph.depth = 1;
+
+        let output = {
+            use pramana_tui::views::graph::render_graph;
+            let area = Rect::new(0, 0, 80, 15);
+            let mut buf = Buffer::empty(area);
+            render_graph(&mut app.graph, area, &mut buf);
+
+            let mut out = String::new();
+            for y in 0..15 {
+                for x in 0..80 {
+                    let cell = &buf[(x, y)];
+                    out.push_str(cell.symbol());
+                }
+                out.push('\n');
+            }
+            out
+        };
+
+        assert!(output.contains("Order"));
+        assert!(output.contains("graph: order"));
+        assert!(output.contains("depth: 1"));
+        assert!(output.contains("customer"));
+        assert!(output.contains("product"));
+        assert!(output.contains("invoice"));
+        assert!(output.contains("[depends-on]"));
+        assert!(output.contains("[relates-to]"));
+    }
+
+    #[test]
+    fn graph_view_empty_entries() {
+        let ds = DataSource::Standalone(Box::new(pramana_engine::TenantManager::new()));
+        let mut app = App::new(ds, 5111, None);
+
+        let root = pramana_engine::ArtifactView {
+            slug: "isolated".into(),
+            title: "Isolated Node".into(),
+            summary: None,
+            aliases: None,
+            tags: vec![],
+            relationships: vec![],
+            inverse_relationships: vec![],
+            sections: vec![],
+            content: String::new(),
+            hash: "xyz".into(),
+            focused_section: None,
+        };
+
+        app.graph.set_root(&root, &[]);
+
+        let area = Rect::new(0, 0, 60, 12);
+        let mut buf = Buffer::empty(area);
+        pramana_tui::views::graph::render_graph(&mut app.graph, area, &mut buf);
+
+        let mut output = String::new();
+        for y in 0..12 {
+            for x in 0..60 {
+                let cell = &buf[(x, y)];
+                output.push_str(cell.symbol());
+            }
+            output.push('\n');
+        }
+
+        assert!(output.contains("Isolated Node"));
+        assert!(output.contains("No relationships"));
+    }
+
+    #[test]
+    fn graph_navigate_and_select() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use pramana_tui::views::graph::{handle_graph_input, GraphAction};
+
+        let mut app = make_test_app_with_graph();
+
+        let key = |code: KeyCode| KeyEvent::new(code, KeyModifiers::NONE);
+
+        assert_eq!(app.graph.selected_index, 0);
+        assert_eq!(app.graph.selected_slug(), Some("customer"));
+
+        handle_graph_input(&mut app.graph, key(KeyCode::Char('j')));
+        assert_eq!(app.graph.selected_index, 1);
+        assert_eq!(app.graph.selected_slug(), Some("product"));
+
+        handle_graph_input(&mut app.graph, key(KeyCode::Char('j')));
+        assert_eq!(app.graph.selected_index, 2);
+        assert_eq!(app.graph.selected_slug(), Some("invoice"));
+
+        // Can't go past the last item
+        handle_graph_input(&mut app.graph, key(KeyCode::Char('j')));
+        assert_eq!(app.graph.selected_index, 2);
+
+        handle_graph_input(&mut app.graph, key(KeyCode::Char('k')));
+        assert_eq!(app.graph.selected_index, 1);
+
+        // Enter returns NavigateTo
+        let action = handle_graph_input(&mut app.graph, key(KeyCode::Enter));
+        assert!(matches!(action, GraphAction::NavigateTo(s) if s == "product"));
+
+        // g returns Reroot
+        let action = handle_graph_input(&mut app.graph, key(KeyCode::Char('g')));
+        assert!(matches!(action, GraphAction::Reroot(s) if s == "product"));
+    }
+
+    #[test]
+    fn graph_depth_change() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+        use pramana_tui::views::graph::{handle_graph_input, GraphAction};
+
+        let mut app = make_test_app_with_graph();
+
+        let key = |code: KeyCode| KeyEvent::new(code, KeyModifiers::NONE);
+
+        assert_eq!(app.graph.depth, 1);
+
+        let action = handle_graph_input(&mut app.graph, key(KeyCode::Char('+')));
+        assert!(matches!(action, GraphAction::DepthChanged));
+        assert_eq!(app.graph.depth, 2);
+
+        let action = handle_graph_input(&mut app.graph, key(KeyCode::Char('-')));
+        assert!(matches!(action, GraphAction::DepthChanged));
+        assert_eq!(app.graph.depth, 1);
+
+        // Can't go below 1
+        let action = handle_graph_input(&mut app.graph, key(KeyCode::Char('-')));
+        assert!(matches!(action, GraphAction::None));
+        assert_eq!(app.graph.depth, 1);
+    }
+}
+
 mod keybinding_parity {
     /// Verify all expected keybindings exist in the kb-list handler.
     #[test]
@@ -146,6 +350,47 @@ mod keybinding_parity {
         app.handle_event(crossterm::event::Event::Key(key(KeyCode::Char('?'))));
         app.handle_event(crossterm::event::Event::Key(key(KeyCode::Char('?'))));
         // toggle off
+    }
+
+    /// Verify graph keybindings don't panic.
+    #[test]
+    fn graph_keybindings() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let mut view = pramana_tui::views::graph::GraphView::new();
+        let root = pramana_engine::ArtifactView {
+            slug: "test".into(),
+            title: "Test".into(),
+            summary: None,
+            aliases: None,
+            tags: vec![],
+            relationships: vec![pramana_engine::Relationship {
+                target: "other".into(),
+                kind: "depends-on".into(),
+                line: None,
+                section: None,
+            }],
+            inverse_relationships: vec![],
+            sections: vec![],
+            content: String::new(),
+            hash: "abc".into(),
+            focused_section: None,
+        };
+        view.set_root(&root, &[]);
+
+        let key = |code: KeyCode| KeyEvent::new(code, KeyModifiers::NONE);
+
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('j')));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('k')));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Down));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Up));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Enter));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('g')));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('+')));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('-')));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('=')));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('q')));
+        pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Esc));
     }
 
     /// Verify artifact-detail keybindings don't panic.
