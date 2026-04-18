@@ -1,4 +1,5 @@
 use crate::error::CliError;
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::Read;
 use std::time::Duration;
@@ -64,7 +65,7 @@ fn arch_label() -> &'static str {
     }
 }
 
-pub fn perform_upgrade(target_version: &str) -> Result<(), CliError> {
+fn asset_name() -> String {
     let os = platform_label();
     let arch = arch_label();
     let ext = if cfg!(target_os = "windows") {
@@ -72,25 +73,75 @@ pub fn perform_upgrade(target_version: &str) -> Result<(), CliError> {
     } else {
         ""
     };
-    let binary = format!("pramana-{os}-{arch}{ext}");
+    format!("pramana-{os}-{arch}{ext}")
+}
+
+fn fetch_expected_checksum(target_version: &str, binary: &str) -> Option<String> {
+    let url = format!(
+        "https://github.com/lambda-brahman/pramana/releases/download/{target_version}/{binary}.sha256"
+    );
+    let resp = ureq::get(&url)
+        .timeout(Duration::from_secs(10))
+        .call()
+        .ok()?;
+    let text = resp.into_string().ok()?;
+    // Format: "<hex>  <filename>\n" or just "<hex>\n"
+    text.split_whitespace().next().map(|s| s.to_lowercase())
+}
+
+pub fn perform_upgrade(target_version: &str, force: bool) -> Result<(), CliError> {
+    let binary = asset_name();
     let url = format!(
         "https://github.com/lambda-brahman/pramana/releases/download/{target_version}/{binary}"
     );
+
+    let expected_hash = fetch_expected_checksum(target_version, &binary);
+
+    if expected_hash.is_none() && !force {
+        return Err(CliError::User(
+            "no .sha256 checksum file found for this release; \
+             cannot verify download integrity. \
+             Re-run with --force to upgrade without verification."
+                .into(),
+        ));
+    }
 
     let resp = ureq::get(&url)
         .timeout(Duration::from_secs(120))
         .call()
         .map_err(|e| CliError::Http(format!("download failed: {e}")))?;
 
-    let exec_path = std::env::current_exe()
-        .map_err(|e| CliError::User(format!("could not determine executable path: {e}")))?;
-    let tmp_path = exec_path.with_extension("upgrade-tmp");
+    let content_length = resp
+        .header("Content-Length")
+        .and_then(|v| v.parse::<u64>().ok());
+    const MAX_SIZE: u64 = 200_000_000;
+    if let Some(len) = content_length {
+        if len > MAX_SIZE {
+            return Err(CliError::Http(format!(
+                "binary too large ({len} bytes, max {MAX_SIZE})"
+            )));
+        }
+    }
 
     let mut bytes = Vec::new();
     resp.into_reader()
-        .take(200_000_000) // 200MB limit
+        .take(MAX_SIZE)
         .read_to_end(&mut bytes)
         .map_err(|e| CliError::Http(format!("download read failed: {e}")))?;
+
+    if let Some(ref expected) = expected_hash {
+        let actual = format!("{:x}", Sha256::digest(&bytes));
+        if actual != *expected {
+            return Err(CliError::User(format!(
+                "checksum mismatch: expected {expected}, got {actual}"
+            )));
+        }
+        eprintln!("Checksum verified (SHA-256)");
+    }
+
+    let exec_path = std::env::current_exe()
+        .map_err(|e| CliError::User(format!("could not determine executable path: {e}")))?;
+    let tmp_path = exec_path.with_extension("upgrade-tmp");
 
     fs::write(&tmp_path, &bytes)?;
 

@@ -6,7 +6,9 @@ use pramana_storage::Storage;
 use std::collections::HashMap;
 use std::path::Path;
 
-const RESERVED_NAMES: &[&str] = &["get", "search", "traverse", "list", "tenants", "reload"];
+const RESERVED_NAMES: &[&str] = &[
+    "get", "search", "traverse", "list", "tenants", "reload", "version",
+];
 
 #[derive(Debug, Clone)]
 pub struct TenantConfig {

@@ -1,26 +1,15 @@
 use pramana_engine::{ListFilter, TenantManager};
 use std::io::Cursor;
 
-pub fn start(port: u16, mut tm: TenantManager) {
-    let addr = format!("0.0.0.0:{port}");
-    let server = match tiny_http::Server::http(&addr) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("Failed to bind to {addr}: {e}");
-            std::process::exit(1);
-        }
-    };
+pub fn start(host: &str, port: u16, mut tm: TenantManager) -> Result<(), String> {
+    let addr = format!("{host}:{port}");
+    let server =
+        tiny_http::Server::http(&addr).map_err(|e| format!("Failed to bind to {addr}: {e}"))?;
 
-    println!("Pramana serving on http://localhost:{port}");
+    eprintln!("Pramana serving on http://{addr}");
 
     loop {
-        let request = match server.recv() {
-            Ok(rq) => rq,
-            Err(e) => {
-                eprintln!("Server error: {e}");
-                break;
-            }
-        };
+        let request = server.recv().map_err(|e| format!("Server error: {e}"))?;
         handle_request(request, &mut tm);
     }
 }
@@ -134,22 +123,22 @@ fn parse_query_param(query: &str, key: &str) -> Option<String> {
 }
 
 fn urldecode(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    let mut chars = s.bytes();
-    while let Some(b) = chars.next() {
+    let mut bytes = Vec::with_capacity(s.len());
+    let mut iter = s.bytes();
+    while let Some(b) = iter.next() {
         match b {
             b'%' => {
-                let hi = chars.next().and_then(hex_val);
-                let lo = chars.next().and_then(hex_val);
+                let hi = iter.next().and_then(hex_val);
+                let lo = iter.next().and_then(hex_val);
                 if let (Some(h), Some(l)) = (hi, lo) {
-                    result.push((h << 4 | l) as char);
+                    bytes.push(h << 4 | l);
                 }
             }
-            b'+' => result.push(' '),
-            _ => result.push(b as char),
+            b'+' => bytes.push(b' '),
+            _ => bytes.push(b),
         }
     }
-    result
+    String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned())
 }
 
 fn hex_val(b: u8) -> Option<u8> {

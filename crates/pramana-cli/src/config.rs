@@ -19,18 +19,20 @@ impl Default for Config {
     }
 }
 
-pub fn config_dir() -> PathBuf {
-    dirs::home_dir()
-        .expect("could not determine home directory")
-        .join(".pramana")
+pub fn config_dir() -> Result<PathBuf, CliError> {
+    dirs::home_dir().map(|h| h.join(".pramana")).ok_or_else(|| {
+        CliError::User(
+            "could not determine home directory; set $HOME or pass paths explicitly".into(),
+        )
+    })
 }
 
-pub fn config_path() -> PathBuf {
-    config_dir().join("config.json")
+pub fn config_path() -> Result<PathBuf, CliError> {
+    config_dir().map(|d| d.join("config.json"))
 }
 
 pub fn load_config() -> Result<Config, CliError> {
-    let path = config_path();
+    let path = config_path()?;
     if !path.exists() {
         return Ok(Config::default());
     }
@@ -49,7 +51,7 @@ pub fn load_config() -> Result<Config, CliError> {
 }
 
 pub fn save_config(config: &Config) -> Result<(), CliError> {
-    let path = config_path();
+    let path = config_path()?;
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
@@ -61,7 +63,7 @@ pub fn save_config(config: &Config) -> Result<(), CliError> {
 }
 
 pub fn add_tenant(name: &str, source_dir: &Path) -> Result<(), CliError> {
-    let mut config = load_config().unwrap_or_default();
+    let mut config = load_config()?;
     let abs = source_dir
         .canonicalize()
         .unwrap_or_else(|_| source_dir.to_path_buf());

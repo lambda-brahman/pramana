@@ -45,6 +45,9 @@ enum Commands {
         /// Server port
         #[arg(long, default_value = "5111", env = "PRAMANA_PORT", value_parser = parse_port)]
         port: u16,
+        /// Bind address [default: 127.0.0.1, use 0.0.0.0 for LAN access]
+        #[arg(long, default_value = "127.0.0.1", env = "PRAMANA_HOST")]
+        host: String,
         /// Persist CLI sources to config after successful mount
         #[arg(long)]
         save: bool,
@@ -144,9 +147,6 @@ enum Commands {
         /// Target tenant name (daemon mode)
         #[arg(long)]
         tenant: Option<String>,
-        /// Treat warnings as errors
-        #[arg(long)]
-        strict: bool,
         /// Server port
         #[arg(long, default_value = "5111", env = "PRAMANA_PORT", value_parser = parse_port)]
         port: u16,
@@ -172,7 +172,11 @@ enum Commands {
         check: bool,
     },
     /// Upgrade pramana to the latest version
-    Upgrade,
+    Upgrade {
+        /// Skip checksum verification
+        #[arg(long)]
+        force: bool,
+    },
     /// Initialize a new knowledge base directory
     Init {
         /// Directory to initialize
@@ -219,9 +223,10 @@ fn run(cmd: Commands) -> i32 {
         Commands::Serve {
             source,
             port,
+            host,
             save,
             no_config,
-        } => cmd_serve(source, port, save, no_config),
+        } => cmd_serve(source, port, &host, save, no_config),
         Commands::Get { slug, tenant, port } => cmd_daemon_get(port, &tenant, &slug),
         Commands::Search {
             query,
@@ -248,13 +253,12 @@ fn run(cmd: Commands) -> i32 {
         Commands::Lint {
             source,
             tenant,
-            strict,
             port,
-        } => cmd_lint(source, tenant, strict, port),
+        } => cmd_lint(source, tenant, port),
         Commands::Reload { tenant, port } => cmd_daemon_reload(port, &tenant),
         Commands::Config { action } => cmd_config(action),
         Commands::Version { check } => cmd_version(check),
-        Commands::Upgrade => cmd_upgrade(),
+        Commands::Upgrade { force } => cmd_upgrade(force),
         Commands::Init { dir } => cmd_init(&dir),
     }
 }
@@ -279,7 +283,7 @@ fn parse_source(s: &str) -> (String, String) {
     (s.to_string(), name)
 }
 
-fn cmd_serve(sources: Vec<String>, port: u16, save: bool, no_config: bool) -> i32 {
+fn cmd_serve(sources: Vec<String>, port: u16, host: &str, save: bool, no_config: bool) -> i32 {
     let cli_sources: Vec<(String, String)> = sources.iter().map(|s| parse_source(s)).collect();
 
     let mut source_map = std::collections::BTreeMap::new();
@@ -352,8 +356,13 @@ fn cmd_serve(sources: Vec<String>, port: u16, save: bool, no_config: bool) -> i3
         eprintln!("Saved CLI sources to config");
     }
 
-    server::start(port, tm);
-    0
+    match server::start(host, port, tm) {
+        Ok(()) => 0,
+        Err(e) => {
+            eprintln!("{e}");
+            1
+        }
+    }
 }
 
 // --- daemon read commands ---
@@ -549,14 +558,14 @@ fn cmd_doctor(port: u16, json: bool) -> i32 {
 
 // --- lint ---
 
-fn cmd_lint(source: Option<String>, tenant: Option<String>, strict: bool, port: u16) -> i32 {
+fn cmd_lint(source: Option<String>, tenant: Option<String>, port: u16) -> i32 {
     if source.is_none() && tenant.is_none() {
         eprintln!("Missing --source <dir> or --tenant <name>");
         return 1;
     }
 
     if let Some(ref source_dir) = source {
-        return lint_offline(source_dir, strict);
+        return lint_offline(source_dir);
     }
 
     let tenant = tenant.unwrap();
@@ -570,7 +579,6 @@ fn cmd_lint(source: Option<String>, tenant: Option<String>, strict: bool, port: 
         Ok(body) => {
             let artifacts: Vec<serde_json::Value> = serde_json::from_str(&body).unwrap_or_default();
             let mut errors = 0usize;
-            let warnings = 0usize;
             let slug_set: std::collections::HashSet<String> = artifacts
                 .iter()
                 .filter_map(|a| {
@@ -600,16 +608,12 @@ fn cmd_lint(source: Option<String>, tenant: Option<String>, strict: bool, port: 
                 }
             }
 
-            if errors == 0 && warnings == 0 {
+            if errors == 0 {
                 println!("No issues found ({} artifacts checked)", artifacts.len());
                 0
             } else {
-                eprintln!("{errors} error(s), {warnings} warning(s)");
-                if errors > 0 || (strict && warnings > 0) {
-                    1
-                } else {
-                    0
-                }
+                eprintln!("{errors} error(s)");
+                1
             }
         }
         Err(msg) => {
@@ -619,7 +623,7 @@ fn cmd_lint(source: Option<String>, tenant: Option<String>, strict: bool, port: 
     }
 }
 
-fn lint_offline(source_dir: &str, strict: bool) -> i32 {
+fn lint_offline(source_dir: &str) -> i32 {
     let path = std::path::Path::new(source_dir);
     if !path.is_dir() {
         eprintln!("Source directory does not exist: {source_dir}");
@@ -641,7 +645,6 @@ fn lint_offline(source_dir: &str, strict: bool) -> i32 {
     };
 
     let mut errors = 0usize;
-    let warnings = 0usize;
 
     for f in &report.failed {
         eprintln!("  error  {}: {}", f.file, f.error);
@@ -677,19 +680,15 @@ fn lint_offline(source_dir: &str, strict: bool) -> i32 {
         }
     }
 
-    if errors == 0 && warnings == 0 {
+    if errors == 0 {
         println!(
             "No issues found ({} files, {} succeeded)",
             report.total, report.succeeded
         );
         0
     } else {
-        eprintln!("{errors} error(s), {warnings} warning(s)");
-        if errors > 0 || (strict && warnings > 0) {
-            1
-        } else {
-            0
-        }
+        eprintln!("{errors} error(s)");
+        1
     }
 }
 
@@ -740,10 +739,16 @@ fn cmd_config(action: ConfigAction) -> i32 {
                 1
             }
         },
-        ConfigAction::Path => {
-            println!("{}", config::config_path().display());
-            0
-        }
+        ConfigAction::Path => match config::config_path() {
+            Ok(path) => {
+                println!("{}", path.display());
+                0
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                1
+            }
+        },
     }
 }
 
@@ -765,7 +770,9 @@ fn validate_tenant_name(name: &str) -> Result<(), String> {
             ));
         }
     }
-    let reserved = ["get", "search", "traverse", "list", "tenants", "reload"];
+    let reserved = [
+        "get", "search", "traverse", "list", "tenants", "reload", "version",
+    ];
     if reserved.contains(&name) {
         return Err(format!("Reserved tenant name \"{name}\""));
     }
@@ -803,7 +810,7 @@ fn cmd_version(check: bool) -> i32 {
 
 // --- upgrade ---
 
-fn cmd_upgrade() -> i32 {
+fn cmd_upgrade(force: bool) -> i32 {
     let info = match upgrade::check_latest() {
         Ok(i) => i,
         Err(e) => {
@@ -819,7 +826,7 @@ fn cmd_upgrade() -> i32 {
 
     eprintln!("Upgrading pramana {} → {}...", info.current, info.latest);
 
-    match upgrade::perform_upgrade(&info.latest) {
+    match upgrade::perform_upgrade(&info.latest, force) {
         Ok(()) => {
             println!("Upgraded CLI to pramana {}", info.latest);
             0
@@ -959,6 +966,7 @@ mod tests {
         assert!(validate_tenant_name("get").is_err());
         assert!(validate_tenant_name("search").is_err());
         assert!(validate_tenant_name("list").is_err());
+        assert!(validate_tenant_name("version").is_err());
     }
 
     #[test]
