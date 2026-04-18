@@ -28,6 +28,8 @@ pub struct FocusedSection {
 #[derive(Debug, Clone, Default)]
 pub struct ListFilter {
     pub tags: Option<Vec<String>>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
 }
 
 pub struct Reader<'a> {
@@ -68,6 +70,7 @@ impl<'a> Reader<'a> {
         from: &str,
         rel_type: Option<&str>,
         depth: usize,
+        max_results: Option<usize>,
     ) -> Result<Vec<ArtifactView>, EngineError> {
         let mut visited = HashSet::new();
         let mut results = Vec::new();
@@ -77,6 +80,10 @@ impl<'a> Reader<'a> {
 
         for _ in 0..depth {
             if current_level.is_empty() {
+                break;
+            }
+
+            if max_results.is_some_and(|cap| results.len() >= cap) {
                 break;
             }
 
@@ -109,8 +116,14 @@ impl<'a> Reader<'a> {
             let mut artifacts_map = self.storage.get_batch(&slug_refs)?;
             let mut inverse_map = self.storage.get_inverse_batch(&slug_refs)?;
 
+            let remaining = max_results.map(|cap| cap.saturating_sub(results.len()));
+
             let mut next_level = Vec::new();
             for slug in &next_targets {
+                if remaining.is_some_and(|r| next_level.len() >= r) {
+                    break;
+                }
+
                 if let Some(artifact) = artifacts_map.remove(slug.as_str()) {
                     let inverse = inverse_map.remove(slug.as_str()).unwrap_or_default();
                     results.push(to_view(artifact, inverse, None));
@@ -128,11 +141,19 @@ impl<'a> Reader<'a> {
         let tags = filter.and_then(|f| f.tags.as_deref());
         let artifacts = self.storage.list(tags)?;
 
-        let slugs: Vec<&str> = artifacts.iter().map(|a| a.slug.as_str()).collect();
+        let offset = filter.and_then(|f| f.offset).unwrap_or(0);
+        let limit = filter.and_then(|f| f.limit);
+
+        let page: Vec<_> = match limit {
+            Some(n) => artifacts.into_iter().skip(offset).take(n).collect(),
+            None => artifacts.into_iter().skip(offset).collect(),
+        };
+
+        let slugs: Vec<&str> = page.iter().map(|a| a.slug.as_str()).collect();
         let mut inverse_map = self.storage.get_inverse_batch(&slugs)?;
 
-        let mut views = Vec::with_capacity(artifacts.len());
-        for artifact in artifacts {
+        let mut views = Vec::with_capacity(page.len());
+        for artifact in page {
             let inverse = inverse_map.remove(&artifact.slug).unwrap_or_default();
             views.push(to_view(artifact, inverse, None));
         }

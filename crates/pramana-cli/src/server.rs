@@ -87,18 +87,29 @@ fn handle_traverse(
     let depth: usize = parse_query_param(query_str, "depth")
         .and_then(|d| d.parse().ok())
         .unwrap_or(1);
+    let max_results: Option<usize> =
+        parse_query_param(query_str, "max_results").and_then(|v| v.parse().ok());
     let reader = tm.reader(tenant).map_err(|e| (404, e.to_string()))?;
     let results = reader
-        .traverse(slug, rel_type.as_deref(), depth)
+        .traverse(slug, rel_type.as_deref(), depth, max_results)
         .map_err(|e| (500, e.to_string()))?;
     serde_json::to_string(&results).map_err(|e| (500, e.to_string()))
 }
 
 fn handle_list(tm: &TenantManager, tenant: &str, query_str: &str) -> Result<String, (u16, String)> {
     let tags = parse_query_param(query_str, "tags");
-    let filter = tags.map(|t| ListFilter {
-        tags: Some(t.split(',').map(|s| s.trim().to_string()).collect()),
-    });
+    let limit: Option<usize> = parse_query_param(query_str, "limit").and_then(|v| v.parse().ok());
+    let offset: Option<usize> = parse_query_param(query_str, "offset").and_then(|v| v.parse().ok());
+
+    let filter = if tags.is_some() || limit.is_some() || offset.is_some() {
+        Some(ListFilter {
+            tags: tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+            limit,
+            offset,
+        })
+    } else {
+        None
+    };
     let reader = tm.reader(tenant).map_err(|e| (404, e.to_string()))?;
     let results = reader
         .list(filter.as_ref())

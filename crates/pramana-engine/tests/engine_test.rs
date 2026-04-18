@@ -134,7 +134,7 @@ fn traverse_depth_1_follows_direct_relationships() {
     let storage = setup_with_fixtures();
     let reader = Reader::new(&storage);
 
-    let results = reader.traverse("order", None, 1).unwrap();
+    let results = reader.traverse("order", None, 1, None).unwrap();
     let slugs: Vec<&str> = results.iter().map(|v| v.slug.as_str()).collect();
 
     assert!(slugs.contains(&"customer"), "order depends-on customer");
@@ -150,7 +150,7 @@ fn traverse_excludes_starting_node() {
     let storage = setup_with_fixtures();
     let reader = Reader::new(&storage);
 
-    let results = reader.traverse("order", None, 1).unwrap();
+    let results = reader.traverse("order", None, 1, None).unwrap();
     assert!(
         !results.iter().any(|v| v.slug == "order"),
         "starting node should not appear in results"
@@ -162,7 +162,7 @@ fn traverse_depth_0_returns_empty() {
     let storage = setup_with_fixtures();
     let reader = Reader::new(&storage);
 
-    let results = reader.traverse("order", None, 0).unwrap();
+    let results = reader.traverse("order", None, 0, None).unwrap();
     assert!(results.is_empty());
 }
 
@@ -171,13 +171,17 @@ fn traverse_filters_by_relationship_type() {
     let storage = setup_with_fixtures();
     let reader = Reader::new(&storage);
 
-    let results = reader.traverse("customer", Some("depends-on"), 1).unwrap();
+    let results = reader
+        .traverse("customer", Some("depends-on"), 1, None)
+        .unwrap();
     assert!(
         results.is_empty(),
         "customer has no depends-on relationships in frontmatter"
     );
 
-    let results = reader.traverse("customer", Some("relates-to"), 1).unwrap();
+    let results = reader
+        .traverse("customer", Some("relates-to"), 1, None)
+        .unwrap();
     let slugs: Vec<&str> = results.iter().map(|v| v.slug.as_str()).collect();
     assert!(slugs.contains(&"order"), "customer relates-to order");
 }
@@ -187,7 +191,7 @@ fn traverse_prevents_cycles() {
     let storage = setup_with_fixtures();
     let reader = Reader::new(&storage);
 
-    let results = reader.traverse("order", None, 3).unwrap();
+    let results = reader.traverse("order", None, 3, None).unwrap();
     let mut seen = std::collections::HashSet::new();
     for view in &results {
         assert!(
@@ -203,7 +207,7 @@ fn traverse_nonexistent_start() {
     let storage = setup_with_fixtures();
     let reader = Reader::new(&storage);
 
-    let results = reader.traverse("nonexistent", None, 1).unwrap();
+    let results = reader.traverse("nonexistent", None, 1, None).unwrap();
     assert!(results.is_empty());
 }
 
@@ -225,6 +229,7 @@ fn list_with_single_tag_filter() {
 
     let filter = ListFilter {
         tags: Some(vec!["core".to_string()]),
+        ..Default::default()
     };
     let results = reader.list(Some(&filter)).unwrap();
     assert!(results.len() >= 2);
@@ -240,6 +245,7 @@ fn list_with_intersection_tag_filter() {
 
     let filter = ListFilter {
         tags: Some(vec!["entity".to_string(), "core".to_string()]),
+        ..Default::default()
     };
     let results = reader.list(Some(&filter)).unwrap();
     for view in &results {
@@ -255,6 +261,7 @@ fn list_with_no_matching_tags() {
 
     let filter = ListFilter {
         tags: Some(vec!["nonexistent-tag".to_string()]),
+        ..Default::default()
     };
     let results = reader.list(Some(&filter)).unwrap();
     assert!(results.is_empty());
@@ -525,6 +532,7 @@ fn list_scales_with_batch_queries() {
     let start = std::time::Instant::now();
     let filter = ListFilter {
         tags: Some(vec!["even".to_string()]),
+        ..Default::default()
     };
     let even = reader.list(Some(&filter)).unwrap();
     let list_filtered = start.elapsed();
@@ -550,7 +558,7 @@ fn traverse_scales_with_batch_queries() {
     let reader = Reader::new(&storage);
 
     let start = std::time::Instant::now();
-    let results = reader.traverse("artifact-99", None, 5).unwrap();
+    let results = reader.traverse("artifact-99", None, 5, None).unwrap();
     let elapsed = start.elapsed();
 
     assert!(!results.is_empty());
@@ -568,12 +576,14 @@ fn list_tag_filter_pushes_to_sql() {
 
     let filter = ListFilter {
         tags: Some(vec!["nonexistent-tag".to_string()]),
+        ..Default::default()
     };
     let results = reader.list(Some(&filter)).unwrap();
     assert!(results.is_empty());
 
     let filter = ListFilter {
         tags: Some(vec!["generated".to_string(), "even".to_string()]),
+        ..Default::default()
     };
     let results = reader.list(Some(&filter)).unwrap();
     assert_eq!(results.len(), 50);
@@ -590,6 +600,7 @@ fn list_with_duplicate_tags_returns_correct_results() {
 
     let filter = ListFilter {
         tags: Some(vec!["even".to_string(), "even".to_string()]),
+        ..Default::default()
     };
     let results = reader.list(Some(&filter)).unwrap();
     assert_eq!(results.len(), 5);
@@ -690,10 +701,128 @@ fn traverse_skips_nonexistent_targets() {
     storage.insert_artifact(&real).unwrap();
 
     let reader = Reader::new(&storage);
-    let results = reader.traverse("start", None, 2).unwrap();
+    let results = reader.traverse("start", None, 2, None).unwrap();
 
     let slugs: Vec<&str> = results.iter().map(|v| v.slug.as_str()).collect();
     assert!(slugs.contains(&"real"));
     assert!(!slugs.contains(&"phantom"));
     assert_eq!(results.len(), 1);
+}
+
+// --- Pagination tests ---
+
+#[test]
+fn list_with_limit() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let filter = ListFilter {
+        limit: Some(2),
+        ..Default::default()
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert_eq!(results.len(), 2);
+}
+
+#[test]
+fn list_with_offset() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let all = reader.list(None).unwrap();
+    assert_eq!(all.len(), 4);
+
+    let filter = ListFilter {
+        offset: Some(2),
+        ..Default::default()
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert_eq!(results.len(), 2);
+    assert_eq!(results[0].slug, all[2].slug);
+    assert_eq!(results[1].slug, all[3].slug);
+}
+
+#[test]
+fn list_with_limit_and_offset() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let all = reader.list(None).unwrap();
+
+    let filter = ListFilter {
+        limit: Some(1),
+        offset: Some(1),
+        ..Default::default()
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].slug, all[1].slug);
+}
+
+#[test]
+fn list_with_offset_beyond_results() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let filter = ListFilter {
+        offset: Some(100),
+        ..Default::default()
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert!(results.is_empty());
+}
+
+#[test]
+fn list_with_limit_larger_than_results() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let filter = ListFilter {
+        limit: Some(100),
+        ..Default::default()
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert_eq!(results.len(), 4);
+}
+
+#[test]
+fn list_none_filter_preserves_existing_behavior() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let results = reader.list(None).unwrap();
+    assert_eq!(results.len(), 4);
+}
+
+#[test]
+fn traverse_with_max_results() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let unlimited = reader.traverse("order", None, 1, None).unwrap();
+    assert!(unlimited.len() >= 3);
+
+    let limited = reader.traverse("order", None, 1, Some(1)).unwrap();
+    assert_eq!(limited.len(), 1);
+}
+
+#[test]
+fn traverse_max_results_none_preserves_existing_behavior() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let results = reader.traverse("order", None, 1, None).unwrap();
+    let slugs: Vec<&str> = results.iter().map(|v| v.slug.as_str()).collect();
+    assert!(slugs.contains(&"customer"));
+    assert!(slugs.contains(&"line-item"));
+    assert!(slugs.contains(&"shipping-info"));
+}
+
+#[test]
+fn traverse_max_results_zero_returns_empty() {
+    let storage = setup_with_fixtures();
+    let reader = Reader::new(&storage);
+
+    let results = reader.traverse("order", None, 1, Some(0)).unwrap();
+    assert!(results.is_empty());
 }
