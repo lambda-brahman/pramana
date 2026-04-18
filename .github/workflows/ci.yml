@@ -101,6 +101,8 @@ jobs:
           bun test test/smoke/
         env:
           PRAMANA_BIN: ./pramana-darwin-arm64
+      - name: Install Rosetta 2 for x64 smoke test
+        run: softwareupdate --install-rosetta --agree-to-license || true
       - name: Smoke test x64 binary
         run: |
           chmod +x pramana-darwin-x64
