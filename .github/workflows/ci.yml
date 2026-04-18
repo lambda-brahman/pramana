@@ -66,19 +66,6 @@ jobs:
           mv pramana pramana-darwin-arm64
       - name: Build macOS x64 binary (cross-compile from arm64)
         run: scripts/build.sh --target bun-darwin-x64
-      - name: Inspect Mach-O state (diagnostic)
-        run: |
-          echo "=== arm64 binary ==="
-          file pramana-darwin-arm64
-          otool -l pramana-darwin-arm64 | head -80
-          echo ""
-          echo "=== x64 binary ==="
-          file pramana-darwin-x64
-          otool -l pramana-darwin-x64 | head -80
-      - name: Ad-hoc codesign
-        run: |
-          codesign --force --sign - pramana-darwin-arm64
-          codesign --force --sign - pramana-darwin-x64
       - name: Verify signatures
         run: |
           codesign -dv pramana-darwin-arm64
