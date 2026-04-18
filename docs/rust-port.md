@@ -138,6 +138,46 @@ The ratatui TUI (pramana-tui) ports keybindings from the Ink/React TUI. This mat
 
 Golden snapshots use ratatui's `Buffer` (cell-level text without ANSI escapes). Snapshot comparisons are text-exact. Color rendering depends on terminal capabilities (256-color assumed). ANSI escape sequences are not compared — only logical content.
 
+## Release workflow
+
+### Cutting a pre-release
+
+Pre-release tags are used to canary-test Rust binaries before the capstone swap to `main`.
+
+```bash
+# From rust-port branch:
+scripts/release.sh 0.14.0-rc.1
+```
+
+This bumps all version files (TypeScript + Cargo workspace), creates the `v0.14.0-rc.1` tag, and pushes. The `release-rust.yml` workflow builds binaries and publishes a GitHub pre-release.
+
+### Installing a pre-release
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/rust-port/install.sh | sh -s -- v0.14.0-rc.1
+```
+
+The installer fetches the specific tag, verifies the SHA256 checksum, and places the binary in `~/.local/bin/pramana`.
+
+### Rollback to TypeScript
+
+If a Rust release must be yanked (crash, data loss, missing feature):
+
+1. **Delete the Rust release** on GitHub (or mark it as draft).
+2. **Reinstall the last TypeScript release:**
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh -s -- v0.13.1
+   ```
+   Replace `v0.13.1` with the last known-good TypeScript tag. The `main` branch `install.sh` always works for TypeScript releases.
+3. **Verify:**
+   ```bash
+   pramana --version
+   ```
+
+The `/latest/download/` endpoint on GitHub skips pre-releases, so users who installed without a version argument (`install.sh` with no args) will continue to get the latest stable TypeScript release until a stable Rust release is published.
+
+After the capstone swap (`rust-port` → `main`), the rollback path is the same: pin a specific TypeScript tag in the install command.
+
 ## License aggregation plan
 
 All new Rust dependencies must be permissively licensed (MIT, Apache-2.0, or dual). Before the capstone PR, run `cargo-deny check licenses` and commit the `deny.toml` config. Any dependency with a non-permissive license requires explicit sign-off in the PR description.

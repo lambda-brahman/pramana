@@ -23,25 +23,54 @@ esac
 BINARY="pramana-${OS}-${ARCH}"
 
 # Determine version
-if [ -n "$1" ]; then
+if [ -n "${1:-}" ]; then
   VERSION="$1"
-  URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY}"
+  BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
 else
-  URL="https://github.com/${REPO}/releases/latest/download/${BINARY}"
+  BASE_URL="https://github.com/${REPO}/releases/latest/download"
 fi
+
+URL="${BASE_URL}/${BINARY}"
+CHECKSUM_URL="${BASE_URL}/${BINARY}.sha256"
 
 echo "Installing pramana (${OS}/${ARCH})..."
 
-TMPFILE=$(mktemp)
-trap 'rm -f "$TMPFILE"' EXIT
+TMPDIR_DL=$(mktemp -d)
+trap 'rm -rf "$TMPDIR_DL"' EXIT
+TMPFILE="${TMPDIR_DL}/${BINARY}"
+TMPCHECKSUM="${TMPDIR_DL}/${BINARY}.sha256"
 
-if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "$URL" -o "$TMPFILE"
-elif command -v wget >/dev/null 2>&1; then
-  wget -qO "$TMPFILE" "$URL"
-else
-  echo "Error: curl or wget required" >&2
-  exit 1
+fetch() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$1" -o "$2"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$2" "$1"
+  else
+    echo "Error: curl or wget required" >&2
+    exit 1
+  fi
+}
+
+fetch "$URL" "$TMPFILE"
+
+# Verify checksum if available
+if fetch "$CHECKSUM_URL" "$TMPCHECKSUM" 2>/dev/null; then
+  EXPECTED=$(awk '{print $1}' "$TMPCHECKSUM")
+  if command -v sha256sum >/dev/null 2>&1; then
+    ACTUAL=$(sha256sum "$TMPFILE" | awk '{print $1}')
+  elif command -v shasum >/dev/null 2>&1; then
+    ACTUAL=$(shasum -a 256 "$TMPFILE" | awk '{print $1}')
+  else
+    echo "Warning: cannot verify checksum (no sha256sum or shasum)" >&2
+    ACTUAL="$EXPECTED"
+  fi
+  if [ "$EXPECTED" != "$ACTUAL" ]; then
+    echo "Error: checksum mismatch" >&2
+    echo "  expected: $EXPECTED" >&2
+    echo "  actual:   $ACTUAL" >&2
+    exit 1
+  fi
+  echo "Checksum verified."
 fi
 
 chmod +x "$TMPFILE"

@@ -145,9 +145,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ github.ref_name }}"
+          PRERELEASE=""
+          case "$TAG" in *-*) PRERELEASE="--prerelease" ;; esac
           cd release
           if gh release view "$TAG" &>/dev/null; then
             gh release upload "$TAG" --clobber ./*
           else
-            gh release create "$TAG" --generate-notes ./*
+            gh release create "$TAG" --generate-notes $PRERELEASE ./*
           fi
