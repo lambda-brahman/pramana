@@ -6,3 +6,14 @@ edition = "2021"
 [[bin]]
 name = "pramana"
 path = "src/main.rs"
+
+[dependencies]
+pramana-engine = { path = "../pramana-engine" }
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "2", features = ["json"] }
+dirs = "6"
+semver = "1"
+thiserror = "2"
+tiny_http = "0.12"

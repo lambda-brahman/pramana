@@ -15,6 +15,7 @@ pub struct TenantConfig {
 }
 
 #[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TenantInfo {
     pub name: String,
     pub source_dir: String,
