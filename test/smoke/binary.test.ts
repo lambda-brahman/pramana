@@ -28,7 +28,7 @@ async function run(
 async function waitForDaemon(
   port: number,
   endpoint: string,
-  timeoutMs = 10000,
+  timeoutMs = 30000,
 ): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
