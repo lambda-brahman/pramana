@@ -52,13 +52,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - name: Report Bun version and runner arch
+        run: |
+          echo "bun version: $(bun --version)"
+          echo "arch: $(uname -m)"
+          echo "macos: $(sw_vers -productVersion)"
       - run: bun install
-      - name: Build macOS arm64 binary (native, no --target to avoid cross-compile mode)
+      - name: Build macOS arm64 binary (native, no --target)
         run: |
           scripts/build.sh
           mv pramana pramana-darwin-arm64
       - name: Build macOS x64 binary (cross-compile from arm64)
         run: scripts/build.sh --target bun-darwin-x64
+      - name: Inspect Mach-O state (diagnostic)
+        run: |
+          echo "=== arm64 binary ==="
+          file pramana-darwin-arm64
+          otool -l pramana-darwin-arm64 | head -80
+          echo ""
+          echo "=== x64 binary ==="
+          file pramana-darwin-x64
+          otool -l pramana-darwin-x64 | head -80
       - name: Ad-hoc codesign
         run: |
           codesign --force --sign - pramana-darwin-arm64
