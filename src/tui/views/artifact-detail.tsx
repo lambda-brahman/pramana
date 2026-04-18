@@ -6,6 +6,7 @@ import {
   ARTIFACT_DETAIL_CHROME,
   ARTIFACT_DETAIL_SCROLL_INDICATOR,
   HORIZONTAL_SCROLL_STEP,
+  MIN_VISIBLE_COLUMNS,
 } from "../layout.ts";
 import { theme } from "../theme.ts";
 
@@ -85,6 +86,11 @@ export function ArtifactDetailView({
           contentLines.length -
             (height - ARTIFACT_DETAIL_CHROME - ARTIFACT_DETAIL_SCROLL_INDICATOR),
         );
+        let maxLineLen = 0;
+        for (const l of contentLines) {
+          if (l.length > maxLineLen) maxLineLen = l.length;
+        }
+        const maxScrollX = Math.max(0, maxLineLen - MIN_VISIBLE_COLUMNS);
         if (input === "j" || key.downArrow) {
           setScrollOffset((s) => Math.min(s + 1, maxScroll));
         } else if (input === "k" || key.upArrow) {
@@ -96,7 +102,7 @@ export function ArtifactDetailView({
         } else if (input === "h" || key.leftArrow) {
           setScrollX((x) => Math.max(x - HORIZONTAL_SCROLL_STEP, 0));
         } else if (input === "l" || key.rightArrow) {
-          setScrollX((x) => x + HORIZONTAL_SCROLL_STEP);
+          setScrollX((x) => Math.min(x + HORIZONTAL_SCROLL_STEP, maxScrollX));
         } else if (input === "0") {
           setScrollX(0);
         }
@@ -176,10 +182,9 @@ export function ArtifactDetailView({
         <Box flexDirection="column">
           {visibleContent.map((line, i) => {
             const lineNum = scrollOffset + i;
-            const displayLine = scrollX > 0 ? line.slice(scrollX) : line;
             return (
               <Box key={`L${lineNum}`}>
-                <Text wrap="truncate">{renderContentLine(displayLine)}</Text>
+                <Text wrap="truncate">{renderContentLine(line, scrollX)}</Text>
               </Box>
             );
           })}
@@ -279,7 +284,7 @@ export function ArtifactDetailView({
           <Text color={theme.hintDesc}> scroll </Text>
           <Text color={theme.hintKey}>[d/u]</Text>
           <Text color={theme.hintDesc}> half-page </Text>
-          <Text color={theme.hintKey}>[h/l]</Text>
+          <Text color={theme.hintKey}>[h/l/0]</Text>
           <Text color={theme.hintDesc}> pan</Text>
         </Text>
       </Box>
@@ -287,79 +292,132 @@ export function ArtifactDetailView({
   );
 }
 
-function renderContentLine(line: string): ReactNode {
-  // Headings
+type InlineSegment = {
+  text: string;
+  style: "plain" | "code" | "bold" | "wikilink";
+};
+
+function renderContentLine(line: string, scrollX: number): ReactNode {
+  const displayText = scrollX > 0 ? line.slice(scrollX) : line;
+
   if (line.startsWith("### ")) {
     return (
       <Text color={theme.heading3} bold>
-        {line}
+        {displayText}
       </Text>
     );
   }
   if (line.startsWith("## ")) {
     return (
       <Text color={theme.heading2} bold>
-        {line}
+        {displayText}
       </Text>
     );
   }
   if (line.startsWith("# ")) {
     return (
       <Text color={theme.heading1} bold>
-        {line}
+        {displayText}
       </Text>
     );
   }
 
-  // Render inline formatting
-  return renderInline(line);
+  const segments = parseInlineSegments(line);
+  const scrolled = applyScrollX(segments, scrollX);
+  return renderSegments(scrolled);
 }
 
-function renderInline(text: string): ReactNode {
-  // Match code spans, bold, italic, and wikilinks
-  const parts: ReactNode[] = [];
+function parseInlineSegments(text: string): InlineSegment[] {
+  const segments: InlineSegment[] = [];
   let remaining = text;
-  let keyIdx = 0;
 
   while (remaining.length > 0) {
-    // Code spans: `...`
     const codeMatch = remaining.match(/^(.*?)`([^`]+)`/);
     if (codeMatch) {
-      if (codeMatch[1]) parts.push(codeMatch[1]);
-      parts.push(
-        <Text key={`c${keyIdx++}`} color={theme.code}>
-          `{codeMatch[2]}`
-        </Text>,
-      );
+      if (codeMatch[1]) segments.push({ text: codeMatch[1], style: "plain" });
+      segments.push({ text: `\`${codeMatch[2]}\``, style: "code" });
       remaining = remaining.slice(codeMatch[0].length);
       continue;
     }
 
-    // Bold: **...**
     const boldMatch = remaining.match(/^(.*?)\*\*([^*]+)\*\*/);
     if (boldMatch) {
-      if (boldMatch[1]) parts.push(boldMatch[1]);
-      parts.push(
-        <Text key={`b${keyIdx++}`} bold>
-          {boldMatch[2]}
-        </Text>,
-      );
+      if (boldMatch[1]) segments.push({ text: boldMatch[1], style: "plain" });
+      segments.push({ text: boldMatch[2]!, style: "bold" });
       remaining = remaining.slice(boldMatch[0].length);
       continue;
     }
 
-    // Wikilinks: [[...]]
     const wikiMatch = remaining.match(/^(.*?)\[\[([^\]]+)\]\]/);
     if (wikiMatch) {
-      if (wikiMatch[1]) parts.push(wikiMatch[1]);
-      parts.push(<Text key={`w${keyIdx++}`} color={theme.link}>{`[[${wikiMatch[2]}]]`}</Text>);
+      if (wikiMatch[1]) segments.push({ text: wikiMatch[1], style: "plain" });
+      segments.push({ text: `[[${wikiMatch[2]}]]`, style: "wikilink" });
       remaining = remaining.slice(wikiMatch[0].length);
       continue;
     }
 
-    // No more patterns — emit remaining text
-    parts.push(remaining);
+    segments.push({ text: remaining, style: "plain" });
     break;
+  }
+
+  return segments;
+}
+
+function applyScrollX(segments: InlineSegment[], scrollX: number): InlineSegment[] {
+  if (scrollX <= 0) return segments;
+
+  let skip = scrollX;
+  const result: InlineSegment[] = [];
+
+  for (const seg of segments) {
+    if (skip >= seg.text.length) {
+      skip -= seg.text.length;
+      continue;
+    }
+    if (skip > 0) {
+      result.push({ text: seg.text.slice(skip), style: seg.style });
+      skip = 0;
+    } else {
+      result.push(seg);
+    }
+  }
+
+  return result;
+}
+
+function renderSegments(segments: InlineSegment[]): ReactNode {
+  if (segments.length === 0) return "";
+  if (segments.length === 1 && segments[0]!.style === "plain") return segments[0]!.text;
+
+  const parts: ReactNode[] = [];
+  let keyIdx = 0;
+
+  for (const seg of segments) {
+    switch (seg.style) {
+      case "code":
+        parts.push(
+          <Text key={`c${keyIdx++}`} color={theme.code}>
+            {seg.text}
+          </Text>,
+        );
+        break;
+      case "bold":
+        parts.push(
+          <Text key={`b${keyIdx++}`} bold>
+            {seg.text}
+          </Text>,
+        );
+        break;
+      case "wikilink":
+        parts.push(
+          <Text key={`w${keyIdx++}`} color={theme.link}>
+            {seg.text}
+          </Text>,
+        );
+        break;
+      default:
+        parts.push(seg.text);
+    }
   }
 
   if (parts.length === 1) return parts[0];

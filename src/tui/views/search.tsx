@@ -4,7 +4,12 @@ import type { SearchResult } from "../../storage/interface.ts";
 import { ScrollableList } from "../components/scrollable-list.tsx";
 import { TextInput } from "../components/text-input.tsx";
 import type { DataSource } from "../data-source.ts";
-import { HORIZONTAL_SCROLL_STEP, SEARCH_CHROME, SEARCH_RESULT_COUNT_LINES } from "../layout.ts";
+import {
+  HORIZONTAL_SCROLL_STEP,
+  MIN_VISIBLE_COLUMNS,
+  SEARCH_CHROME,
+  SEARCH_RESULT_COUNT_LINES,
+} from "../layout.ts";
 import { theme } from "../theme.ts";
 
 type Props = {
@@ -82,16 +87,20 @@ export function SearchView({
       // Results navigation
       if (key.escape) {
         setInputFocused(true);
+        setScrollX(0);
         return;
       }
       if (input === "j" || key.downArrow) {
         setSelectedIndex((i) => Math.min(i + 1, results.length - 1));
+        setScrollX(0);
       } else if (input === "k" || key.upArrow) {
         setSelectedIndex((i) => {
           if (i <= 0) {
             setInputFocused(true);
+            setScrollX(0);
             return 0;
           }
+          setScrollX(0);
           return i - 1;
         });
       } else if (key.return) {
@@ -100,7 +109,9 @@ export function SearchView({
       } else if (input === "h" || key.leftArrow) {
         setScrollX((x) => Math.max(x - HORIZONTAL_SCROLL_STEP, 0));
       } else if (input === "l" || key.rightArrow) {
-        setScrollX((x) => x + HORIZONTAL_SCROLL_STEP);
+        const maxSnippetLen = results.reduce((max, r) => Math.max(max, r.snippet?.length ?? 0), 0);
+        const maxScrollX = Math.max(0, maxSnippetLen - MIN_VISIBLE_COLUMNS);
+        setScrollX((x) => Math.min(x + HORIZONTAL_SCROLL_STEP, maxScrollX));
       } else if (input === "0") {
         setScrollX(0);
       }

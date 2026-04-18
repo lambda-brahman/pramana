@@ -27,3 +27,4 @@ export const SEARCH_RESULT_COUNT_LINES = 2;
 export const GRAPH_CHROME = 7;
 
 export const HORIZONTAL_SCROLL_STEP = 10;
+export const MIN_VISIBLE_COLUMNS = 10;
