@@ -76,39 +76,33 @@ describe("Binary basics", () => {
 });
 
 // ==========================================================================
-// Block 2: Standalone commands (no daemon)
+// Block 2: Read commands require daemon — no standalone fallback
 // ==========================================================================
-describe("Standalone commands", () => {
-  test("list returns artifacts", async () => {
-    const { stdout, exitCode } = await run([
-      "list",
-      "--source", FIXTURES_DIR,
-      "--standalone",
+describe("Read commands without daemon", () => {
+  const noPort = "59994";
+
+  test("list exits 1 with clear message when daemon not running", async () => {
+    const { stderr, exitCode } = await run([
+      "list", "--tenant", "fixtures", "--port", noPort,
     ]);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("order");
-    expect(stdout).toContain("customer");
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Pramana daemon not running. Start it with: pramana serve");
   });
 
-  test("get retrieves an artifact", async () => {
-    const { stdout, exitCode } = await run([
-      "get", "order",
-      "--source", FIXTURES_DIR,
-      "--standalone",
+  test("get exits 1 with clear message when daemon not running", async () => {
+    const { stderr, exitCode } = await run([
+      "get", "order", "--tenant", "fixtures", "--port", noPort,
     ]);
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("order");
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Pramana daemon not running. Start it with: pramana serve");
   });
 
-  test("search returns results", async () => {
-    const { stdout, exitCode } = await run([
-      "search", "purchase",
-      "--source", FIXTURES_DIR,
-      "--standalone",
+  test("search exits 1 with clear message when daemon not running", async () => {
+    const { stderr, exitCode } = await run([
+      "search", "purchase", "--tenant", "fixtures", "--port", noPort,
     ]);
-    expect(exitCode).toBe(0);
-    // search should find something in the commerce fixtures
-    expect(stdout.length).toBeGreaterThan(0);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Pramana daemon not running. Start it with: pramana serve");
   });
 });
 
@@ -166,25 +160,31 @@ describe("Daemon mode", () => {
 // Block 4: Embedder loading — WASM backend must work (#38)
 // ==========================================================================
 describe("Embedder loading", () => {
-  test("binary loads embedder without native dep errors", async () => {
-    // Standalone search triggers the full pipeline including embedder.
+  test("daemon starts embedder without native dep errors", async () => {
+    // The daemon initialises the full embedder pipeline on startup.
     // With the onnxruntime-node → onnxruntime-web build stub (#38),
     // the WASM backend should load cleanly — no dlopen, no missing dylib.
+    const port = randomPort();
     const proc = Bun.spawn(
-      [PRAMANA_BIN, "search", "purchase", "--source", FIXTURES_DIR, "--standalone"],
+      [PRAMANA_BIN, "serve", "--source", `${FIXTURES_DIR}:embedder-smoke`, "--port", String(port)],
       {
         stdout: "pipe",
         stderr: "pipe",
         env: { ...process.env },
       },
     );
-    const stdout = await new Response(proc.stdout).text();
-    const stderr = await new Response(proc.stderr).text();
-    const exitCode = await proc.exited;
 
-    // Binary must not crash — exit 0 is mandatory
-    expect(exitCode).toBe(0);
-    expect(stdout.length).toBeGreaterThan(0);
+    // Drain stderr concurrently so the pipe never blocks the daemon
+    const stderrPromise = new Response(proc.stderr).text();
+
+    try {
+      await waitForDaemon(port, "/v1/version");
+    } finally {
+      proc.kill();
+    }
+
+    await proc.exited;
+    const stderr = await stderrPromise;
 
     // WASM backend should load without native dependency errors (#38)
     expect(stderr).not.toContain("dlopen");
