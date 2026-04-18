@@ -15,6 +15,7 @@ use tokenizers::{
 };
 
 pub const DEFAULT_MODEL: &str = "Xenova/gte-small";
+pub const DEFAULT_BATCH_SIZE: usize = 64;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EmbedError {
@@ -58,7 +59,14 @@ impl Embedder {
             .session
             .lock()
             .map_err(|e| EmbedError::Inference(format!("session lock: {e}")))?;
-        run_inference(&mut session, &self.tokenizer, texts, self.config.dim)
+
+        let mut all_embeddings = Vec::with_capacity(texts.len());
+        for chunk in texts.chunks(DEFAULT_BATCH_SIZE) {
+            let mut chunk_result =
+                run_inference(&mut session, &self.tokenizer, chunk, self.config.dim)?;
+            all_embeddings.append(&mut chunk_result);
+        }
+        Ok(all_embeddings)
     }
 
     pub fn embed_query(&self, text: &str) -> Result<Vec<f32>, EmbedError> {
@@ -265,5 +273,11 @@ mod tests {
     #[test]
     fn default_model_constant() {
         assert_eq!(DEFAULT_MODEL, "Xenova/gte-small");
+    }
+
+    #[test]
+    fn default_batch_size_is_positive() {
+        assert!(DEFAULT_BATCH_SIZE > 0);
+        assert_eq!(DEFAULT_BATCH_SIZE, 64);
     }
 }
