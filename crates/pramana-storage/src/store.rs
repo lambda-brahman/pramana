@@ -152,24 +152,33 @@ impl Storage {
     }
 
     pub fn list(&self, tags: Option<&[String]>) -> StorageResult<Vec<Artifact>> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT slug, title, summary, aliases, tags, content, hash FROM artifacts")?;
-        let rows: Vec<ArtifactRow> = stmt
-            .query_map([], map_artifact_row)?
-            .collect::<Result<_, _>>()?;
-
-        let mut artifacts = Vec::new();
-        for row in rows {
-            if let Some(filter_tags) = tags {
-                let row_tags: Vec<String> = serde_json::from_str(&row.tags)?;
-                if !filter_tags.iter().all(|t| row_tags.contains(t)) {
-                    continue;
-                }
+        let rows: Vec<ArtifactRow> = match tags {
+            Some(filter_tags) if !filter_tags.is_empty() => {
+                let tags_json = serde_json::to_string(filter_tags)?;
+                let tag_count = filter_tags.len() as i64;
+                let mut stmt = self.conn.prepare(
+                    "SELECT slug, title, summary, aliases, tags, content, hash \
+                     FROM artifacts \
+                     WHERE (SELECT COUNT(DISTINCT jt.value) FROM json_each(tags) jt \
+                            WHERE jt.value IN (SELECT value FROM json_each(?1))) = ?2",
+                )?;
+                let rows = stmt
+                    .query_map(params![tags_json, tag_count], map_artifact_row)?
+                    .collect::<Result<_, _>>()?;
+                rows
             }
-            artifacts.push(self.hydrate_artifact(row)?);
-        }
-        Ok(artifacts)
+            _ => {
+                let mut stmt = self.conn.prepare(
+                    "SELECT slug, title, summary, aliases, tags, content, hash FROM artifacts",
+                )?;
+                let rows = stmt
+                    .query_map([], map_artifact_row)?
+                    .collect::<Result<_, _>>()?;
+                rows
+            }
+        };
+
+        self.hydrate_artifacts(rows)
     }
 
     pub fn get_relationships(&self, slug: &str) -> StorageResult<Vec<Relationship>> {
@@ -369,6 +378,196 @@ impl Storage {
             })
         })?;
         rows.collect::<Result<_, _>>().map_err(StorageError::from)
+    }
+
+    pub fn get_batch(&self, slugs: &[&str]) -> StorageResult<HashMap<String, Artifact>> {
+        if slugs.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let placeholders = vec!["?"; slugs.len()].join(", ");
+        let sql = format!(
+            "SELECT slug, title, summary, aliases, tags, content, hash \
+             FROM artifacts WHERE slug IN ({placeholders})"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let owned: Vec<String> = slugs.iter().map(|s| s.to_string()).collect();
+        let sql_params: Vec<&dyn rusqlite::types::ToSql> = owned
+            .iter()
+            .map(|s| s as &dyn rusqlite::types::ToSql)
+            .collect();
+        let rows: Vec<ArtifactRow> = stmt
+            .query_map(sql_params.as_slice(), map_artifact_row)?
+            .collect::<Result<_, _>>()?;
+
+        let artifacts = self.hydrate_artifacts(rows)?;
+        Ok(artifacts.into_iter().map(|a| (a.slug.clone(), a)).collect())
+    }
+
+    pub fn get_inverse_batch(
+        &self,
+        slugs: &[&str],
+    ) -> StorageResult<HashMap<String, Vec<Relationship>>> {
+        if slugs.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let placeholders = vec!["?"; slugs.len()].join(", ");
+        let sql = format!(
+            "SELECT source, target, type, line, section FROM relationships \
+             WHERE CASE WHEN instr(target, '#') > 0 \
+                        THEN substr(target, 1, instr(target, '#') - 1) \
+                        ELSE target \
+                   END IN ({placeholders})"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let owned: Vec<String> = slugs.iter().map(|s| s.to_string()).collect();
+        let sql_params: Vec<&dyn rusqlite::types::ToSql> = owned
+            .iter()
+            .map(|s| s as &dyn rusqlite::types::ToSql)
+            .collect();
+
+        let mut result: HashMap<String, Vec<Relationship>> = HashMap::new();
+        let rows = stmt.query_map(sql_params.as_slice(), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<i64>>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })?;
+
+        for row in rows {
+            let (source, target, kind, line, section) = row?;
+            let base_slug = match target.find('#') {
+                Some(pos) => &target[..pos],
+                None => &target,
+            };
+            result
+                .entry(base_slug.to_owned())
+                .or_default()
+                .push(Relationship {
+                    target: source,
+                    kind,
+                    line,
+                    section,
+                });
+        }
+
+        Ok(result)
+    }
+
+    fn hydrate_artifacts(&self, rows: Vec<ArtifactRow>) -> StorageResult<Vec<Artifact>> {
+        if rows.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let slugs: Vec<&str> = rows.iter().map(|r| r.slug.as_str()).collect();
+        let mut rels_map = self.get_relationships_batch(&slugs)?;
+        let mut secs_map = self.fetch_sections_batch(&slugs)?;
+
+        let mut artifacts = Vec::with_capacity(rows.len());
+        for row in rows {
+            let aliases: Option<Vec<String>> =
+                row.aliases.map(|s| serde_json::from_str(&s)).transpose()?;
+            let tags: Vec<String> = serde_json::from_str(&row.tags)?;
+            let relationships = rels_map.remove(&row.slug).unwrap_or_default();
+            let sections = secs_map.remove(&row.slug).unwrap_or_default();
+
+            artifacts.push(Artifact {
+                slug: row.slug,
+                title: row.title,
+                summary: row.summary,
+                aliases,
+                tags,
+                content: row.content,
+                hash: row.hash,
+                relationships,
+                sections,
+            });
+        }
+
+        Ok(artifacts)
+    }
+
+    fn get_relationships_batch(
+        &self,
+        slugs: &[&str],
+    ) -> StorageResult<HashMap<String, Vec<Relationship>>> {
+        if slugs.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let placeholders = vec!["?"; slugs.len()].join(", ");
+        let sql = format!(
+            "SELECT source, target, type, line, section \
+             FROM relationships WHERE source IN ({placeholders})"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let owned: Vec<String> = slugs.iter().map(|s| s.to_string()).collect();
+        let sql_params: Vec<&dyn rusqlite::types::ToSql> = owned
+            .iter()
+            .map(|s| s as &dyn rusqlite::types::ToSql)
+            .collect();
+
+        let mut result: HashMap<String, Vec<Relationship>> = HashMap::new();
+        let rows = stmt.query_map(sql_params.as_slice(), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                Relationship {
+                    target: row.get(1)?,
+                    kind: row.get(2)?,
+                    line: row.get(3)?,
+                    section: row.get(4)?,
+                },
+            ))
+        })?;
+
+        for row in rows {
+            let (source, rel) = row?;
+            result.entry(source).or_default().push(rel);
+        }
+
+        Ok(result)
+    }
+
+    fn fetch_sections_batch(&self, slugs: &[&str]) -> StorageResult<HashMap<String, Vec<Section>>> {
+        if slugs.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let placeholders = vec!["?"; slugs.len()].join(", ");
+        let sql = format!(
+            "SELECT artifact_slug, id, heading, level, line \
+             FROM sections WHERE artifact_slug IN ({placeholders})"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let owned: Vec<String> = slugs.iter().map(|s| s.to_string()).collect();
+        let sql_params: Vec<&dyn rusqlite::types::ToSql> = owned
+            .iter()
+            .map(|s| s as &dyn rusqlite::types::ToSql)
+            .collect();
+
+        let mut result: HashMap<String, Vec<Section>> = HashMap::new();
+        let rows = stmt.query_map(sql_params.as_slice(), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                Section {
+                    id: row.get(1)?,
+                    heading: row.get(2)?,
+                    level: row.get(3)?,
+                    line: row.get(4)?,
+                },
+            ))
+        })?;
+
+        for row in rows {
+            let (slug, section) = row?;
+            result.entry(slug).or_default().push(section);
+        }
+
+        Ok(result)
     }
 }
 

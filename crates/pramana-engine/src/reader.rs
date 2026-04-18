@@ -70,8 +70,8 @@ impl<'a> Reader<'a> {
         depth: usize,
     ) -> Result<Vec<ArtifactView>, EngineError> {
         let mut visited = HashSet::new();
-        let mut results = Vec::new();
         let mut queue = VecDeque::new();
+        let mut discovered: Vec<String> = Vec::new();
 
         visited.insert(from.to_owned());
         queue.push_back((from.to_owned(), 0usize));
@@ -96,12 +96,24 @@ impl<'a> Reader<'a> {
                     continue;
                 }
                 visited.insert(target_slug.to_owned());
+                discovered.push(target_slug.to_owned());
+                queue.push_back((target_slug.to_owned(), current_depth + 1));
+            }
+        }
 
-                if let Some(artifact) = self.storage.get(target_slug)? {
-                    let inverse = self.storage.get_inverse(target_slug)?;
-                    results.push(to_view(artifact, inverse, None));
-                    queue.push_back((target_slug.to_owned(), current_depth + 1));
-                }
+        if discovered.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let slug_refs: Vec<&str> = discovered.iter().map(|s| s.as_str()).collect();
+        let mut artifacts_map = self.storage.get_batch(&slug_refs)?;
+        let mut inverse_map = self.storage.get_inverse_batch(&slug_refs)?;
+
+        let mut results = Vec::with_capacity(discovered.len());
+        for slug in &discovered {
+            if let Some(artifact) = artifacts_map.remove(slug.as_str()) {
+                let inverse = inverse_map.remove(slug.as_str()).unwrap_or_default();
+                results.push(to_view(artifact, inverse, None));
             }
         }
 
@@ -112,9 +124,12 @@ impl<'a> Reader<'a> {
         let tags = filter.and_then(|f| f.tags.as_deref());
         let artifacts = self.storage.list(tags)?;
 
+        let slugs: Vec<&str> = artifacts.iter().map(|a| a.slug.as_str()).collect();
+        let mut inverse_map = self.storage.get_inverse_batch(&slugs)?;
+
         let mut views = Vec::with_capacity(artifacts.len());
         for artifact in artifacts {
-            let inverse = self.storage.get_inverse(&artifact.slug)?;
+            let inverse = inverse_map.remove(&artifact.slug).unwrap_or_default();
             views.push(to_view(artifact, inverse, None));
         }
 
