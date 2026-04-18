@@ -2,6 +2,7 @@
 name = "pramana-embedder"
 version = "0.14.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 ort = { version = "=2.0.0-rc.10", features = ["ndarray"] }

@@ -11,6 +11,9 @@ members = [
     "crates/pramana-tui",
 ]
 
+[workspace.package]
+license = "MIT"
+
 [profile.release]
 strip = true
 lto = "thin"

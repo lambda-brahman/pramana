@@ -3,22 +3,26 @@
 This file lists the licenses of all third-party dependencies bundled
 with the pramana binary.
 
+## Dependency Summary
+
+| Crate | Version | License |
+|-------|---------|---------|
+{{#each crates}}| {{package.name}} | {{package.version}} | {{license}} |
+{{/each}}
+
+## License Texts
+
 {{#each overview}}
-## {{name}} ({{version}})
+### {{name}} (`{{id}}`)
 
-- License: {{#each licenses}}{{id}}{{#unless @last}}, {{/unless}}{{/each}}
-- Authors: {{#if authors}}{{authors}}{{else}}(not specified){{/if}}
-
-{{#each licenses}}
 <details>
-<summary>{{id}}</summary>
+<summary>Full text</summary>
 
 ```
 {{{text}}}
 ```
 
 </details>
-{{/each}}
 
 ---
 

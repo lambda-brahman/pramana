@@ -2,6 +2,7 @@
 name = "pramana-storage"
 version = "0.14.0"
 edition = "2021"
+license.workspace = true
 
 [dependencies]
 rusqlite = { version = "0.32", features = ["bundled"] }

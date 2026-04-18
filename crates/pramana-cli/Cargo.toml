@@ -2,6 +2,7 @@
 name = "pramana-cli"
 version = "0.14.0"
 edition = "2021"
+license.workspace = true
 
 [features]
 default = ["mcp", "tui"]

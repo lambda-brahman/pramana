@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-about
-        run: cargo install cargo-about
+        run: cargo install cargo-about --version 0.8.4 --locked
       - name: Generate THIRDPARTY.md
         run: cargo about generate about.hbs > THIRDPARTY.md
       - uses: actions/upload-artifact@v4
