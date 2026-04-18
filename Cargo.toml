@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pramana-core",
+    "crates/pramana-cli",
+    "crates/pramana-parser",
+    "crates/pramana-embedder",
+    "crates/pramana-storage",
+    "crates/pramana-engine",
+    "crates/pramana-mcp",
+    "crates/pramana-tui",
+]
+
+[profile.release]
+strip = true
+lto = "thin"

@@ -1,0 +1,4 @@
+[package]
+name = "pramana-core"
+version = "0.14.0-rc.3"
+edition = "2021"

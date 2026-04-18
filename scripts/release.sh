@@ -7,8 +7,12 @@ set -euo pipefail
 #   scripts/release.sh <version>
 #
 # Flow:
-#   1. scripts/release.sh 0.10.0    → bumps version files, commits, tags v0.10.0, pushes
-#   2. Tag push                     → ci.yml builds binaries + publishes release
+#   1. scripts/release.sh 0.14.0        → bumps version files, commits, tags v0.14.0, pushes
+#   2. scripts/release.sh 0.14.0-rc.1   → same, but the GitHub release is marked as pre-release
+#   3. Tag push                          → release-rust.yml builds binaries + publishes release
+#
+# Supports both stable (0.14.0) and pre-release (0.14.0-rc.1) versions.
+# Works from main or rust-port branches.
 
 VERSION="${1:?Usage: scripts/release.sh <version>}"
 VERSION="${VERSION#v}" # strip leading v if present
@@ -24,44 +28,75 @@ ensure_clean() {
   fi
 }
 
-ensure_on_main() {
+ensure_on_release_branch() {
   local current
   current=$(git branch --show-current)
-  if [ "$current" != "main" ]; then
-    die "Must be on main (currently on $current)."
+  case "$current" in
+    main|rust-port) ;;
+    *) die "Must be on main or rust-port (currently on $current)." ;;
+  esac
+}
+
+bump_cargo_versions() {
+  local version="$1"
+  for toml in crates/*/Cargo.toml; do
+    sed -i '' "s/^version = \"[^\"]*\"/version = \"$version\"/" "$toml"
+  done
+  if command -v cargo >/dev/null 2>&1; then
+    cargo generate-lockfile --quiet
   fi
 }
 
 # --- Main ------------------------------------------------------------------
 
+BRANCH=$(git branch --show-current)
+
 ensure_clean
-ensure_on_main
-git pull --ff-only origin main
+ensure_on_release_branch
+git pull --ff-only origin "$BRANCH"
 
 if git tag --list "$TAG" | grep -q "$TAG"; then
   die "Tag $TAG already exists."
 fi
 
-CURRENT=$(grep '"version"' package.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+CURRENT=$(grep '"version"' package.json | head -1 | sed 's/.*"\([0-9][0-9.a-zA-Z-]*\)".*/\1/')
 echo "Bumping $CURRENT -> $VERSION"
 
-# Update all version files
+# --- TypeScript version files ---
 sed -i '' "s/\"version\": \"$CURRENT\"/\"version\": \"$VERSION\"/" package.json
 
-SRC_CURRENT=$(grep 'VERSION' src/version.ts | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+SRC_CURRENT=$(grep 'VERSION' src/version.ts | head -1 | sed 's/.*"\([0-9][0-9.a-zA-Z-]*\)".*/\1/')
 sed -i '' "s/VERSION = \"$SRC_CURRENT\"/VERSION = \"$VERSION\"/" src/version.ts
 
-PLG_CURRENT=$(grep '"version"' plugin/.claude-plugin/plugin.json | head -1 | sed 's/.*"\([0-9.]*\)".*/\1/')
+PLG_CURRENT=$(grep '"version"' plugin/.claude-plugin/plugin.json | head -1 | sed 's/.*"\([0-9][0-9.a-zA-Z-]*\)".*/\1/')
 sed -i '' "s/\"version\": \"$PLG_CURRENT\"/\"version\": \"$VERSION\"/" plugin/.claude-plugin/plugin.json
 
-# marketplace.json has version in two places (metadata.version and plugins[].version)
-sed -i '' "s/\"version\": \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\"/\"version\": \"$VERSION\"/g" .claude-plugin/marketplace.json
+sed -i '' "s/\"version\": \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*[^\"]*\"/\"version\": \"$VERSION\"/g" .claude-plugin/marketplace.json
 
-git add package.json src/version.ts plugin/.claude-plugin/plugin.json .claude-plugin/marketplace.json
+# --- Rust workspace versions ---
+bump_cargo_versions "$VERSION"
+
+# --- Commit, tag, push ---
+STAGED_FILES=(
+  package.json
+  src/version.ts
+  plugin/.claude-plugin/plugin.json
+  .claude-plugin/marketplace.json
+)
+
+for toml in crates/*/Cargo.toml; do
+  STAGED_FILES+=("$toml")
+done
+
+if [ -f Cargo.lock ]; then
+  STAGED_FILES+=(Cargo.lock)
+fi
+
+git add "${STAGED_FILES[@]}"
 git commit -m "chore: bump version to $VERSION"
 
 git tag -a "$TAG" -m "${TAG}"
-git push origin main "$TAG"
+git push origin "$BRANCH" "$TAG"
 
 echo ""
 echo "Tagged and pushed $TAG"

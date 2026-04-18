@@ -1,0 +1,9 @@
+[package]
+name = "pramana-parser"
+version = "0.14.0-rc.3"
+edition = "2021"
+
+[dependencies]
+regex = "1"
+serde_yaml = "0.9"
+sha2 = "0.10"

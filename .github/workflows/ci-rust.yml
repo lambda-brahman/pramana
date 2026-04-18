@@ -2,9 +2,9 @@ name: CI (Rust)
 
 on:
   push:
-    branches: [rust-port]
+    branches: [main, rust-port]
   pull_request:
-    branches: [rust-port]
+    branches: [main, rust-port]
 
 jobs:
   rust:
@@ -18,5 +18,19 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
-      - name: Test
+      - name: Test (default features)
         run: cargo test
+  features:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - "--no-default-features"
+          - "--no-default-features --features mcp"
+          - "--no-default-features --features tui"
+          - "--all-features"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test (${{ matrix.features }})
+        run: cargo test -p pramana-cli ${{ matrix.features }}
