@@ -48,6 +48,7 @@ jobs:
           PRAMANA_BIN: ${{ matrix.binary }}
 
   build-macos:
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,6 +81,7 @@ jobs:
             pramana-darwin-x64
 
   smoke-macos:
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
     needs: build-macos
     runs-on: macos-latest
     steps:
