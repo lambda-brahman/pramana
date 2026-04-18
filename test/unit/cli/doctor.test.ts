@@ -10,15 +10,16 @@ import {
   formatDoctorReport,
   type DoctorReport,
 } from "../../../src/cli/doctor.ts";
+import { VERSION } from "../../../src/version.ts";
 
 describe("checkVersionMatch", () => {
   test("no diagnostic when versions match", () => {
-    const diags = checkVersionMatch("v0.12.4");
+    const diags = checkVersionMatch(`v${VERSION}`);
     expect(diags).toHaveLength(0);
   });
 
   test("no diagnostic when versions match without v prefix", () => {
-    const diags = checkVersionMatch("0.12.4");
+    const diags = checkVersionMatch(VERSION);
     expect(diags).toHaveLength(0);
   });
 
