@@ -158,16 +158,19 @@ export function checkRuntimeTenantsMatch(
   return diagnostics;
 }
 
-export async function runDoctor(port: number): Promise<Result<DoctorReport, DoctorError>> {
+export async function runDoctor(
+  port: number,
+  configPath?: string,
+): Promise<Result<DoctorReport, DoctorError>> {
   try {
-    return ok(await runDoctorChecks(port));
+    return ok(await runDoctorChecks(port, configPath));
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return err({ type: "doctor", message: `Unexpected error: ${message}` });
   }
 }
 
-async function runDoctorChecks(port: number): Promise<DoctorReport> {
+async function runDoctorChecks(port: number, configPath?: string): Promise<DoctorReport> {
   const diagnostics: DoctorDiagnostic[] = [];
 
   // Check 1: Daemon reachable
@@ -185,7 +188,7 @@ async function runDoctorChecks(port: number): Promise<DoctorReport> {
   diagnostics.push(...checkVersionMatch(versionResult.value));
 
   // Check 3+4: Tenant config integrity + name validity
-  const configResult = await loadConfig();
+  const configResult = await loadConfig(configPath);
   if (configResult.ok) {
     const configTenantNames = Object.keys(configResult.value.tenants);
     diagnostics.push(...checkTenantNameValidity(configTenantNames));
