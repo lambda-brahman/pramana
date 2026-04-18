@@ -210,7 +210,13 @@ async function upgradePlugin(version: string): Promise<Result<void, CliError>> {
 }
 
 function resolvePort(): number {
-  return Number.parseInt(getFlag("port") ?? process.env.PRAMANA_PORT ?? "5111", 10);
+  const raw = getFlag("port") ?? process.env.PRAMANA_PORT ?? "5111";
+  const port = Number.parseInt(raw, 10);
+  if (!Number.isFinite(port) || port <= 0 || port >= 65536) {
+    console.error(`Invalid port: "${raw}". Must be a number between 1 and 65535.`);
+    process.exit(1);
+  }
+  return port;
 }
 
 async function isServerReachable(port: number): Promise<boolean> {
