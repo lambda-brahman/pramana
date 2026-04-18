@@ -1,6 +1,6 @@
 {
   "name": "pramana",
-  "version": "0.12.3",
+  "version": "0.12.4",
   "module": "src/cli/index.ts",
   "type": "module",
   "private": true,
