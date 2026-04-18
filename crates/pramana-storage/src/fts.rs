@@ -23,7 +23,8 @@ fn tokenize(query: &str) -> Vec<String> {
         })
         .collect::<String>()
         .split_whitespace()
-        .map(String::from)
+        .map(|t| t.trim_start_matches('-').to_string())
+        .filter(|t| !t.is_empty())
         .collect()
 }
 
@@ -90,5 +91,18 @@ mod tests {
     fn or_query_empty_input() {
         let filter = NoOpFilter;
         assert_eq!(or_query("", &filter), "");
+    }
+
+    #[test]
+    fn tokenize_strips_leading_hyphens() {
+        assert_eq!(tokenize("-secret"), vec!["secret"]);
+        assert_eq!(tokenize("config -password"), vec!["config", "password"]);
+        assert_eq!(tokenize("--double"), vec!["double"]);
+    }
+
+    #[test]
+    fn tokenize_bare_hyphen_is_dropped() {
+        let result: Vec<String> = vec![];
+        assert_eq!(tokenize("-"), result);
     }
 }

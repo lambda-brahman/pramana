@@ -7,6 +7,9 @@ use std::collections::HashMap;
 use std::sync::Once;
 use zerocopy::AsBytes;
 
+const DEFAULT_VEC_LIMIT: usize = 20;
+const DEFAULT_RRF_K: usize = 10;
+
 pub struct Storage {
     conn: Connection,
     stop_word_filter: Box<dyn StopWordFilter>,
@@ -40,6 +43,11 @@ impl Storage {
         Ok(())
     }
 
+    // SAFETY: unchecked_transaction() is used instead of transaction() so that
+    // insert_artifact can take &self (matching the read-method signatures). This
+    // is sound only because no rusqlite::Statement is alive when the transaction
+    // begins — all query methods eagerly .collect() into Vec before returning.
+    // If lazy iteration or a statement cache is added, switch to &mut self.
     pub fn insert_artifact(&self, artifact: &Artifact) -> StorageResult<()> {
         let tx = self.conn.unchecked_transaction()?;
 
@@ -180,10 +188,11 @@ impl Storage {
     }
 
     pub fn get_inverse(&self, slug: &str) -> StorageResult<Vec<Relationship>> {
-        let like_pattern = format!("{slug}#%");
+        let escaped = slug.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let like_pattern = format!("{escaped}#%");
         let mut stmt = self.conn.prepare(
             "SELECT source as target, type, line, section \
-             FROM relationships WHERE target = ? OR target LIKE ?",
+             FROM relationships WHERE target = ? OR target LIKE ? ESCAPE '\\'",
         )?;
         let rows = stmt.query_map(params![slug, like_pattern], |row| {
             Ok(Relationship {
@@ -255,7 +264,7 @@ impl Storage {
             None => return Ok(fts_results),
         };
 
-        let semantic_ranked = self.vec_search(query_vec, 20)?;
+        let semantic_ranked = self.vec_search(query_vec, DEFAULT_VEC_LIMIT)?;
 
         let fts_ranked: Vec<RankedResult> = fts_results
             .iter()
@@ -266,7 +275,7 @@ impl Storage {
             .collect();
 
         let total_docs = self.count_artifacts()?;
-        let fused = rrf::rrf(&[&fts_ranked, &semantic_ranked], 10, total_docs);
+        let fused = rrf::rrf(&[&fts_ranked, &semantic_ranked], DEFAULT_RRF_K, total_docs);
 
         let fts_map: HashMap<&str, &SearchResult> =
             fts_results.iter().map(|r| (r.slug.as_str(), r)).collect();
