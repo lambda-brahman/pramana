@@ -53,10 +53,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
-      - name: Build macOS binaries
+      - name: Build macOS arm64 binary (native, no --target to avoid cross-compile mode)
         run: |
-          scripts/build.sh --target bun-darwin-arm64
-          scripts/build.sh --target bun-darwin-x64
+          scripts/build.sh
+          mv pramana pramana-darwin-arm64
+      - name: Build macOS x64 binary (cross-compile from arm64)
+        run: scripts/build.sh --target bun-darwin-x64
       - name: Ad-hoc codesign
         run: |
           codesign --force --sign - pramana-darwin-arm64
