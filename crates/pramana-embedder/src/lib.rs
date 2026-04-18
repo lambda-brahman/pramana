@@ -37,7 +37,7 @@ pub struct Embedder {
 impl Embedder {
     pub fn load(model_id: &str) -> Result<Self, EmbedError> {
         let config = ModelConfig::for_model(model_id);
-        let cache_dir = download::model_cache_dir(model_id);
+        let cache_dir = download::model_cache_dir(model_id)?;
         download::ensure_model_files(&cache_dir, model_id, config.onnx_file)?;
 
         let tokenizer = load_tokenizer(&cache_dir, &config)?;
@@ -161,6 +161,12 @@ fn run_inference(
         .try_extract_tensor::<f32>()
         .map_err(|e| EmbedError::Inference(format!("extract tensor: {e}")))?;
 
+    if shape.len() < 3 {
+        return Err(EmbedError::Inference(format!(
+            "expected 3-D output, got {}-D",
+            shape.len()
+        )));
+    }
     let hidden = shape[2] as usize;
     let seq = shape[1] as usize;
 
@@ -254,15 +260,6 @@ mod tests {
         let b = vec![0.0, 1.0];
         let sim = cosine_similarity(&a, &b);
         assert!(sim.abs() < 1e-6);
-    }
-
-    #[test]
-    fn embed_batch_empty_returns_empty() {
-        // This test doesn't need a real model — it checks the early return path.
-        // We can't construct an Embedder without a model, so test the public
-        // contract: empty input → empty output. The function-level test is below.
-        let texts: &[&str] = &[];
-        assert!(texts.is_empty());
     }
 
     #[test]

@@ -2,20 +2,21 @@ use crate::EmbedError;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
-fn home_dir() -> PathBuf {
+fn home_dir() -> Result<PathBuf, EmbedError> {
     std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("."))
+        .map_err(|_| EmbedError::Download("HOME or USERPROFILE must be set".into()))
 }
 
-pub fn model_cache_dir(model_id: &str) -> PathBuf {
-    home_dir()
+pub fn model_cache_dir(model_id: &str) -> Result<PathBuf, EmbedError> {
+    Ok(home_dir()?
         .join(".cache")
         .join("pramana")
         .join("models")
-        .join(model_id)
+        .join(model_id))
 }
 
 fn hf_url(model_id: &str, file: &str) -> String {
@@ -31,7 +32,12 @@ fn download_file(url: &str, dest: &Path) -> Result<(), EmbedError> {
             .map_err(|e| EmbedError::Download(format!("mkdir {}: {e}", parent.display())))?;
     }
     let tmp = dest.with_extension("part");
-    let response = ureq::get(url)
+    let agent = ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(30))
+        .timeout_read(Duration::from_secs(30))
+        .build();
+    let response = agent
+        .get(url)
         .call()
         .map_err(|e| EmbedError::Download(format!("GET {url}: {e}")))?;
     let mut reader = response.into_reader();
@@ -63,7 +69,7 @@ mod tests {
 
     #[test]
     fn cache_dir_includes_model_id() {
-        let dir = model_cache_dir("Xenova/gte-small");
+        let dir = model_cache_dir("Xenova/gte-small").unwrap();
         assert!(dir.ends_with("pramana/models/Xenova/gte-small"));
     }
 
