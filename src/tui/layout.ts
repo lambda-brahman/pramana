@@ -25,3 +25,5 @@ export const SEARCH_RESULT_COUNT_LINES = 2;
 
 // border(2) + title+margin(2) + rootNode(1) + hintMargin+hints(2) = 7
 export const GRAPH_CHROME = 7;
+
+export const HORIZONTAL_SCROLL_STEP = 10;

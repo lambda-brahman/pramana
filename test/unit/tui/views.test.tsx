@@ -431,6 +431,188 @@ describe("ArtifactDetailView", () => {
     await delay(100);
     expect(lastFrame()).toContain("relationships (2)");
   });
+
+  test("horizontal scroll shifts content right with l key", async () => {
+    const longLine = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+    const ds = createMockDataSource([
+      makeView({
+        slug: "hscroll",
+        title: "HScroll Test",
+        content: `# HScroll\n\n${longLine}`,
+      }),
+    ]);
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="hscroll"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={30}
+      />,
+    );
+    await delay(100);
+    expect(lastFrame()).toContain("ABCDEFGHIJ");
+
+    stdin.write("l");
+    await delay(50);
+    const frame = lastFrame()!;
+    expect(frame).not.toContain("ABCDEFGHIJ");
+    expect(frame).toContain("KLMNOPQRST");
+  });
+
+  test("horizontal scroll shows col indicator", async () => {
+    const longLine = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const ds = createMockDataSource([
+      makeView({
+        slug: "hscroll-ind",
+        title: "Indicator Test",
+        content: `# Title\n\n${longLine}`,
+      }),
+    ]);
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="hscroll-ind"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={30}
+      />,
+    );
+    await delay(100);
+    expect(lastFrame()).not.toContain("col ");
+
+    stdin.write("l");
+    await delay(50);
+    expect(lastFrame()).toContain("col 11");
+  });
+
+  test("horizontal scroll resets with 0 key", async () => {
+    const longLine = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const ds = createMockDataSource([
+      makeView({
+        slug: "hscroll-reset",
+        title: "Reset Test",
+        content: `# Title\n\n${longLine}`,
+      }),
+    ]);
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="hscroll-reset"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={30}
+      />,
+    );
+    await delay(100);
+    stdin.write("l");
+    await delay(50);
+    expect(lastFrame()).not.toContain("ABCDEFGHIJ");
+
+    stdin.write("0");
+    await delay(50);
+    expect(lastFrame()).toContain("ABCDEFGHIJ");
+    expect(lastFrame()).not.toContain("col ");
+  });
+
+  test("h key scrolls content back left", async () => {
+    const longLine = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const ds = createMockDataSource([
+      makeView({
+        slug: "hscroll-left",
+        title: "Left Test",
+        content: `# Title\n\n${longLine}`,
+      }),
+    ]);
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="hscroll-left"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={30}
+      />,
+    );
+    await delay(100);
+    stdin.write("l");
+    stdin.write("l");
+    await delay(50);
+    expect(lastFrame()).toContain("col 21");
+
+    stdin.write("h");
+    await delay(50);
+    expect(lastFrame()).toContain("col 11");
+  });
+
+  test("h key does not scroll below zero", async () => {
+    const ds = createMockDataSource([
+      makeView({
+        slug: "hscroll-clamp",
+        title: "Clamp Test",
+        content: "# Title\n\nABCDEFGHIJ",
+      }),
+    ]);
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="hscroll-clamp"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={30}
+      />,
+    );
+    await delay(100);
+    stdin.write("h");
+    await delay(50);
+    expect(lastFrame()).toContain("ABCDEFGHIJ");
+    expect(lastFrame()).not.toContain("col ");
+  });
+
+  test("tab resets horizontal scroll", async () => {
+    const longLine = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const ds = createMockDataSource([
+      makeView({
+        slug: "hscroll-tab",
+        title: "Tab Test",
+        relationships: [{ target: "customer", type: "depends-on" }],
+        content: `# Title\n\n${longLine}`,
+      }),
+    ]);
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="hscroll-tab"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={30}
+      />,
+    );
+    await delay(100);
+    stdin.write("l");
+    await delay(50);
+    expect(lastFrame()).toContain("col 11");
+
+    stdin.write("\t");
+    await delay(50);
+    stdin.write("\t");
+    await delay(50);
+    stdin.write("\t");
+    await delay(50);
+    expect(lastFrame()).not.toContain("col ");
+    expect(lastFrame()).toContain("ABCDEFGHIJ");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -506,6 +688,26 @@ describe("SearchView", () => {
       />,
     );
     expect(lastFrame()).toContain("to results");
+  });
+
+  test("shows pan hint in results mode", async () => {
+    const ds = createMockDataSource();
+    const { lastFrame, stdin } = render(
+      <SearchView
+        dataSource={ds}
+        tenant="test"
+        isActive={true}
+        onSelectArtifact={() => {}}
+        onBack={() => {}}
+        height={20}
+      />,
+    );
+
+    stdin.write("order");
+    await delay(400);
+    stdin.write("\r");
+    await delay(50);
+    expect(lastFrame()).toContain("pan");
   });
 });
 

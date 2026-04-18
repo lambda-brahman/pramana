@@ -33,6 +33,8 @@ const listBindings: Binding[] = [
 
 const detailBindings: Binding[] = [
   { keys: "j/k or arrows", description: "Scroll content" },
+  { keys: "h/l or ←/→", description: "Pan horizontally" },
+  { keys: "0", description: "Reset horizontal scroll" },
   { keys: "Tab", description: "Cycle panels" },
   { keys: "Enter", description: "Follow relationship" },
   { keys: "d/u", description: "Half-page scroll" },
@@ -42,6 +44,7 @@ const detailBindings: Binding[] = [
 const searchBindings: Binding[] = [
   { keys: "type to search", description: "Incremental search" },
   { keys: "j/k", description: "Navigate results" },
+  { keys: "h/l", description: "Pan snippets" },
   { keys: "Enter", description: "View result" },
   { keys: "Esc", description: "Back" },
 ];

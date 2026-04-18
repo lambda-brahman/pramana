@@ -2,7 +2,11 @@ import { Box, Text, useInput } from "ink";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import type { ArtifactView } from "../../engine/reader.ts";
 import type { DataSource } from "../data-source.ts";
-import { ARTIFACT_DETAIL_CHROME, ARTIFACT_DETAIL_SCROLL_INDICATOR } from "../layout.ts";
+import {
+  ARTIFACT_DETAIL_CHROME,
+  ARTIFACT_DETAIL_SCROLL_INDICATOR,
+  HORIZONTAL_SCROLL_STEP,
+} from "../layout.ts";
 import { theme } from "../theme.ts";
 
 type Panel = "content" | "relationships" | "sections";
@@ -32,11 +36,13 @@ export function ArtifactDetailView({
   const [panel, setPanel] = useState<Panel>("content");
   const [scrollOffset, setScrollOffset] = useState(0);
   const [relIndex, setRelIndex] = useState(0);
+  const [scrollX, setScrollX] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     setScrollOffset(0);
     setRelIndex(0);
+    setScrollX(0);
     const result = await dataSource.get(tenant, slug);
     if (result.ok) {
       setArtifact(result.value);
@@ -68,6 +74,7 @@ export function ArtifactDetailView({
         const panels: Panel[] = ["content", "relationships", "sections"];
         const idx = panels.indexOf(panel);
         setPanel(panels[(idx + 1) % panels.length]!);
+        setScrollX(0);
         return;
       }
 
@@ -86,6 +93,12 @@ export function ArtifactDetailView({
           setScrollOffset((s) => Math.min(s + Math.floor(height / 2), maxScroll));
         } else if (input === "u") {
           setScrollOffset((s) => Math.max(s - Math.floor(height / 2), 0));
+        } else if (input === "h" || key.leftArrow) {
+          setScrollX((x) => Math.max(x - HORIZONTAL_SCROLL_STEP, 0));
+        } else if (input === "l" || key.rightArrow) {
+          setScrollX((x) => x + HORIZONTAL_SCROLL_STEP);
+        } else if (input === "0") {
+          setScrollX(0);
         }
       }
 
@@ -163,16 +176,17 @@ export function ArtifactDetailView({
         <Box flexDirection="column">
           {visibleContent.map((line, i) => {
             const lineNum = scrollOffset + i;
+            const displayLine = scrollX > 0 ? line.slice(scrollX) : line;
             return (
               <Box key={`L${lineNum}`}>
-                <Text wrap="truncate">{renderContentLine(line)}</Text>
+                <Text wrap="truncate">{renderContentLine(displayLine)}</Text>
               </Box>
             );
           })}
-          {contentLines.length > visibleHeight && (
+          {(contentLines.length > visibleHeight || scrollX > 0) && (
             <Text color={theme.muted}>
               [{scrollOffset + 1}-{Math.min(scrollOffset + visibleHeight, contentLines.length)}/
-              {contentLines.length}]
+              {contentLines.length}]{scrollX > 0 ? ` col ${scrollX + 1}` : ""}
             </Text>
           )}
         </Box>
@@ -264,7 +278,9 @@ export function ArtifactDetailView({
           <Text color={theme.hintKey}>[j/k]</Text>
           <Text color={theme.hintDesc}> scroll </Text>
           <Text color={theme.hintKey}>[d/u]</Text>
-          <Text color={theme.hintDesc}> half-page</Text>
+          <Text color={theme.hintDesc}> half-page </Text>
+          <Text color={theme.hintKey}>[h/l]</Text>
+          <Text color={theme.hintDesc}> pan</Text>
         </Text>
       </Box>
     </Box>

@@ -4,7 +4,7 @@ import type { SearchResult } from "../../storage/interface.ts";
 import { ScrollableList } from "../components/scrollable-list.tsx";
 import { TextInput } from "../components/text-input.tsx";
 import type { DataSource } from "../data-source.ts";
-import { SEARCH_CHROME, SEARCH_RESULT_COUNT_LINES } from "../layout.ts";
+import { HORIZONTAL_SCROLL_STEP, SEARCH_CHROME, SEARCH_RESULT_COUNT_LINES } from "../layout.ts";
 import { theme } from "../theme.ts";
 
 type Props = {
@@ -29,6 +29,7 @@ export function SearchView({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [inputFocused, setInputFocused] = useState(true);
+  const [scrollX, setScrollX] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const doSearch = useCallback(
@@ -42,6 +43,7 @@ export function SearchView({
       if (result.ok) {
         setResults(result.value);
         setSelectedIndex(0);
+        setScrollX(0);
       }
       setLoading(false);
     },
@@ -95,6 +97,12 @@ export function SearchView({
       } else if (key.return) {
         const selected = results[selectedIndex];
         if (selected) onSelectArtifact(selected.slug);
+      } else if (input === "h" || key.leftArrow) {
+        setScrollX((x) => Math.max(x - HORIZONTAL_SCROLL_STEP, 0));
+      } else if (input === "l" || key.rightArrow) {
+        setScrollX((x) => x + HORIZONTAL_SCROLL_STEP);
+      } else if (input === "0") {
+        setScrollX(0);
       }
     },
     { isActive },
@@ -149,7 +157,7 @@ export function SearchView({
             {item.snippet && (
               <Text color={theme.muted} wrap="truncate">
                 {"  "}
-                {item.snippet}
+                {scrollX > 0 ? item.snippet.slice(scrollX) : item.snippet}
               </Text>
             )}
           </Box>
@@ -171,6 +179,8 @@ export function SearchView({
               <Text color={theme.hintDesc}> navigate </Text>
               <Text color={theme.hintKey}>[Enter]</Text>
               <Text color={theme.hintDesc}> view </Text>
+              <Text color={theme.hintKey}>[h/l]</Text>
+              <Text color={theme.hintDesc}> pan </Text>
               <Text color={theme.hintKey}>[\u2191/Esc]</Text>
               <Text color={theme.hintDesc}> back to input</Text>
             </>
