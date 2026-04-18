@@ -108,9 +108,9 @@ enum Commands {
     },
     /// Start MCP stdio server
     Mcp {
-        /// Server port
-        #[arg(long, default_value = "5111", env = "PRAMANA_PORT", value_parser = parse_port)]
-        port: u16,
+        /// Knowledge source directory, optionally named (repeatable)
+        #[arg(long, value_name = "DIR[:NAME]")]
+        source: Vec<String>,
     },
     /// Launch interactive terminal interface
     Tui {
@@ -241,10 +241,7 @@ fn run(cmd: Commands) -> i32 {
             port,
         } => cmd_daemon_traverse(port, &tenant, &slug, r#type.as_deref(), depth),
         Commands::List { tenant, tags, port } => cmd_daemon_list(port, &tenant, tags.as_deref()),
-        Commands::Mcp { port: _ } => {
-            eprintln!("MCP server is not yet available in the Rust port. See issue #114.");
-            1
-        }
+        Commands::Mcp { source } => cmd_mcp(source),
         Commands::Tui { .. } => {
             eprintln!("TUI is not yet available in the Rust port. See issue #113.");
             1
@@ -360,6 +357,63 @@ fn cmd_serve(sources: Vec<String>, port: u16, host: &str, save: bool, no_config:
         Ok(()) => 0,
         Err(e) => {
             eprintln!("{e}");
+            1
+        }
+    }
+}
+
+// --- mcp ---
+
+fn cmd_mcp(sources: Vec<String>) -> i32 {
+    if sources.is_empty() {
+        eprintln!("At least one --source is required");
+        return 1;
+    }
+
+    let mut tm = TenantManager::new();
+    for raw in &sources {
+        let (path, name) = parse_source(raw);
+        let cfg = TenantConfig {
+            name: name.clone(),
+            source_dir: path,
+        };
+        match tm.mount(cfg) {
+            Ok(report) => {
+                let failed_msg = if !report.failed.is_empty() {
+                    format!(" ({} failed)", report.failed.len())
+                } else {
+                    String::new()
+                };
+                eprintln!(
+                    "[{name}] Ingested {}/{} files{failed_msg}",
+                    report.succeeded, report.total
+                );
+                for f in &report.failed {
+                    eprintln!("  ✗ {}: {}", f.file, f.error);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to mount \"{name}\": {e}");
+                return 1;
+            }
+        }
+    }
+
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build();
+    let rt = match rt {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Failed to start async runtime: {e}");
+            return 1;
+        }
+    };
+
+    match rt.block_on(pramana_mcp::start_mcp_server(tm)) {
+        Ok(()) => 0,
+        Err(e) => {
+            eprintln!("MCP server error: {e}");
             1
         }
     }

@@ -1329,12 +1329,14 @@ dependencies = [
  "clap",
  "dirs",
  "pramana-engine",
+ "pramana-mcp",
  "semver",
  "serde",
  "serde_json",
  "sha2",
  "thiserror 2.0.18",
  "tiny_http",
+ "tokio",
  "ureq 2.12.1",
 ]
 
