@@ -1,3 +1,5 @@
+#![cfg(feature = "mcp")]
+
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;

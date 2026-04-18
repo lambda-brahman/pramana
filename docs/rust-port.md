@@ -37,12 +37,43 @@ The Rust port reaches MVP when all of the following are true:
 
 Features explicitly **not** required for MVP: MCP transport, TUI, plugin host, multi-tenant routing, embedding.
 
+## Cargo features (`pramana-cli`)
+
+The `pramana` binary uses compile-time feature flags instead of a runtime plugin system. Each optional subsystem is gated behind a Cargo feature so that builds can trade binary size for functionality.
+
+| Feature | Default | Crate gated | Description |
+|---------|---------|-------------|-------------|
+| `mcp` | yes | `pramana-mcp`, `tokio` | MCP stdio server (`pramana mcp`) |
+| `tui` | yes | `pramana-tui` | Interactive terminal UI (`pramana tui`) |
+| `embeddings` | no | `pramana-embedder` (via `pramana-engine/embeddings`) | ML-based semantic search (ONNX Runtime + tokenizers) |
+
+### Build examples
+
+```bash
+cargo build -p pramana-cli                        # default: mcp + tui
+cargo build -p pramana-cli --no-default-features  # core CLI only (serve, get, search, ...)
+cargo build -p pramana-cli --all-features         # everything including embeddings
+cargo build -p pramana-cli --no-default-features --features mcp  # core + MCP, no TUI
+```
+
+### Deprecated / removed
+
+The TypeScript tree had a runtime `StoragePlugin` interface allowing pluggable storage backends. The Rust port uses a concrete `Storage` type (SQLite) with no runtime extensibility — only one backend exists and the indirection added complexity without value. If a second backend is needed in the future, a trait can be introduced at that point.
+
+The TypeScript `upgradePlugin()` function (downloading Claude plugin archives from GitHub releases) is not yet ported. The Rust `pramana upgrade` command upgrades the CLI binary only.
+
 ## Crate layout
 
 ```
 crates/
-  pramana-core/   # library: parser, storage, query primitives
-  pramana-cli/    # binary: CLI surface, daemon, MCP transport
+  pramana-core/      # library: reserved for shared types
+  pramana-cli/       # binary: CLI surface, daemon, feature-gated MCP + TUI
+  pramana-parser/    # library: markdown/YAML parsing
+  pramana-storage/   # library: SQLite storage + FTS5
+  pramana-engine/    # library: query engine, tenant manager, optional embeddings
+  pramana-embedder/  # library: ONNX Runtime embeddings (optional)
+  pramana-mcp/       # library: MCP stdio server (optional)
+  pramana-tui/       # library: ratatui terminal UI (optional)
 ```
 
 ## TUI keybinding parity matrix
