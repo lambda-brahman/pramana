@@ -1,4 +1,4 @@
-export const VERSION = "0.13.0";
+export const VERSION = "0.13.1";
 
 export function compareSemver(a: string, b: string): number {
   const pa = a.replace(/^v/, "").split(".").map(Number);

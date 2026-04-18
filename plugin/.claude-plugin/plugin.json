@@ -1,7 +1,7 @@
 {
   "name": "pramana",
   "description": "Turn your expertise into a knowledge base Claude can search and build on",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "author": { "name": "Lambda Brahman" },
   "homepage": "https://github.com/lambda-brahman/pramana",
   "repository": "https://github.com/lambda-brahman/pramana",
