@@ -73,7 +73,8 @@ fn build_tool_definitions() -> Vec<Tool> {
                     "tenant": { "type": "string", "description": "Tenant name" },
                     "from": { "type": "string", "description": "Starting artifact slug" },
                     "type": { "type": "string", "description": "Relationship type filter" },
-                    "depth": { "type": "integer", "minimum": 0, "description": "Traversal depth (default: 1)" }
+                    "depth": { "type": "integer", "minimum": 0, "description": "Traversal depth (default: 1)" },
+                    "max_results": { "type": "integer", "minimum": 1, "description": "Maximum number of results to return" }
                 },
                 "required": ["tenant", "from"]
             })),
@@ -89,7 +90,9 @@ fn build_tool_definitions() -> Vec<Tool> {
                         "type": "array",
                         "items": { "type": "string", "pattern": "^[^,]+$" },
                         "description": "Filter by tags"
-                    }
+                    },
+                    "limit": { "type": "integer", "minimum": 1, "description": "Maximum number of results to return" },
+                    "offset": { "type": "integer", "minimum": 0, "description": "Number of results to skip" }
                 },
                 "required": ["tenant"]
             })),
@@ -188,6 +191,10 @@ impl PramanaServer {
             .and_then(|v| v.as_u64())
             .map(|d| d as usize)
             .unwrap_or(1);
+        let max_results = args
+            .get("max_results")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize);
 
         let mgr = self.manager.lock().expect("lock poisoned");
         let reader = match mgr.reader(&tenant) {
@@ -195,7 +202,7 @@ impl PramanaServer {
             Err(e) => return error_result(&e.to_string()),
         };
 
-        match reader.traverse(&from, rel_type.as_deref(), depth) {
+        match reader.traverse(&from, rel_type.as_deref(), depth, max_results) {
             Ok(results) => success_json(&results),
             Err(e) => error_result(&e.to_string()),
         }
@@ -213,13 +220,29 @@ impl PramanaServer {
             Err(e) => return error_result(&e.to_string()),
         };
 
-        let filter = args.get("tags").and_then(|v| v.as_array()).map(|arr| {
-            let tags: Vec<String> = arr
-                .iter()
+        let tags = args.get("tags").and_then(|v| v.as_array()).map(|arr| {
+            arr.iter()
                 .filter_map(|v| v.as_str().map(String::from))
-                .collect();
-            ListFilter { tags: Some(tags) }
+                .collect::<Vec<String>>()
         });
+        let limit = args
+            .get("limit")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize);
+        let offset = args
+            .get("offset")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as usize);
+
+        let filter = if tags.is_some() || limit.is_some() || offset.is_some() {
+            Some(ListFilter {
+                tags,
+                limit,
+                offset,
+            })
+        } else {
+            None
+        };
 
         match reader.list(filter.as_ref()) {
             Ok(results) => success_json(&results),

@@ -40,12 +40,23 @@ impl DataSource {
                 Ok(reader.list(filter)?)
             }
             DataSource::Daemon { port } => {
-                let url = match filter.and_then(|f| f.tags.as_ref()) {
-                    Some(tags) => format!(
-                        "http://localhost:{port}/v1/{tenant}/list?tags={}",
-                        tags.join(",")
-                    ),
-                    None => format!("http://localhost:{port}/v1/{tenant}/list"),
+                let mut params = Vec::new();
+                if let Some(tags) = filter.and_then(|f| f.tags.as_ref()) {
+                    params.push(format!("tags={}", tags.join(",")));
+                }
+                if let Some(limit) = filter.and_then(|f| f.limit) {
+                    params.push(format!("limit={limit}"));
+                }
+                if let Some(offset) = filter.and_then(|f| f.offset) {
+                    params.push(format!("offset={offset}"));
+                }
+                let url = if params.is_empty() {
+                    format!("http://localhost:{port}/v1/{tenant}/list")
+                } else {
+                    format!(
+                        "http://localhost:{port}/v1/{tenant}/list?{}",
+                        params.join("&")
+                    )
                 };
                 let body = daemon_get(&url)?;
                 let artifacts: Vec<ArtifactView> =
