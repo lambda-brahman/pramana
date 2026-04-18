@@ -1,5 +1,5 @@
 use pramana_engine::{Builder, ListFilter, Reader, TenantConfig, TenantManager};
-use pramana_storage::Storage;
+use pramana_storage::{Artifact, Relationship, Section, Storage};
 use std::path::{Path, PathBuf};
 
 fn fixtures_dir() -> PathBuf {
@@ -467,4 +467,233 @@ fn tenant_isolation_between_tenants() {
 
     assert_eq!(list_a.len(), list_b.len());
     assert_eq!(list_a.len(), 4);
+}
+
+// --- Scale correctness tests ---
+
+fn setup_large_storage(count: usize) -> Storage {
+    let storage = setup_storage();
+    for i in 0..count {
+        let artifact = Artifact {
+            slug: format!("artifact-{i}"),
+            title: format!("Artifact {i}"),
+            summary: Some(format!("Summary {i}")),
+            aliases: None,
+            tags: vec![
+                "generated".into(),
+                if i % 2 == 0 {
+                    "even".into()
+                } else {
+                    "odd".into()
+                },
+            ],
+            content: format!("Content for artifact {i}"),
+            hash: format!("hash-{i}"),
+            relationships: if i > 0 {
+                vec![Relationship {
+                    target: format!("artifact-{}", i - 1),
+                    kind: "depends-on".into(),
+                    line: None,
+                    section: None,
+                }]
+            } else {
+                vec![]
+            },
+            sections: vec![Section {
+                id: "main".into(),
+                heading: "Main Section".into(),
+                level: 1,
+                line: 1,
+            }],
+        };
+        storage.insert_artifact(&artifact).unwrap();
+    }
+    storage
+}
+
+#[test]
+fn list_scales_with_batch_queries() {
+    let storage = setup_large_storage(1100);
+    let reader = Reader::new(&storage);
+
+    let start = std::time::Instant::now();
+    let all = reader.list(None).unwrap();
+    let list_all = start.elapsed();
+
+    assert_eq!(all.len(), 1100);
+
+    let start = std::time::Instant::now();
+    let filter = ListFilter {
+        tags: Some(vec!["even".to_string()]),
+    };
+    let even = reader.list(Some(&filter)).unwrap();
+    let list_filtered = start.elapsed();
+
+    assert_eq!(even.len(), 550);
+    for view in &even {
+        assert!(view.tags.contains(&"even".to_string()));
+    }
+
+    let artifact_1 = all.iter().find(|v| v.slug == "artifact-1").unwrap();
+    assert!(
+        !artifact_1.inverse_relationships.is_empty(),
+        "artifact-1 should have inverse relationship from artifact-2"
+    );
+
+    eprintln!("list(None) 1100 artifacts: {list_all:?}");
+    eprintln!("list(tags=[even]) 1100 artifacts: {list_filtered:?}");
+}
+
+#[test]
+fn traverse_scales_with_batch_queries() {
+    let storage = setup_large_storage(100);
+    let reader = Reader::new(&storage);
+
+    let start = std::time::Instant::now();
+    let results = reader.traverse("artifact-99", None, 5).unwrap();
+    let elapsed = start.elapsed();
+
+    assert!(!results.is_empty());
+    for view in &results {
+        assert!(!view.inverse_relationships.is_empty() || view.slug == "artifact-0");
+    }
+
+    eprintln!("traverse(depth=5) over 100-node chain: {elapsed:?}");
+}
+
+#[test]
+fn list_tag_filter_pushes_to_sql() {
+    let storage = setup_large_storage(100);
+    let reader = Reader::new(&storage);
+
+    let filter = ListFilter {
+        tags: Some(vec!["nonexistent-tag".to_string()]),
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert!(results.is_empty());
+
+    let filter = ListFilter {
+        tags: Some(vec!["generated".to_string(), "even".to_string()]),
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert_eq!(results.len(), 50);
+    for view in &results {
+        assert!(view.tags.contains(&"generated".to_string()));
+        assert!(view.tags.contains(&"even".to_string()));
+    }
+}
+
+#[test]
+fn list_with_duplicate_tags_returns_correct_results() {
+    let storage = setup_large_storage(10);
+    let reader = Reader::new(&storage);
+
+    let filter = ListFilter {
+        tags: Some(vec!["even".to_string(), "even".to_string()]),
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert_eq!(results.len(), 5);
+    for view in &results {
+        assert!(view.tags.contains(&"even".to_string()));
+    }
+}
+
+#[test]
+fn list_batch_populates_section_level_inverse() {
+    let storage = setup_storage();
+
+    let referrer = Artifact {
+        slug: "referrer".into(),
+        title: "Referrer".into(),
+        summary: None,
+        aliases: None,
+        tags: vec!["test".into()],
+        content: "Content".into(),
+        hash: "h1".into(),
+        relationships: vec![Relationship {
+            target: "target-doc#section-1".into(),
+            kind: "references".into(),
+            line: Some(5),
+            section: None,
+        }],
+        sections: vec![],
+    };
+    let target = Artifact {
+        slug: "target-doc".into(),
+        title: "Target Doc".into(),
+        summary: None,
+        aliases: None,
+        tags: vec!["test".into()],
+        content: "# Target Doc\n\n## Section One\nBody".into(),
+        hash: "h2".into(),
+        relationships: vec![],
+        sections: vec![Section {
+            id: "section-1".into(),
+            heading: "Section One".into(),
+            level: 2,
+            line: 3,
+        }],
+    };
+    storage.insert_artifact(&referrer).unwrap();
+    storage.insert_artifact(&target).unwrap();
+
+    let reader = Reader::new(&storage);
+    let results = reader.list(None).unwrap();
+    let target_view = results.iter().find(|v| v.slug == "target-doc").unwrap();
+    assert!(
+        !target_view.inverse_relationships.is_empty(),
+        "target-doc should have inverse relationship via section target"
+    );
+    assert_eq!(target_view.inverse_relationships[0].target, "referrer");
+}
+
+#[test]
+fn traverse_skips_nonexistent_targets() {
+    let storage = setup_storage();
+
+    let a = Artifact {
+        slug: "start".into(),
+        title: "Start".into(),
+        summary: None,
+        aliases: None,
+        tags: vec!["test".into()],
+        content: "Content".into(),
+        hash: "h1".into(),
+        relationships: vec![
+            Relationship {
+                target: "phantom".into(),
+                kind: "depends-on".into(),
+                line: None,
+                section: None,
+            },
+            Relationship {
+                target: "real".into(),
+                kind: "depends-on".into(),
+                line: None,
+                section: None,
+            },
+        ],
+        sections: vec![],
+    };
+    let real = Artifact {
+        slug: "real".into(),
+        title: "Real".into(),
+        summary: None,
+        aliases: None,
+        tags: vec!["test".into()],
+        content: "Content".into(),
+        hash: "h2".into(),
+        relationships: vec![],
+        sections: vec![],
+    };
+    storage.insert_artifact(&a).unwrap();
+    storage.insert_artifact(&real).unwrap();
+
+    let reader = Reader::new(&storage);
+    let results = reader.traverse("start", None, 2).unwrap();
+
+    let slugs: Vec<&str> = results.iter().map(|v| v.slug.as_str()).collect();
+    assert!(slugs.contains(&"real"));
+    assert!(!slugs.contains(&"phantom"));
+    assert_eq!(results.len(), 1);
 }
