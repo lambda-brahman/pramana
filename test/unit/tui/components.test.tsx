@@ -94,7 +94,10 @@ describe("ScrollableList", () => {
   });
 
   test("respects itemHeight for viewport calculation", () => {
-    const items = ["a", "b", "c", "d", "e"];
+    // height=4, items each h=2, no scroll-up indicator.
+    // After reserving 1 line for scroll-down indicator: effectiveHeight=3.
+    // Only item "alpha" (h=2) fits; item "bravo" would bring total to 4 > 3.
+    const items = ["alpha", "bravo", "charlie", "delta", "echo"];
     const { lastFrame } = render(
       <ScrollableList
         items={items}
@@ -105,9 +108,9 @@ describe("ScrollableList", () => {
       />,
     );
     const frame = lastFrame()!;
-    expect(frame).toContain("a");
-    expect(frame).toContain("b");
-    expect(frame).not.toContain("c");
+    expect(frame).toContain("alpha");
+    expect(frame).not.toContain("bravo");
+    expect(frame).not.toContain("charlie");
     expect(frame).toContain("more below");
   });
 
@@ -150,9 +153,9 @@ describe("ScrollableList", () => {
   });
 
   test("scrolls down with variable heights — backward-walk computes correct offset", async () => {
-    // items each take 2 lines, viewport = 4 lines → shows 2 items at a time.
-    // Selecting item at index 2 triggers backward-walk: newOffset lands at 1.
-    // Viewport shows items 1 and 2 (not item 0).
+    // height=4, items each h=2. With both scroll indicators (1 line each),
+    // effective item space = 2 lines = 1 item. Selecting item-2 scrolls to
+    // offset=2 showing only item-2 (↑2 above, ↓2 below).
     const items = ["item-0", "item-1", "item-2", "item-3", "item-4"];
     const { lastFrame, rerender } = render(
       <ScrollableList
@@ -177,8 +180,8 @@ describe("ScrollableList", () => {
     );
     await delay(50);
     const frame = lastFrame()!;
-    expect(frame).toContain("item-1");
     expect(frame).toContain("item-2");
+    expect(frame).not.toContain("item-1");
     expect(frame).not.toContain("item-0");
   });
 
@@ -210,14 +213,65 @@ describe("ScrollableList", () => {
     );
     const frame = lastFrame()!;
     expect(frame).toContain("item-0");
-    expect(frame).toContain("item-4");
-    expect(frame).not.toContain("item-5");
+    expect(frame).toContain("item-3");
+    expect(frame).not.toContain("item-4");
     expect(frame).toContain("more below");
   });
 
+  test("scroll-down indicator line is subtracted from viewport height", () => {
+    // height=5, 1-line items. Without fix: 5 items + indicator = 6 lines (overflow).
+    // With fix: 4 items + 1 indicator = 5 lines (exact fit).
+    const items = Array.from({ length: 10 }, (_, i) => `item-${i}`);
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={5}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("item-0");
+    expect(frame).toContain("item-3");
+    expect(frame).not.toContain("item-4");
+    expect(frame).toContain("more below");
+  });
+
+  test("both scroll indicators are subtracted from viewport height", async () => {
+    // height=6, 1-line items, both indicators visible.
+    // Without fix: 6 items + 2 indicators = 8 lines (overflow).
+    // With fix: 4 items + 2 indicators = 6 lines (exact fit).
+    const items = Array.from({ length: 10 }, (_, i) => `item-${i}`);
+    const { lastFrame, rerender } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={6}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    rerender(
+      <ScrollableList
+        items={items}
+        selectedIndex={5}
+        height={6}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    await delay(50);
+    const frame = lastFrame()!;
+    expect(frame).toContain("more above");
+    expect(frame).toContain("more below");
+    // With height=6 and both indicators, exactly 4 item lines available
+    const lines = frame.split("\n").filter((l) => l.includes("item-"));
+    expect(lines.length).toBe(4);
+  });
+
+
   test("scroll indicator 'more below' count reflects variable heights", () => {
-    // items: [2, 2, 2, 2] lines each, viewport = 4 lines
-    // offset=0 shows items 0 and 1. endIndex=2. "more below" = 4 - 2 = 2 items
+    // height=4, items each h=2, offset=0 (no scroll-up indicator).
+    // After reserving 1 line for scroll-down: effectiveHeight=3.
+    // Only item "a" (h=2) fits → endIndex=1 → "3 more below" (b, c, d).
     const items = ["a", "b", "c", "d"];
     const { lastFrame } = render(
       <ScrollableList
@@ -229,7 +283,7 @@ describe("ScrollableList", () => {
       />,
     );
     const frame = lastFrame()!;
-    expect(frame).toContain("2 more below");
+    expect(frame).toContain("3 more below");
   });
 });
 
