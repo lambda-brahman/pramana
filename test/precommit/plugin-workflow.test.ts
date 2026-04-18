@@ -96,7 +96,7 @@ describe("Plugin structure validation", () => {
 
   test("plugin.json has valid structure", () => {
     expect(pluginJson.name).toBe("pramana");
-    expect(pluginJson.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pluginJson.version).toMatch(/^\d+\.\d+\.\d+(-[0-9a-zA-Z.-]+)?$/);
     expect(pluginJson.description).toBeTruthy();
     expect(pluginJson.author.name).toBeTruthy();
   });
@@ -116,7 +116,7 @@ describe("Plugin structure validation", () => {
   test("all version files are in sync", () => {
     const pkgJson = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "package.json"), "utf-8"));
     const versionTs = fs.readFileSync(path.join(PROJECT_ROOT, "src/version.ts"), "utf-8");
-    const srcMatch = versionTs.match(/VERSION\s*=\s*"(\d+\.\d+\.\d+)"/);
+    const srcMatch = versionTs.match(/VERSION\s*=\s*"(\d+\.\d+\.\d+(?:-[0-9a-zA-Z.-]+)?)"/);
     expect(srcMatch).not.toBeNull();
 
     const pkgVer = pkgJson.version;
@@ -210,13 +210,13 @@ describe("Single-tenant daemon", () => {
   test("pramana version prints version", async () => {
     const { stdout, exitCode } = await runCli(["version"]);
     expect(exitCode).toBe(0);
-    expect(stdout.trim()).toMatch(/^pramana v?\d+\.\d+\.\d+$/);
+    expect(stdout.trim()).toMatch(/^pramana v?\d+\.\d+\.\d+(-[0-9a-zA-Z.-]+)?$/);
   });
 
   test("pramana --version prints version", async () => {
     const { stdout, exitCode } = await runCli(["--version"]);
     expect(exitCode).toBe(0);
-    expect(stdout.trim()).toMatch(/^pramana v?\d+\.\d+\.\d+$/);
+    expect(stdout.trim()).toMatch(/^pramana v?\d+\.\d+\.\d+(-[0-9a-zA-Z.-]+)?$/);
   });
 
   test("pramana --help exits 0", async () => {
