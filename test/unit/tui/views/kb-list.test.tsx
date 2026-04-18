@@ -90,7 +90,7 @@ describe("KbListView scroll invariants", () => {
         onReload={() => {}}
         onFormModeChange={() => {}}
         onSwapDataSource={() => {}}
-        port="5111"
+        port={5111}
         height={height}
       />,
     );
@@ -114,7 +114,7 @@ describe("KbListView scroll invariants", () => {
         onReload={() => {}}
         onFormModeChange={() => {}}
         onSwapDataSource={() => {}}
-        port="5111"
+        port={5111}
         height={height}
       />,
     );
@@ -143,7 +143,7 @@ describe("KbListView scroll invariants", () => {
         onReload={() => {}}
         onFormModeChange={() => {}}
         onSwapDataSource={() => {}}
-        port="5111"
+        port={5111}
         height={height}
       />,
     );

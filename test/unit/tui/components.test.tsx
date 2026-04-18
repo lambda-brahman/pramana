@@ -92,6 +92,112 @@ describe("ScrollableList", () => {
     );
     expect(lastFrame()).toContain("No items");
   });
+
+  test("respects itemHeight for viewport calculation", () => {
+    const items = ["a", "b", "c", "d", "e"];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={4}
+        itemHeight={() => 2}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("a");
+    expect(frame).toContain("b");
+    expect(frame).not.toContain("c");
+    expect(frame).toContain("more below");
+  });
+
+  test("handles mixed item heights", () => {
+    const items = [
+      { text: "tall", height: 3 },
+      { text: "short", height: 1 },
+      { text: "medium", height: 2 },
+      { text: "hidden", height: 1 },
+    ];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={5}
+        itemHeight={(item) => item.height}
+        renderItem={(item) => <Text>{item.text}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("tall");
+    expect(frame).toContain("short");
+    expect(frame).not.toContain("medium");
+    expect(frame).toContain("more below");
+  });
+
+  test("shows at least one item even if it exceeds viewport height", () => {
+    const items = ["big", "small"];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={1}
+        itemHeight={() => 3}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("big");
+  });
+
+  test("scrolls down with variable heights — backward-walk computes correct offset", async () => {
+    // items each take 2 lines, viewport = 4 lines → shows 2 items at a time.
+    // Selecting item at index 2 triggers backward-walk: newOffset lands at 1.
+    // Viewport shows items 1 and 2 (not item 0).
+    const items = ["item-0", "item-1", "item-2", "item-3", "item-4"];
+    const { lastFrame, rerender } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={4}
+        itemHeight={() => 2}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    expect(lastFrame()).toContain("item-0");
+    expect(lastFrame()).not.toContain("item-2");
+
+    rerender(
+      <ScrollableList
+        items={items}
+        selectedIndex={2}
+        height={4}
+        itemHeight={() => 2}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    await delay(50);
+    const frame = lastFrame()!;
+    expect(frame).toContain("item-1");
+    expect(frame).toContain("item-2");
+    expect(frame).not.toContain("item-0");
+  });
+
+  test("scroll indicator 'more below' count reflects variable heights", () => {
+    // items: [2, 2, 2, 2] lines each, viewport = 4 lines
+    // offset=0 shows items 0 and 1. endIndex=2. "more below" = 4 - 2 = 2 items
+    const items = ["a", "b", "c", "d"];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={4}
+        itemHeight={() => 2}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("2 more below");
+  });
 });
 
 // ---------------------------------------------------------------------------

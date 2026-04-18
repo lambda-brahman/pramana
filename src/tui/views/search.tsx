@@ -130,6 +130,7 @@ export function SearchView({
         items={results}
         selectedIndex={inputFocused ? -1 : selectedIndex}
         height={listHeight}
+        itemHeight={(item) => (item.snippet ? 2 : 1)}
         emptyMessage={query ? "No results" : ""}
         renderItem={(item, _index, isSelected) => (
           <Box flexDirection="column">
