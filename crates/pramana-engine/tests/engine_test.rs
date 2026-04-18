@@ -304,11 +304,12 @@ fn tenant_duplicate_name_rejected() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();
 
-    mgr.mount(TenantConfig {
-        name: "abc".into(),
-        source_dir: dir.clone(),
-    })
-    .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "abc".into(),
+            source_dir: dir.clone(),
+        })
+        .unwrap();
 
     assert!(mgr
         .mount(TenantConfig {
@@ -369,11 +370,12 @@ fn tenant_nonexistent_source_dir() {
 #[test]
 fn tenant_unmount() {
     let mut mgr = TenantManager::new();
-    mgr.mount(TenantConfig {
-        name: "removeme".into(),
-        source_dir: fixtures_dir().to_string_lossy().into_owned(),
-    })
-    .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "removeme".into(),
+            source_dir: fixtures_dir().to_string_lossy().into_owned(),
+        })
+        .unwrap();
 
     assert!(mgr.has_tenant("removeme"));
     mgr.unmount("removeme").unwrap();
@@ -391,16 +393,18 @@ fn tenant_list_and_names() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();
 
-    mgr.mount(TenantConfig {
-        name: "alpha".into(),
-        source_dir: dir.clone(),
-    })
-    .unwrap();
-    mgr.mount(TenantConfig {
-        name: "beta".into(),
-        source_dir: dir,
-    })
-    .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "alpha".into(),
+            source_dir: dir.clone(),
+        })
+        .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "beta".into(),
+            source_dir: dir,
+        })
+        .unwrap();
 
     let names = mgr.tenant_names();
     assert_eq!(names.len(), 2);
@@ -417,11 +421,12 @@ fn tenant_list_and_names() {
 #[test]
 fn tenant_reload() {
     let mut mgr = TenantManager::new();
-    mgr.mount(TenantConfig {
-        name: "reloadable".into(),
-        source_dir: fixtures_dir().to_string_lossy().into_owned(),
-    })
-    .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "reloadable".into(),
+            source_dir: fixtures_dir().to_string_lossy().into_owned(),
+        })
+        .unwrap();
 
     let report = mgr.reload("reloadable").unwrap();
     assert_eq!(report.succeeded, 4);
@@ -441,16 +446,18 @@ fn tenant_isolation_between_tenants() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();
 
-    mgr.mount(TenantConfig {
-        name: "tenant-a".into(),
-        source_dir: dir.clone(),
-    })
-    .unwrap();
-    mgr.mount(TenantConfig {
-        name: "tenant-b".into(),
-        source_dir: dir,
-    })
-    .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "tenant-a".into(),
+            source_dir: dir.clone(),
+        })
+        .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "tenant-b".into(),
+            source_dir: dir,
+        })
+        .unwrap();
 
     let reader_a = mgr.reader("tenant-a").unwrap();
     let reader_b = mgr.reader("tenant-b").unwrap();

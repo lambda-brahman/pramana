@@ -154,8 +154,9 @@ fn extract_focused_section(
     section_id: &str,
 ) -> Option<FocusedSection> {
     let section = sections.iter().find(|s| s.id == section_id)?;
-    let lines: Vec<&str> = content.lines().collect();
-    let start = section.line as usize;
+    // Parser emits 1-based line numbers; convert to 0-based for indexing
+    let lines: Vec<&str> = content.split('\n').collect();
+    let start = (section.line as usize).saturating_sub(1);
 
     if start >= lines.len() {
         return None;
@@ -164,7 +165,7 @@ fn extract_focused_section(
     let end = sections
         .iter()
         .filter(|s| s.line > section.line && s.level <= section.level)
-        .map(|s| s.line as usize)
+        .map(|s| (s.line as usize).saturating_sub(1))
         .min()
         .unwrap_or(lines.len());
 
@@ -198,24 +199,27 @@ mod tests {
     #[test]
     fn extract_section_from_content() {
         let content = "# Title\n\n## First\nContent A\n\n## Second\nContent B\n";
+        // Line numbers are 1-based, matching parser output (sections.rs uses i + 1)
         let sections = vec![
             Section {
                 id: "first".into(),
                 heading: "First".into(),
                 level: 2,
-                line: 2,
+                line: 3,
             },
             Section {
                 id: "second".into(),
                 heading: "Second".into(),
                 level: 2,
-                line: 5,
+                line: 6,
             },
         ];
 
         let focused = extract_focused_section(content, &sections, "first").unwrap();
         assert_eq!(focused.id, "first");
+        assert!(focused.content.contains("## First"));
         assert!(focused.content.contains("Content A"));
         assert!(!focused.content.contains("Content B"));
+        assert!(!focused.content.contains("## Second"));
     }
 }
