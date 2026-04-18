@@ -59,6 +59,7 @@ Usage:
   pramana search <query> --source <dir> --tenant <name>
   pramana traverse <slug> --source <dir> [--type <rel-type>] [--depth <n>] --tenant <name>
   pramana list --source <dir> [--tags <tag1,tag2>] --tenant <name>
+  pramana mcp [--port 5111]
   pramana tui [--source <dir>[:name] ...] [--port 5111]
   pramana lint --source <dir> [--strict]
   pramana lint --tenant <name> [--strict]
@@ -484,6 +485,13 @@ async function main() {
 
   const standalone = hasFlag("standalone");
   const port = resolvePort();
+
+  // mcp — MCP stdio server proxying to daemon
+  if (command === "mcp") {
+    const { startMcpServer } = await import("../mcp/server.ts");
+    await startMcpServer({ port });
+    return;
+  }
 
   // tui — interactive terminal interface (also default when no command given)
   if (!command || command === "tui") {
