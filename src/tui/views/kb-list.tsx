@@ -93,6 +93,17 @@ export function KbListView({
     });
   }, [port]);
 
+  useEffect(() => {
+    if (daemonState !== "running") return;
+    const id = setInterval(async () => {
+      const running = await isDaemonRunning(port);
+      if (!running) {
+        setDaemonState("stopped");
+      }
+    }, 12_000);
+    return () => clearInterval(id);
+  }, [daemonState, port]);
+
   // Normal mode keybindings
   useInput(
     (input, key) => {

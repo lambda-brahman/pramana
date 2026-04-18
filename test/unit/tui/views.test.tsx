@@ -935,6 +935,29 @@ describe("KbListView", () => {
     expect(frame).toContain("navigate");
     expect(frame).toContain("reload");
   });
+
+  test("shows standalone indicator when no daemon is running on port", async () => {
+    // Port 5111 has no daemon running, so after initial health check daemonState → "stopped"
+    const ds = createMockDataSource();
+    const { lastFrame } = render(
+      <KbListView
+        dataSource={ds}
+        activeTenant="test"
+        isActive={true}
+        onSelectKb={() => {}}
+        onReload={() => {}}
+        onFormModeChange={() => {}}
+        onSwapDataSource={() => {}}
+        port={5111}
+        height={20}
+      />,
+    );
+    // Wait for isDaemonRunning fetch to time out (1s) and resolve
+    await delay(1200);
+    const frame = lastFrame()!;
+    expect(frame).toContain("standalone");
+    expect(frame).not.toContain("● daemon");
+  });
 });
 
 // ---------------------------------------------------------------------------
