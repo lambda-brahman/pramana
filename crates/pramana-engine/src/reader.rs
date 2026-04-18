@@ -1,6 +1,6 @@
 use crate::error::EngineError;
 use pramana_storage::{Relationship, SearchResult, Section, Storage};
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -70,51 +70,55 @@ impl<'a> Reader<'a> {
         depth: usize,
     ) -> Result<Vec<ArtifactView>, EngineError> {
         let mut visited = HashSet::new();
-        let mut queue = VecDeque::new();
-        let mut discovered: Vec<String> = Vec::new();
+        let mut results = Vec::new();
+        let mut current_level = vec![from.to_owned()];
 
         visited.insert(from.to_owned());
-        queue.push_back((from.to_owned(), 0usize));
 
-        while let Some((slug, current_depth)) = queue.pop_front() {
-            if current_depth >= depth {
-                continue;
+        for _ in 0..depth {
+            if current_level.is_empty() {
+                break;
             }
 
-            let rels = self.storage.get_relationships(&slug)?;
+            let mut next_targets = Vec::new();
+            for slug in &current_level {
+                let rels = self.storage.get_relationships(slug)?;
 
-            let filtered: Vec<_> = if let Some(rt) = rel_type {
-                rels.into_iter().filter(|r| r.kind == rt).collect()
-            } else {
-                rels
-            };
+                let filtered: Vec<_> = if let Some(rt) = rel_type {
+                    rels.into_iter().filter(|r| r.kind == rt).collect()
+                } else {
+                    rels
+                };
 
-            for rel in filtered {
-                let target_slug = rel.target.split('#').next().unwrap_or(&rel.target);
+                for rel in filtered {
+                    let target_slug = rel.target.split('#').next().unwrap_or(&rel.target);
 
-                if visited.contains(target_slug) {
-                    continue;
+                    if visited.contains(target_slug) {
+                        continue;
+                    }
+                    visited.insert(target_slug.to_owned());
+                    next_targets.push(target_slug.to_owned());
                 }
-                visited.insert(target_slug.to_owned());
-                discovered.push(target_slug.to_owned());
-                queue.push_back((target_slug.to_owned(), current_depth + 1));
             }
-        }
 
-        if discovered.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let slug_refs: Vec<&str> = discovered.iter().map(|s| s.as_str()).collect();
-        let mut artifacts_map = self.storage.get_batch(&slug_refs)?;
-        let mut inverse_map = self.storage.get_inverse_batch(&slug_refs)?;
-
-        let mut results = Vec::with_capacity(discovered.len());
-        for slug in &discovered {
-            if let Some(artifact) = artifacts_map.remove(slug.as_str()) {
-                let inverse = inverse_map.remove(slug.as_str()).unwrap_or_default();
-                results.push(to_view(artifact, inverse, None));
+            if next_targets.is_empty() {
+                break;
             }
+
+            let slug_refs: Vec<&str> = next_targets.iter().map(|s| s.as_str()).collect();
+            let mut artifacts_map = self.storage.get_batch(&slug_refs)?;
+            let mut inverse_map = self.storage.get_inverse_batch(&slug_refs)?;
+
+            let mut next_level = Vec::new();
+            for slug in &next_targets {
+                if let Some(artifact) = artifacts_map.remove(slug.as_str()) {
+                    let inverse = inverse_map.remove(slug.as_str()).unwrap_or_default();
+                    results.push(to_view(artifact, inverse, None));
+                    next_level.push(slug.clone());
+                }
+            }
+
+            current_level = next_level;
         }
 
         Ok(results)

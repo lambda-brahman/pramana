@@ -469,7 +469,7 @@ fn tenant_isolation_between_tenants() {
     assert_eq!(list_a.len(), 4);
 }
 
-// --- Batch performance tests ---
+// --- Scale correctness tests ---
 
 fn setup_large_storage(count: usize) -> Storage {
     let storage = setup_storage();
@@ -581,4 +581,119 @@ fn list_tag_filter_pushes_to_sql() {
         assert!(view.tags.contains(&"generated".to_string()));
         assert!(view.tags.contains(&"even".to_string()));
     }
+}
+
+#[test]
+fn list_with_duplicate_tags_returns_correct_results() {
+    let storage = setup_large_storage(10);
+    let reader = Reader::new(&storage);
+
+    let filter = ListFilter {
+        tags: Some(vec!["even".to_string(), "even".to_string()]),
+    };
+    let results = reader.list(Some(&filter)).unwrap();
+    assert_eq!(results.len(), 5);
+    for view in &results {
+        assert!(view.tags.contains(&"even".to_string()));
+    }
+}
+
+#[test]
+fn list_batch_populates_section_level_inverse() {
+    let storage = setup_storage();
+
+    let referrer = Artifact {
+        slug: "referrer".into(),
+        title: "Referrer".into(),
+        summary: None,
+        aliases: None,
+        tags: vec!["test".into()],
+        content: "Content".into(),
+        hash: "h1".into(),
+        relationships: vec![Relationship {
+            target: "target-doc#section-1".into(),
+            kind: "references".into(),
+            line: Some(5),
+            section: None,
+        }],
+        sections: vec![],
+    };
+    let target = Artifact {
+        slug: "target-doc".into(),
+        title: "Target Doc".into(),
+        summary: None,
+        aliases: None,
+        tags: vec!["test".into()],
+        content: "# Target Doc\n\n## Section One\nBody".into(),
+        hash: "h2".into(),
+        relationships: vec![],
+        sections: vec![Section {
+            id: "section-1".into(),
+            heading: "Section One".into(),
+            level: 2,
+            line: 3,
+        }],
+    };
+    storage.insert_artifact(&referrer).unwrap();
+    storage.insert_artifact(&target).unwrap();
+
+    let reader = Reader::new(&storage);
+    let results = reader.list(None).unwrap();
+    let target_view = results.iter().find(|v| v.slug == "target-doc").unwrap();
+    assert!(
+        !target_view.inverse_relationships.is_empty(),
+        "target-doc should have inverse relationship via section target"
+    );
+    assert_eq!(target_view.inverse_relationships[0].target, "referrer");
+}
+
+#[test]
+fn traverse_skips_nonexistent_targets() {
+    let storage = setup_storage();
+
+    let a = Artifact {
+        slug: "start".into(),
+        title: "Start".into(),
+        summary: None,
+        aliases: None,
+        tags: vec!["test".into()],
+        content: "Content".into(),
+        hash: "h1".into(),
+        relationships: vec![
+            Relationship {
+                target: "phantom".into(),
+                kind: "depends-on".into(),
+                line: None,
+                section: None,
+            },
+            Relationship {
+                target: "real".into(),
+                kind: "depends-on".into(),
+                line: None,
+                section: None,
+            },
+        ],
+        sections: vec![],
+    };
+    let real = Artifact {
+        slug: "real".into(),
+        title: "Real".into(),
+        summary: None,
+        aliases: None,
+        tags: vec!["test".into()],
+        content: "Content".into(),
+        hash: "h2".into(),
+        relationships: vec![],
+        sections: vec![],
+    };
+    storage.insert_artifact(&a).unwrap();
+    storage.insert_artifact(&real).unwrap();
+
+    let reader = Reader::new(&storage);
+    let results = reader.traverse("start", None, 2).unwrap();
+
+    let slugs: Vec<&str> = results.iter().map(|v| v.slug.as_str()).collect();
+    assert!(slugs.contains(&"real"));
+    assert!(!slugs.contains(&"phantom"));
+    assert_eq!(results.len(), 1);
 }
