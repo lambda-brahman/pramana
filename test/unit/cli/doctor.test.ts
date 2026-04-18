@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -8,6 +8,7 @@ import {
   checkVersionMatch,
   doctorExitCode,
   formatDoctorReport,
+  runDoctor,
   type DoctorReport,
 } from "../../../src/cli/doctor.ts";
 import { VERSION } from "../../../src/version.ts";
@@ -179,5 +180,111 @@ describe("formatDoctorReport", () => {
     const report: DoctorReport = { diagnostics: [], summary: { errors: 0, warnings: 0 } };
     const output = formatDoctorReport(report);
     expect(output).toContain("pramana lint --tenant <name>");
+  });
+});
+
+describe("runDoctor orchestration", () => {
+  let server: ReturnType<typeof Bun.serve> | null = null;
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(import.meta.dir, "tmp-doctor-orch-"));
+  });
+
+  afterEach(() => {
+    if (server) {
+      server.stop(true);
+      server = null;
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("early exit when daemon unreachable", async () => {
+    const probe = Bun.serve({ port: 0, fetch: () => new Response("") });
+    const port = probe.port!;
+    probe.stop(true);
+
+    const result = await runDoctor(port, tmpDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { diagnostics, summary } = result.value;
+    expect(summary.errors).toBe(1);
+    expect(summary.warnings).toBe(0);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]!.check).toBe("daemon-reachable");
+    expect(diagnostics[0]!.severity).toBe("error");
+  });
+
+  test("full pass when all checks clean", async () => {
+    server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        const url = new URL(req.url);
+        if (url.pathname === "/v1/version") return Response.json({ version: VERSION });
+        if (url.pathname === "/v1/tenants") return Response.json([]);
+        return new Response("not found", { status: 404 });
+      },
+    });
+    const port = server.port!;
+
+    const result = await runDoctor(port, tmpDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.summary.errors).toBe(0);
+    expect(result.value.summary.warnings).toBe(0);
+    expect(result.value.diagnostics).toHaveLength(0);
+  });
+
+  test("version mismatch produces warn diagnostic", async () => {
+    server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        const url = new URL(req.url);
+        if (url.pathname === "/v1/version") return Response.json({ version: "0.1.0" });
+        if (url.pathname === "/v1/tenants") return Response.json([]);
+        return new Response("not found", { status: 404 });
+      },
+    });
+    const port = server.port!;
+
+    const result = await runDoctor(port, tmpDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { diagnostics, summary } = result.value;
+    expect(summary.errors).toBe(0);
+    expect(summary.warnings).toBe(1);
+    expect(diagnostics[0]!.check).toBe("version-match");
+    expect(diagnostics[0]!.severity).toBe("warn");
+  });
+
+  test("config/runtime tenant divergence produces warnings", async () => {
+    const tenantDir = path.join(tmpDir, "my-kb");
+    fs.mkdirSync(tenantDir);
+    fs.writeFileSync(
+      path.join(tmpDir, "config.json"),
+      JSON.stringify({ version: 1, tenants: { "my-kb": tenantDir } }),
+    );
+
+    server = Bun.serve({
+      port: 0,
+      fetch(req) {
+        const url = new URL(req.url);
+        if (url.pathname === "/v1/version") return Response.json({ version: VERSION });
+        if (url.pathname === "/v1/tenants")
+          return Response.json([{ name: "extra", sourceDir: "/tmp/extra", artifactCount: 0 }]);
+        return new Response("not found", { status: 404 });
+      },
+    });
+    const port = server.port!;
+
+    const result = await runDoctor(port, tmpDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { diagnostics, summary } = result.value;
+    expect(summary.errors).toBe(0);
+    expect(summary.warnings).toBe(2);
+    expect(diagnostics.every((d) => d.check === "runtime-tenants-match")).toBe(true);
+    expect(diagnostics.some((d) => d.message.includes("my-kb"))).toBe(true);
+    expect(diagnostics.some((d) => d.message.includes("extra"))).toBe(true);
   });
 });
