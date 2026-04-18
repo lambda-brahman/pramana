@@ -1,0 +1,645 @@
+{
+  "dim": 384,
+  "doc_embed_ms": 850,
+  "load_ms": 132,
+  "model": "Xenova/gte-small",
+  "mrr": 0.9316666666666666,
+  "n_queries": 30,
+  "ndcg5": 0.9102677268943845,
+  "per_query": [
+    {
+      "category": "exact",
+      "distances": [
+        0.09100954979658127,
+        0.14682555198669434,
+        0.14855742454528809,
+        0.15225088596343994,
+        0.16571709513664246
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "POST /api/users create",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "create-user",
+        "list-users",
+        "permissions",
+        "get-user",
+        "update-user-role"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.10528121888637543,
+        0.16208894550800323,
+        0.16742932796478271,
+        0.17293287813663483,
+        0.17831271886825562
+      ],
+      "ndcg5": 0.9198471398508852,
+      "query": "DELETE /api/users/:id",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "delete-user",
+        "permissions",
+        "get-user",
+        "list-users",
+        "check-active-sessions"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.10578914731740952,
+        0.12673430144786835,
+        0.14998868107795715,
+        0.15768218040466309,
+        0.16777303814888
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "GET /api/users/:id email",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "get-user",
+        "create-user",
+        "list-users",
+        "validate-email",
+        "delete-user"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.12404031306505203,
+        0.14402839541435242,
+        0.16817934811115265,
+        0.1794409304857254,
+        0.18104809522628784
+      ],
+      "ndcg5": 0.9198471398508852,
+      "query": "list users role filter limit offset",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "list-users",
+        "update-user-role",
+        "check-last-admin",
+        "permissions",
+        "get-user"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.08935709297657013,
+        0.15880580246448517,
+        0.15904153883457184,
+        0.1651635766029358,
+        0.166227787733078
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "PATCH /api/users/:id/role",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "update-user-role",
+        "list-users",
+        "permissions",
+        "get-user",
+        "create-user"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.10626232624053955,
+        0.19651225209236145,
+        0.20587649941444397,
+        0.20888616144657135,
+        0.2090415358543396
+      ],
+      "ndcg5": 0.9198471398508852,
+      "query": "validate email RFC 5322 MX records",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "validate-email",
+        "check-rate-limit",
+        "check-active-sessions",
+        "check-last-admin",
+        "create-user"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.09610418975353241,
+        0.16826167702674866,
+        0.20194368064403534,
+        0.2033851593732834,
+        0.21459396183490753
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "check active sessions non-expired",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "check-active-sessions",
+        "check-last-admin",
+        "delete-user",
+        "check-rate-limit",
+        "validate-email"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.08396569639444351,
+        0.16121923923492432,
+        0.17383556067943573,
+        0.17650170624256134,
+        0.1779162436723709
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "check last admin zero admin users",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "check-last-admin",
+        "check-active-sessions",
+        "update-user-role",
+        "list-users",
+        "delete-user"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.12581923604011536,
+        0.20369002223014832,
+        0.20451286435127258,
+        0.21263077855110168,
+        0.21322369575500488
+      ],
+      "ndcg5": 1.0,
+      "query": "rate limit requests per minute sliding window",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "check-rate-limit",
+        "list-users",
+        "check-active-sessions",
+        "get-user",
+        "create-user"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1209377869963646,
+        0.13658204674720764,
+        0.16045108437538147,
+        0.16600501537322998,
+        0.17203275859355927
+      ],
+      "ndcg5": 0.9804455177834929,
+      "query": "users:write users:read users:delete permission",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "permissions",
+        "delete-user",
+        "list-users",
+        "create-user",
+        "update-user-role"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.13570837676525116,
+        0.1855929046869278,
+        0.2034473717212677,
+        0.213582843542099,
+        0.2136717289686203
+      ],
+      "ndcg5": 0.6698355301757792,
+      "query": "force flag skip active session check",
+      "rr": 0.25,
+      "top1_hit": false,
+      "top5": [
+        "check-active-sessions",
+        "check-last-admin",
+        "check-rate-limit",
+        "delete-user",
+        "validate-email"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.10523465275764465,
+        0.13676179945468903,
+        0.17568443715572357,
+        0.18863369524478912,
+        0.19856175780296326
+      ],
+      "ndcg5": 1.0,
+      "query": "cannot delete last admin user",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "check-last-admin",
+        "delete-user",
+        "update-user-role",
+        "check-active-sessions",
+        "permissions"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.12597008049488068,
+        0.19597110152244568,
+        0.2031174898147583,
+        0.21142685413360596,
+        0.21294136345386505
+      ],
+      "ndcg5": 1.0,
+      "query": "email already_exists invalid_format",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "validate-email",
+        "create-user",
+        "check-active-sessions",
+        "get-user",
+        "check-rate-limit"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.12795045971870422,
+        0.14066000282764435,
+        0.16895903646945953,
+        0.1776113659143448,
+        0.19382059574127197
+      ],
+      "ndcg5": 0.7267900269409736,
+      "query": "admin member viewer role",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "update-user-role",
+        "check-last-admin",
+        "list-users",
+        "permissions",
+        "check-active-sessions"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.2243788242340088,
+        0.23159892857074738,
+        0.23645775020122528,
+        0.2450639307498932,
+        0.2472240924835205
+      ],
+      "ndcg5": 0.38685280723454163,
+      "query": "204 No Content on success",
+      "rr": 0.2,
+      "top1_hit": false,
+      "top5": [
+        "check-rate-limit",
+        "validate-email",
+        "check-active-sessions",
+        "check-last-admin",
+        "delete-user"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.13715632259845734,
+        0.21366220712661743,
+        0.2198081761598587,
+        0.222825825214386,
+        0.22727738320827484
+      ],
+      "ndcg5": 1.0,
+      "query": "rate_limited retry_after_seconds",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "check-rate-limit",
+        "check-active-sessions",
+        "delete-user",
+        "get-user",
+        "check-last-admin"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.14340320229530334,
+        0.19731374084949493,
+        0.2137369066476822,
+        0.21897390484809875,
+        0.22124752402305603
+      ],
+      "ndcg5": 1.0,
+      "query": "audit logged role changes recorded",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "update-user-role",
+        "check-last-admin",
+        "check-active-sessions",
+        "permissions",
+        "list-users"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.16299878060817719,
+        0.1722174882888794,
+        0.21234330534934998,
+        0.217469722032547,
+        0.2240876704454422
+      ],
+      "ndcg5": 0.8285978379951137,
+      "query": "10 creations per minute per API key",
+      "rr": 0.5,
+      "top1_hit": false,
+      "top5": [
+        "check-rate-limit",
+        "create-user",
+        "list-users",
+        "permissions",
+        "get-user"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.18201987445354462,
+        0.19228534400463104,
+        0.21252582967281342,
+        0.2165917307138443,
+        0.21681708097457886
+      ],
+      "ndcg5": 1.0,
+      "query": "register new account",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "create-user",
+        "validate-email",
+        "update-user-role",
+        "check-active-sessions",
+        "check-last-admin"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.12752772867679596,
+        0.18359273672103882,
+        0.18418675661087036,
+        0.20549364387989044,
+        0.2084292620420456
+      ],
+      "ndcg5": 1.0,
+      "query": "remove user permanently irreversible",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "delete-user",
+        "check-active-sessions",
+        "check-last-admin",
+        "permissions",
+        "update-user-role"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.14506684243679047,
+        0.1562272161245346,
+        0.16907106339931488,
+        0.17195965349674225,
+        0.1762886345386505
+      ],
+      "ndcg5": 1.0,
+      "query": "fetch user profile by identifier",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "get-user",
+        "list-users",
+        "delete-user",
+        "create-user",
+        "check-active-sessions"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.16488471627235413,
+        0.1870776116847992,
+        0.18775345385074615,
+        0.19012410938739777,
+        0.19646932184696198
+      ],
+      "ndcg5": 0.8220298314221028,
+      "query": "change user access level",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "update-user-role",
+        "create-user",
+        "permissions",
+        "list-users",
+        "delete-user"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.1037222295999527,
+        0.2050207257270813,
+        0.2066277116537094,
+        0.2079910784959793,
+        0.2212381511926651
+      ],
+      "ndcg5": 1.0,
+      "query": "verify email address format and domain",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "validate-email",
+        "get-user",
+        "create-user",
+        "check-rate-limit",
+        "check-active-sessions"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.1551814079284668,
+        0.1938633918762207,
+        0.20666982233524323,
+        0.20757907629013062,
+        0.21489720046520233
+      ],
+      "ndcg5": 1.0,
+      "query": "throttle API calls abuse prevention",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "check-rate-limit",
+        "check-active-sessions",
+        "permissions",
+        "check-last-admin",
+        "validate-email"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.1430705487728119,
+        0.1911223828792572,
+        0.19202730059623718,
+        0.19591115415096283,
+        0.19747866690158844
+      ],
+      "ndcg5": 0.7928078621889907,
+      "query": "authorization access control security model",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "permissions",
+        "check-last-admin",
+        "check-active-sessions",
+        "check-rate-limit",
+        "create-user"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.12927396595478058,
+        0.16253340244293213,
+        0.1677132397890091,
+        0.1863337904214859,
+        0.19485555589199066
+      ],
+      "ndcg5": 0.8916760387240197,
+      "query": "what steps happen before a user can be deleted",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "delete-user",
+        "check-active-sessions",
+        "check-last-admin",
+        "permissions",
+        "create-user"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.13971470296382904,
+        0.2037496566772461,
+        0.20439200103282928,
+        0.20493027567863464,
+        0.2168392688035965
+      ],
+      "ndcg5": 0.9115972584651287,
+      "query": "how does the system prevent having no administrators",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "check-last-admin",
+        "permissions",
+        "check-active-sessions",
+        "update-user-role",
+        "delete-user"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.12601757049560547,
+        0.16572213172912598,
+        0.1660052239894867,
+        0.16788072884082794,
+        0.16788411140441895
+      ],
+      "ndcg5": 0.8413082650714147,
+      "query": "what permissions are needed to manage users",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "permissions",
+        "check-last-admin",
+        "create-user",
+        "update-user-role",
+        "list-users"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.14995862543582916,
+        0.17798925936222076,
+        0.21324126422405243,
+        0.21544599533081055,
+        0.2155144214630127
+      ],
+      "ndcg5": 1.0,
+      "query": "how is email uniqueness enforced during signup",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "validate-email",
+        "create-user",
+        "get-user",
+        "check-active-sessions",
+        "check-rate-limit"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.1895139515399933,
+        0.1905086785554886,
+        0.21623989939689636,
+        0.2450363039970398,
+        0.25742286443710327
+      ],
+      "ndcg5": 0.9115306781456196,
+      "query": "what safety checks protect against destructive operations",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "check-last-admin",
+        "check-active-sessions",
+        "check-rate-limit",
+        "validate-email",
+        "permissions"
+      ]
+    }
+  ],
+  "query_embed_ms": 109,
+  "runtime": "rust+ort+sqlite-vec",
+  "search_ms": 2,
+  "top1": 0.9
+}

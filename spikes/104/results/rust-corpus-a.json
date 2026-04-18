@@ -1,0 +1,645 @@
+{
+  "dim": 384,
+  "doc_embed_ms": 2296,
+  "load_ms": 225,
+  "model": "Xenova/gte-small",
+  "mrr": 0.7944444444444444,
+  "n_queries": 30,
+  "ndcg5": 0.7761424346031802,
+  "per_query": [
+    {
+      "category": "exact",
+      "distances": [
+        0.2008858323097229,
+        0.20142272114753723,
+        0.21092098951339722,
+        0.21107639372348785,
+        0.21167977154254913
+      ],
+      "ndcg5": 0.5378345678130843,
+      "query": "FTS5 porter tokenizer",
+      "rr": 0.3333333333333333,
+      "top1_hit": false,
+      "top5": [
+        "claude-plugin",
+        "parser",
+        "storage",
+        "pramana",
+        "cli"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.16717074811458588,
+        0.20627115666866302,
+        0.2107420265674591,
+        0.2181583195924759,
+        0.21836915612220764
+      ],
+      "ndcg5": 0.7783722091583751,
+      "query": "StoragePlugin initialize close",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "storage",
+        "cli",
+        "claude-plugin",
+        "programming-model",
+        "tui"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.17414461076259613,
+        0.177567720413208,
+        0.1839124709367752,
+        0.19092869758605957,
+        0.19931338727474213
+      ],
+      "ndcg5": 0.5706960164000804,
+      "query": "Builder build sourceDir",
+      "rr": 0.5,
+      "top1_hit": false,
+      "top5": [
+        "cli",
+        "engine",
+        "pramana",
+        "data-source",
+        "claude-plugin"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1605461984872818,
+        0.16462618112564087,
+        0.1708512008190155,
+        0.1745113581418991,
+        0.18280825018882751
+      ],
+      "ndcg5": 0.272029413205233,
+      "query": "TenantManager mount reload getReader",
+      "rr": 0.3333333333333333,
+      "top1_hit": false,
+      "top5": [
+        "cli",
+        "api",
+        "multi-tenant",
+        "data-source",
+        "tui"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1422225385904312,
+        0.16072551906108856,
+        0.16509462893009186,
+        0.16718555986881256,
+        0.16832895576953888
+      ],
+      "ndcg5": 0.7928078621889907,
+      "query": "parseFrontmatter slug required",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "parser",
+        "programming-model",
+        "pramana",
+        "api",
+        "engine"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.15390709042549133,
+        0.1729981005191803,
+        0.18675482273101807,
+        0.1928568184375763,
+        0.19606146216392517
+      ],
+      "ndcg5": 0.4600462120208869,
+      "query": "wikilinks relates-to depends-on",
+      "rr": 0.0,
+      "top1_hit": false,
+      "top5": [
+        "knowledge-artifact",
+        "programming-model",
+        "pramana",
+        "tui",
+        "cli"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.20162475109100342,
+        0.21379832923412323,
+        0.21401363611221313,
+        0.21631976962089539,
+        0.22432181239128113
+      ],
+      "ndcg5": 0.9198471398508852,
+      "query": "BFS traverse depth visited set",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "engine",
+        "claude-plugin",
+        "pramana",
+        "multi-tenant",
+        "programming-model"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.19197681546211243,
+        0.21249470114707947,
+        0.21841830015182495,
+        0.21875602006912231,
+        0.2198137789964676
+      ],
+      "ndcg5": 0.7928078621889907,
+      "query": "Result Ok Err discriminated union",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "result-type",
+        "engine",
+        "parser",
+        "knowledge-artifact",
+        "pramana"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.18000608682632446,
+        0.19344422221183777,
+        0.19692179560661316,
+        0.2002868950366974,
+        0.20347867906093597
+      ],
+      "ndcg5": 1.0,
+      "query": "CORS Access-Control-Allow-Origin",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "api",
+        "cli",
+        "claude-plugin",
+        "tui",
+        "pramana"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.11726827919483185,
+        0.18391290307044983,
+        0.18678408861160278,
+        0.21067282557487488,
+        0.22180667519569397
+      ],
+      "ndcg5": 1.0,
+      "query": "ink React TUI views keybindings",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "tui",
+        "pramana",
+        "cli",
+        "data-source",
+        "api"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.15905749797821045,
+        0.17352446913719177,
+        0.17434944212436676,
+        0.1766204982995987,
+        0.18780210614204407
+      ],
+      "ndcg5": 0.7117340381215752,
+      "query": "DataSource daemon standalone mode",
+      "rr": 0.5,
+      "top1_hit": false,
+      "top5": [
+        "cli",
+        "data-source",
+        "multi-tenant",
+        "claude-plugin",
+        "pramana"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1422160267829895,
+        0.16090042889118195,
+        0.16558001935482025,
+        0.170273557305336,
+        0.17062966525554657
+      ],
+      "ndcg5": 0.680991809700608,
+      "query": "pramana serve --source --port",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "cli",
+        "tui",
+        "api",
+        "programming-model",
+        "pramana"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.078749880194664,
+        0.1494857370853424,
+        0.17679257690906525,
+        0.18070852756500244,
+        0.18323296308517456
+      ],
+      "ndcg5": 1.0,
+      "query": "Claude Plugin skills setup query author",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "claude-plugin",
+        "pramana",
+        "engine",
+        "multi-tenant",
+        "programming-model"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.20990799367427826,
+        0.21326538920402527,
+        0.21550655364990234,
+        0.21742048859596252,
+        0.2210341840982437
+      ],
+      "ndcg5": 0.14143063671858888,
+      "query": "SHA-256 hash content-addressable",
+      "rr": 0.0,
+      "top1_hit": false,
+      "top5": [
+        "storage",
+        "multi-tenant",
+        "pramana",
+        "parser",
+        "api"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.12134948372840881,
+        0.1789534091949463,
+        0.18613360822200775,
+        0.19237378239631653,
+        0.19975998997688293
+      ],
+      "ndcg5": 0.9198471398508852,
+      "query": "Zod schema validation KnowledgeArtifactSchema",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "knowledge-artifact",
+        "parser",
+        "pramana",
+        "storage",
+        "programming-model"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.09718864411115646,
+        0.15621419250965118,
+        0.16411592066287994,
+        0.16501742601394653,
+        0.16695189476013184
+      ],
+      "ndcg5": 1.0,
+      "query": "multi-tenant routing disambiguation",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "multi-tenant",
+        "api",
+        "pramana",
+        "data-source",
+        "claude-plugin"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.16081775724887848,
+        0.1702532172203064,
+        0.1768883913755417,
+        0.1839384138584137,
+        0.1869959682226181
+      ],
+      "ndcg5": 0.5694188549946414,
+      "query": "search query snippet rank",
+      "rr": 0.3333333333333333,
+      "top1_hit": false,
+      "top5": [
+        "pramana",
+        "engine",
+        "programming-model",
+        "tui",
+        "storage"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.17343848943710327,
+        0.1847185492515564,
+        0.18584968149662018,
+        0.18894153833389282,
+        0.20202960073947906
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "ArtifactView inverseRelationships focusedSection",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "knowledge-artifact",
+        "programming-model",
+        "engine",
+        "storage",
+        "pramana"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.1680360734462738,
+        0.17241893708705902,
+        0.17531825602054596,
+        0.1792261302471161,
+        0.18285775184631348
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "full-text indexing keywords",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "storage",
+        "pramana",
+        "programming-model",
+        "engine",
+        "parser"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.12380942702293396,
+        0.1603003889322281,
+        0.16539858281612396,
+        0.1660315990447998,
+        0.1664312332868576
+      ],
+      "ndcg5": 0.8024753492055956,
+      "query": "namespace isolation per-tenant database",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "multi-tenant",
+        "cli",
+        "data-source",
+        "engine",
+        "claude-plugin"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.14948806166648865,
+        0.19650423526763916,
+        0.21096637845039368,
+        0.2174501121044159,
+        0.2180120199918747
+      ],
+      "ndcg5": 0.9342384989075795,
+      "query": "markdown frontmatter YAML extraction",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "parser",
+        "pramana",
+        "programming-model",
+        "knowledge-artifact",
+        "storage"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.1462564319372177,
+        0.20115768909454346,
+        0.21417337656021118,
+        0.2240743190050125,
+        0.22817014157772064
+      ],
+      "ndcg5": 0.9804455177834929,
+      "query": "HTTP REST endpoints JSON responses",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "api",
+        "data-source",
+        "pramana",
+        "cli",
+        "tui"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.15781956911087036,
+        0.18467575311660767,
+        0.1975036859512329,
+        0.2002316266298294,
+        0.21047644317150116
+      ],
+      "ndcg5": 1.0,
+      "query": "terminal interactive interface keyboard navigation",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "tui",
+        "cli",
+        "claude-plugin",
+        "pramana",
+        "multi-tenant"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.14265914261341095,
+        0.193473219871521,
+        0.19476713240146637,
+        0.20543399453163147,
+        0.2073240876197815
+      ],
+      "ndcg5": 0.9342384989075795,
+      "query": "error handling without exceptions typed wrapper",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "result-type",
+        "data-source",
+        "parser",
+        "programming-model",
+        "pramana"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.16964440047740936,
+        0.17582257091999054,
+        0.17800302803516388,
+        0.18212775886058807,
+        0.19852355122566223
+      ],
+      "ndcg5": 0.85277205984307,
+      "query": "graph edges relationships directed connections",
+      "rr": 0.5,
+      "top1_hit": false,
+      "top5": [
+        "engine",
+        "programming-model",
+        "knowledge-artifact",
+        "pramana",
+        "storage"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.16525569558143616,
+        0.1673375517129898,
+        0.1715945601463318,
+        0.17484351992607117,
+        0.1859765499830246
+      ],
+      "ndcg5": 0.45703544248530037,
+      "query": "how does pramana rebuild the database on every startup",
+      "rr": 0.3333333333333333,
+      "top1_hit": false,
+      "top5": [
+        "programming-model",
+        "cli",
+        "pramana",
+        "tui",
+        "storage"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.15736545622348785,
+        0.16207218170166016,
+        0.1878560185432434,
+        0.18874287605285645,
+        0.18919309973716736
+      ],
+      "ndcg5": 0.7095101476638378,
+      "query": "what happens when a search query is issued through the API",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "api",
+        "data-source",
+        "pramana",
+        "engine",
+        "tui"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.17059580981731415,
+        0.18118196725845337,
+        0.18489985167980194,
+        0.19063472747802734,
+        0.19390375912189484
+      ],
+      "ndcg5": 0.8742397754819052,
+      "query": "how are multiple knowledge bases served from a single process",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "multi-tenant",
+        "pramana",
+        "knowledge-artifact",
+        "engine",
+        "parser"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.14707741141319275,
+        0.14979241788387299,
+        0.1739131510257721,
+        0.18222489953041077,
+        0.18233750760555267
+      ],
+      "ndcg5": 0.9115306781456196,
+      "query": "what is the relationship between the TUI and the data layer",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "tui",
+        "data-source",
+        "cli",
+        "programming-model",
+        "storage"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.12900221347808838,
+        0.14825734496116638,
+        0.1750480979681015,
+        0.1753207892179489,
+        0.17660243809223175
+      ],
+      "ndcg5": 0.7659158142059249,
+      "query": "how does Claude interact with the knowledge engine",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "claude-plugin",
+        "pramana",
+        "knowledge-artifact",
+        "multi-tenant",
+        "engine"
+      ]
+    }
+  ],
+  "query_embed_ms": 113,
+  "runtime": "rust+ort+sqlite-vec",
+  "search_ms": 2,
+  "top1": 0.7
+}

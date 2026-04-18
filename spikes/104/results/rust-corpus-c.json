@@ -1,0 +1,645 @@
+{
+  "dim": 384,
+  "doc_embed_ms": 2276,
+  "load_ms": 130,
+  "model": "Xenova/gte-small",
+  "mrr": 0.8744444444444444,
+  "n_queries": 30,
+  "ndcg5": 0.8265232410323836,
+  "per_query": [
+    {
+      "category": "exact",
+      "distances": [
+        0.13877999782562256,
+        0.18103909492492676,
+        0.18191324174404144,
+        0.20082296431064606,
+        0.20382297039031982
+      ],
+      "ndcg5": 0.680991809700608,
+      "query": "term functor arity compound atom variable",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "term",
+        "substitution",
+        "parser",
+        "token-types",
+        "lexer"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.10338853299617767,
+        0.12213767319917679,
+        0.1535760760307312,
+        0.1924775391817093,
+        0.19594798982143402
+      ],
+      "ndcg5": 1.0,
+      "query": "token tag lexeme span tokenisation",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "token-types",
+        "lexer",
+        "parser",
+        "substitution",
+        "unification"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.12338783591985703,
+        0.1530599594116211,
+        0.1628848910331726,
+        0.16456229984760284,
+        0.16715437173843384
+      ],
+      "ndcg5": 1.0,
+      "query": "substitution domain range idempotent monoid",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "substitution",
+        "unification",
+        "trail",
+        "resolution",
+        "builtins"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.12514758110046387,
+        0.16572332382202148,
+        0.17803022265434265,
+        0.17941899597644806,
+        0.18280375003814697
+      ],
+      "ndcg5": 1.0,
+      "query": "clause head body fact rule query",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "clause",
+        "knowledge-base",
+        "resolution",
+        "builtins",
+        "choice-point"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1384214460849762,
+        0.16307713091373444,
+        0.21048365533351898,
+        0.2118501216173172,
+        0.2120651751756668
+      ],
+      "ndcg5": 1.0,
+      "query": "trail undo log mark backtracking",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "trail",
+        "choice-point",
+        "substitution",
+        "repl",
+        "builtins"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.19189342856407166,
+        0.20532254874706268,
+        0.22305314242839813,
+        0.22391130030155182,
+        0.23490454256534576
+      ],
+      "ndcg5": 1.0,
+      "query": "unify MGU most general unifier Martelli-Montanari",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "unification",
+        "substitution",
+        "resolution",
+        "term",
+        "builtins"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.12077537178993225,
+        0.15820245444774628,
+        0.16093610227108002,
+        0.16268019378185272,
+        0.16631436347961426
+      ],
+      "ndcg5": 0.9115972584651287,
+      "query": "knowledge base predicate indicator functor arity lookup",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "knowledge-base",
+        "builtins",
+        "term",
+        "clause",
+        "resolution"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1328258216381073,
+        0.15929877758026123,
+        0.21327891945838928,
+        0.21899408102035522,
+        0.2257908433675766
+      ],
+      "ndcg5": 1.0,
+      "query": "choice point alternative list trail mark backtrack",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "choice-point",
+        "trail",
+        "resolution",
+        "builtins",
+        "substitution"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.16121046245098114,
+        0.18211306631565094,
+        0.1927427500486374,
+        0.19703267514705658,
+        0.19894377887248993
+      ],
+      "ndcg5": 1.0,
+      "query": "lexer finite-state transducer maximal munch",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "lexer",
+        "token-types",
+        "repl",
+        "unification",
+        "parser"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1285010427236557,
+        0.14019624888896942,
+        0.15560579299926758,
+        0.15678179264068604,
+        0.15787403285503387
+      ],
+      "ndcg5": 0.680991809700608,
+      "query": "parser recursive descent LL(1) grammar clause",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "parser",
+        "clause",
+        "repl",
+        "builtins",
+        "knowledge-base"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.09763992577791214,
+        0.20174959301948547,
+        0.20220310986042023,
+        0.20328886806964874,
+        0.20687922835350037
+      ],
+      "ndcg5": 0.7901137189601412,
+      "query": "REPL read eval print loop consult query",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "repl",
+        "trail",
+        "builtins",
+        "choice-point",
+        "resolution"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1404576599597931,
+        0.16617466509342194,
+        0.18595121800899506,
+        0.18827930092811584,
+        0.18870344758033752
+      ],
+      "ndcg5": 0.8589619782785052,
+      "query": "SLD resolution derivation refutation",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "resolution",
+        "unification",
+        "substitution",
+        "trail",
+        "builtins"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.14336015284061432,
+        0.19512803852558136,
+        0.20221491158008575,
+        0.20690254867076874,
+        0.20812848210334778
+      ],
+      "ndcg5": 0.7928078621889907,
+      "query": "builtins is/2 write/1 assert/1 cut",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "builtins",
+        "repl",
+        "choice-point",
+        "token-types",
+        "clause"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1771789938211441,
+        0.18423815071582794,
+        0.1843985915184021,
+        0.18892525136470795,
+        0.18905094265937805
+      ],
+      "ndcg5": 0.38685280723454163,
+      "query": "list syntax dot cons nil head tail",
+      "rr": 0.2,
+      "top1_hit": false,
+      "top5": [
+        "parser",
+        "choice-point",
+        "token-types",
+        "lexer",
+        "term"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.1575944870710373,
+        0.1778031438589096,
+        0.18175409734249115,
+        0.18425892293453217,
+        0.18582846224308014
+      ],
+      "ndcg5": 0.9198471398508852,
+      "query": "Horn clause definite clause positive literal",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "clause",
+        "unification",
+        "builtins",
+        "repl",
+        "resolution"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.15732990205287933,
+        0.16548262536525726,
+        0.1848120540380478,
+        0.1863490790128708,
+        0.1872585266828537
+      ],
+      "ndcg5": 0.38685280723454163,
+      "query": "occurs check cyclic substitution infinite term",
+      "rr": 0.2,
+      "top1_hit": false,
+      "top5": [
+        "substitution",
+        "term",
+        "trail",
+        "builtins",
+        "unification"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.17011085152626038,
+        0.18679533898830414,
+        0.19502098858356476,
+        0.19881458580493927,
+        0.2002715766429901
+      ],
+      "ndcg5": 1.0,
+      "query": "quoted atom escape sequence line comment block comment",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "lexer",
+        "token-types",
+        "parser",
+        "builtins",
+        "trail"
+      ]
+    },
+    {
+      "category": "exact",
+      "distances": [
+        0.16512730717658997,
+        0.18536697328090668,
+        0.1942709982395172,
+        0.19883939623832703,
+        0.2027762234210968
+      ],
+      "ndcg5": 1.0,
+      "query": "Herbrand universe ground term free algebra",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "term",
+        "substitution",
+        "unification",
+        "clause",
+        "parser"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.14826680719852448,
+        0.16048270463943481,
+        0.1660304218530655,
+        0.18177111446857452,
+        0.18266959488391876
+      ],
+      "ndcg5": 0.6225719482932938,
+      "query": "variable binding mapping constraint notebook",
+      "rr": 0.3333333333333333,
+      "top1_hit": false,
+      "top5": [
+        "trail",
+        "choice-point",
+        "substitution",
+        "repl",
+        "knowledge-base"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.17382729053497314,
+        0.19488932192325592,
+        0.19587893784046173,
+        0.19749021530151367,
+        0.19840210676193237
+      ],
+      "ndcg5": 0.8589619782785052,
+      "query": "pattern matching making two expressions equal",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "unification",
+        "substitution",
+        "trail",
+        "term",
+        "parser"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.1360722780227661,
+        0.15170612931251526,
+        0.15504471957683563,
+        0.1756872832775116,
+        0.17743006348609924
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "branching alternatives search tree depth-first",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "choice-point",
+        "trail",
+        "resolution",
+        "clause",
+        "unification"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.1507922261953354,
+        0.15184184908866882,
+        0.1626122146844864,
+        0.19591332972049713,
+        0.20571936666965485
+      ],
+      "ndcg5": 0.8285978379951137,
+      "query": "tokenization scanning character stream splitting words",
+      "rr": 0.5,
+      "top1_hit": false,
+      "top5": [
+        "token-types",
+        "lexer",
+        "parser",
+        "repl",
+        "unification"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.1470726877450943,
+        0.15399523079395294,
+        0.1659267693758011,
+        0.16684551537036896,
+        0.1740647703409195
+      ],
+      "ndcg5": 0.9570037466263405,
+      "query": "program database storing facts and rules indexed",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "knowledge-base",
+        "builtins",
+        "clause",
+        "repl",
+        "trail"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.18898548185825348,
+        0.1946708709001541,
+        0.21219797432422638,
+        0.22382640838623047,
+        0.22575804591178894
+      ],
+      "ndcg5": 0.7928078621889907,
+      "query": "interactive prompt user session answer display",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "repl",
+        "choice-point",
+        "trail",
+        "builtins",
+        "lexer"
+      ]
+    },
+    {
+      "category": "synonym",
+      "distances": [
+        0.15025733411312103,
+        0.17481981217861176,
+        0.18235647678375244,
+        0.18246476352214813,
+        0.18512959778308868
+      ],
+      "ndcg5": 0.7928078621889907,
+      "query": "built-in operations arithmetic side effects host language",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "builtins",
+        "repl",
+        "lexer",
+        "substitution",
+        "token-types"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.11349759995937347,
+        0.12392628192901611,
+        0.12461886554956436,
+        0.12818671762943268,
+        0.12934735417366028
+      ],
+      "ndcg5": 0.5887410917636298,
+      "query": "how does Prolog find answers to a query through proof search",
+      "rr": 0.5,
+      "top1_hit": false,
+      "top5": [
+        "builtins",
+        "resolution",
+        "clause",
+        "choice-point",
+        "knowledge-base"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.17065948247909546,
+        0.19169116020202637,
+        0.20723214745521545,
+        0.21783000230789185,
+        0.21962293982505798
+      ],
+      "ndcg5": 0.9115306781456196,
+      "query": "what happens when the engine needs to undo a wrong guess",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "trail",
+        "choice-point",
+        "substitution",
+        "unification",
+        "lexer"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.15539878606796265,
+        0.16830770671367645,
+        0.17132049798965454,
+        0.1821950078010559,
+        0.18488456308841705
+      ],
+      "ndcg5": 0.5931861283445266,
+      "query": "how is source code converted into structured data for the interpreter",
+      "rr": 0.5,
+      "top1_hit": false,
+      "top5": [
+        "repl",
+        "parser",
+        "lexer",
+        "substitution",
+        "token-types"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.1735702008008957,
+        0.18202948570251465,
+        0.18414460122585297,
+        0.1855773776769638,
+        0.19383670389652252
+      ],
+      "ndcg5": 0.680991809700608,
+      "query": "why can't arithmetic and I/O be defined as normal clauses",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "builtins",
+        "clause",
+        "unification",
+        "term",
+        "substitution"
+      ]
+    },
+    {
+      "category": "concept",
+      "distances": [
+        0.12475679814815521,
+        0.13196752965450287,
+        0.1509859412908554,
+        0.15374408662319183,
+        0.15779133141040802
+      ],
+      "ndcg5": 0.8024753492055956,
+      "query": "what is the universal data representation in logic programming",
+      "rr": 1.0,
+      "top1_hit": true,
+      "top5": [
+        "term",
+        "unification",
+        "builtins",
+        "clause",
+        "token-types"
+      ]
+    }
+  ],
+  "query_embed_ms": 126,
+  "runtime": "rust+ort+sqlite-vec",
+  "search_ms": 2,
+  "top1": 0.8
+}
