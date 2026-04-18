@@ -9,3 +9,7 @@ members = [
     "crates/pramana-engine",
     "crates/pramana-mcp",
 ]
+
+[profile.release]
+strip = true
+lto = "thin"

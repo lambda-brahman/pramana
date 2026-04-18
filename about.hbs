@@ -1,0 +1,25 @@
+# Third-Party Licenses
+
+This file lists the licenses of all third-party dependencies bundled
+with the pramana binary.
+
+{{#each overview}}
+## {{name}} ({{version}})
+
+- License: {{#each licenses}}{{id}}{{#unless @last}}, {{/unless}}{{/each}}
+- Authors: {{#if authors}}{{authors}}{{else}}(not specified){{/if}}
+
+{{#each licenses}}
+<details>
+<summary>{{id}}</summary>
+
+```
+{{{text}}}
+```
+
+</details>
+{{/each}}
+
+---
+
+{{/each}}

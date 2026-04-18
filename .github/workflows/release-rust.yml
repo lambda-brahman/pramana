@@ -1,0 +1,153 @@
+name: Release (Rust)
+
+on:
+  push:
+    tags: ['v*']
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: pramana
+
+jobs:
+  # Gate: only run if the tagged commit lives on rust-port.
+  # Once the capstone swap lands, change to main.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.check.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: check
+        run: |
+          if git merge-base --is-ancestor "$GITHUB_SHA" origin/rust-port; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tagged commit is not on rust-port — skipping Rust release."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  licenses:
+    needs: guard
+    if: needs.guard.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-about
+        run: cargo install cargo-about
+      - name: Generate THIRDPARTY.md
+        run: cargo about generate about.hbs > THIRDPARTY.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thirdparty
+          path: THIRDPARTY.md
+
+  build:
+    needs: guard
+    if: needs.guard.outputs.proceed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: pramana-linux-x64
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: pramana-linux-arm64
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-13
+            artifact: pramana-darwin-x64
+            cross: false
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            artifact: pramana-darwin-arm64
+            cross: false
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            artifact: pramana-windows-x64.exe
+            cross: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }} -p pramana-cli
+          else
+            cargo build --release --target ${{ matrix.target }} -p pramana-cli
+          fi
+        shell: bash
+
+      - name: Rename binary
+        run: |
+          SRC="target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            SRC="${SRC}.exe"
+          fi
+          cp "$SRC" "${{ matrix.artifact }}"
+        shell: bash
+
+      - name: Ad-hoc codesign (macOS)
+        if: runner.os == 'macOS'
+        run: codesign -s - --force "${{ matrix.artifact }}"
+
+      - name: Checksum
+        run: |
+          if command -v sha256sum &>/dev/null; then
+            sha256sum "${{ matrix.artifact }}" > "${{ matrix.artifact }}.sha256"
+          else
+            shasum -a 256 "${{ matrix.artifact }}" > "${{ matrix.artifact }}.sha256"
+          fi
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}
+            ${{ matrix.artifact }}.sha256
+
+  release:
+    needs: [build, licenses]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release assets
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name 'pramana-*' -o -name 'THIRDPARTY.md' \) -exec cp {} release/ \;
+          ls -lh release/
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          cd release
+          if gh release view "$TAG" &>/dev/null; then
+            gh release upload "$TAG" --clobber ./*
+          else
+            gh release create "$TAG" --generate-notes ./*
+          fi
