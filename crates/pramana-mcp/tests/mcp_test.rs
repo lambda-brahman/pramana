@@ -1,6 +1,6 @@
 use pramana_engine::{TenantConfig, TenantManager};
 use pramana_mcp::PramanaServer;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
 fn fixtures_dir() -> PathBuf {
@@ -117,10 +117,7 @@ fn get_with_section() {
 #[test]
 fn get_nonexistent_returns_error() {
     let server = setup_server();
-    let result = server.dispatch(
-        "get",
-        json!({"tenant": "commerce", "slug": "nonexistent"}),
-    );
+    let result = server.dispatch("get", json!({"tenant": "commerce", "slug": "nonexistent"}));
     assert!(!is_success(&result));
 }
 
@@ -144,10 +141,7 @@ fn get_missing_slug_returns_error() {
 #[test]
 fn search_returns_matching_results() {
     let server = setup_server();
-    let result = server.dispatch(
-        "search",
-        json!({"tenant": "commerce", "query": "purchase"}),
-    );
+    let result = server.dispatch("search", json!({"tenant": "commerce", "query": "purchase"}));
 
     assert!(is_success(&result));
     let data: Vec<Value> = parse_result(&result);
@@ -166,10 +160,7 @@ fn search_missing_query_returns_error() {
 #[test]
 fn traverse_returns_related_artifacts() {
     let server = setup_server();
-    let result = server.dispatch(
-        "traverse",
-        json!({"tenant": "commerce", "from": "order"}),
-    );
+    let result = server.dispatch("traverse", json!({"tenant": "commerce", "from": "order"}));
 
     assert!(is_success(&result));
     let data: Vec<Value> = parse_result(&result);
@@ -220,10 +211,7 @@ fn list_returns_all_artifacts() {
 #[test]
 fn list_with_tags_filter() {
     let server = setup_server();
-    let result = server.dispatch(
-        "list",
-        json!({"tenant": "commerce", "tags": ["core"]}),
-    );
+    let result = server.dispatch("list", json!({"tenant": "commerce", "tags": ["core"]}));
 
     assert!(is_success(&result));
     let data: Vec<Value> = parse_result(&result);

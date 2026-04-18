@@ -2,14 +2,14 @@ use std::sync::Mutex;
 
 use pramana_engine::{ListFilter, TenantManager};
 use rmcp::{
-    ErrorData as McpError, ServerHandler, ServiceExt,
     model::{
-        CallToolRequestParams, CallToolResult, Content, Implementation, ListToolsResult,
-        PaginatedRequestParams, RawContent, ServerCapabilities, ServerInfo, Tool, object,
+        object, CallToolRequestParams, CallToolResult, Content, Implementation, ListToolsResult,
+        PaginatedRequestParams, RawContent, ServerCapabilities, ServerInfo, Tool,
     },
     service::{RequestContext, RoleServer},
+    ErrorData as McpError, ServerHandler, ServiceExt,
 };
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
 pub struct PramanaServer {
     manager: Mutex<TenantManager>,
@@ -113,8 +113,7 @@ fn get_string(args: &Value, key: &str) -> Option<String> {
 }
 
 fn require_string(args: &Value, key: &str) -> Result<String, CallToolResult> {
-    get_string(args, key)
-        .ok_or_else(|| error_result(&format!("Missing required parameter: {key}")))
+    get_string(args, key).ok_or_else(|| error_result(&format!("Missing required parameter: {key}")))
 }
 
 impl PramanaServer {
