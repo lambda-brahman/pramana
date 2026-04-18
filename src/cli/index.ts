@@ -11,6 +11,7 @@ import { TenantManager } from "../engine/tenant.ts";
 import { err, ok, type Result } from "../lib/result.ts";
 import { NAME_REGEX, RESERVED_NAMES } from "../lib/tenant-names.ts";
 import { compareSemver, VERSION } from "../version.ts";
+import { doctorExitCode, formatDoctorReport, runDoctor } from "./doctor.ts";
 import { formatDiagnostics, lintFromDaemon, lintSource } from "./lint.ts";
 
 const args = process.argv.slice(2);
@@ -61,6 +62,7 @@ Usage:
   pramana list --source <dir> [--tags <tag1,tag2>] --tenant <name>
   pramana mcp [--port 5111]
   pramana tui [--source <dir>[:name] ...] [--port 5111]
+  pramana doctor [--json]
   pramana lint --source <dir> [--strict]
   pramana lint --tenant <name> [--strict]
   pramana reload --tenant <name>
@@ -446,6 +448,24 @@ async function main() {
   if (command === "config") {
     await handleConfig();
     process.exit(0);
+  }
+
+  // doctor command
+  if (command === "doctor") {
+    const port = resolvePort();
+    const json = hasFlag("json");
+    const result = await runDoctor(port);
+    if (!result.ok) {
+      console.error(result.error.message);
+      process.exit(2);
+    }
+    const report = result.value;
+    if (json) {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.log(formatDoctorReport(report));
+    }
+    process.exit(doctorExitCode(report));
   }
 
   // lint command
