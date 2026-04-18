@@ -32,8 +32,6 @@ jobs:
         include:
           - os: ubuntu-latest
             binary: ./pramana
-          - os: macos-latest
-            binary: ./pramana
           - os: windows-latest
             binary: ./pramana.exe
     runs-on: ${{ matrix.os }}
@@ -49,9 +47,63 @@ jobs:
         env:
           PRAMANA_BIN: ${{ matrix.binary }}
 
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Build macOS binaries
+        run: |
+          scripts/build.sh --target bun-darwin-arm64
+          scripts/build.sh --target bun-darwin-x64
+      - name: Ad-hoc codesign
+        run: |
+          codesign --force --sign - pramana-darwin-arm64
+          codesign --force --sign - pramana-darwin-x64
+      - name: Verify signatures
+        run: |
+          codesign -dv pramana-darwin-arm64
+          codesign -dv pramana-darwin-x64
+          otool -l pramana-darwin-arm64 | grep LC_CODE_SIGNATURE
+          otool -l pramana-darwin-x64 | grep LC_CODE_SIGNATURE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-binaries
+          path: |
+            pramana-darwin-arm64
+            pramana-darwin-x64
+
+  smoke-macos:
+    needs: build-macos
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-binaries
+      - name: Verify signatures
+        run: |
+          codesign -dv pramana-darwin-arm64
+          codesign -dv pramana-darwin-x64
+      - name: Smoke test arm64 binary
+        run: |
+          chmod +x pramana-darwin-arm64
+          bun test test/smoke/
+        env:
+          PRAMANA_BIN: ./pramana-darwin-arm64
+      - name: Smoke test x64 binary
+        run: |
+          chmod +x pramana-darwin-x64
+          bun test test/smoke/
+        env:
+          PRAMANA_BIN: ./pramana-darwin-x64
+
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, test-windows, test-binary]
+    needs: [test, test-windows, test-binary, build-macos, smoke-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -60,8 +112,16 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
 
-      - name: Build binaries
-        run: scripts/build.sh --all
+      - name: Download macOS binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-binaries
+
+      - name: Build Linux and Windows binaries
+        run: |
+          scripts/build.sh --target bun-linux-x64
+          scripts/build.sh --target bun-linux-arm64
+          scripts/build.sh --target bun-windows-x64
 
       - name: Bundle plugin
         run: tar czf plugin.tar.gz -C plugin .
