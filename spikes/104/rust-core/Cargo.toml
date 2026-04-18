@@ -1,0 +1,38 @@
+[package]
+name = "spike-104-core"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "q1-vec"
+path = "src/q1_vec.rs"
+
+[[bin]]
+name = "q2-embed"
+path = "src/q2_embed.rs"
+
+[[bin]]
+name = "q3-search"
+path = "src/q3_search.rs"
+
+[[bin]]
+name = "q4-parity"
+path = "src/q4_parity.rs"
+
+[dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+sqlite-vec = "0.1"
+zerocopy = "0.7"
+anyhow = "1"
+
+# Q2 stack
+tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
+ort = { version = "=2.0.0-rc.10", features = ["ndarray", "load-dynamic"] }
+ndarray = "0.16"
+serde_json = "1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = false
