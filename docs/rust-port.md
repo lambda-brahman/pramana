@@ -138,6 +138,17 @@ The ratatui TUI (pramana-tui) ports keybindings from the Ink/React TUI. This mat
 | q | Back | |
 | ? | Help overlay | |
 
+### dashboard
+
+| Key | Ink (TS) | ratatui (Rust) | Notes |
+|-----|----------|----------------|-------|
+| j/k | Scroll | Scroll | |
+| ↑/↓ | Scroll | Scroll | |
+| Esc | Back | Back | |
+| q | — | Back | Added for consistency |
+| ? | Help overlay | Help overlay | |
+| i | — | — | Entered from kb-list via `i` |
+
 ### Dropped from MVP (follow-up issues needed)
 
 | View | Status |
@@ -145,7 +156,7 @@ The ratatui TUI (pramana-tui) ports keybindings from the Ink/React TUI. This mat
 | kb-context (hub menu) | Skipped — kb-list goes directly to search |
 | artifact-list (browse) | Skipped — use search instead |
 | graph (traversal) | Implemented (#157) |
-| dashboard (info/stats) | Skipped |
+| dashboard (info/stats) | Implemented (#158) |
 
 ### Diff tolerance
 

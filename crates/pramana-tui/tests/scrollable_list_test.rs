@@ -124,6 +124,26 @@ mod golden_snapshots {
         let output = render_to_string(&mut app, 60, 15);
         assert!(output.contains("Knowledge Bases"));
     }
+
+    /// Golden snapshot: dashboard view renders version, mode, and daemon status.
+    #[test]
+    fn dashboard_snapshot() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let mut app = make_test_app();
+        let key =
+            |code: KeyCode| crossterm::event::Event::Key(KeyEvent::new(code, KeyModifiers::NONE));
+        app.handle_event(key(KeyCode::Char('i')));
+
+        let output = render_to_string(&mut app, 60, 15);
+        assert!(output.contains("Dashboard"));
+        assert!(output.contains("pramana"));
+        assert!(output.contains("standalone"));
+        assert!(
+            output.contains("dashboard"),
+            "breadcrumb should show dashboard"
+        );
+    }
 }
 
 mod graph_view {
@@ -391,6 +411,26 @@ mod keybinding_parity {
         pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('=')));
         pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Char('q')));
         pramana_tui::views::graph::handle_graph_input(&mut view, key(KeyCode::Esc));
+    }
+
+    /// Verify dashboard keybindings don't panic.
+    #[test]
+    fn dashboard_keybindings() {
+        use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+        let ds =
+            pramana_tui::DataSource::Standalone(Box::new(pramana_engine::TenantManager::new()));
+        let mut app = pramana_tui::app::App::new(ds, 5111, None);
+
+        let key =
+            |code: KeyCode| crossterm::event::Event::Key(KeyEvent::new(code, KeyModifiers::NONE));
+
+        app.handle_event(key(KeyCode::Char('i')));
+        app.handle_event(key(KeyCode::Char('j')));
+        app.handle_event(key(KeyCode::Char('k')));
+        app.handle_event(key(KeyCode::Char('?'))); // help on
+        app.handle_event(key(KeyCode::Char('?'))); // help off
+        app.handle_event(key(KeyCode::Char('q'))); // back to kb-list
     }
 
     /// Verify artifact-detail keybindings don't panic.
