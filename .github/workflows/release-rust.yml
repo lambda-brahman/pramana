@@ -61,7 +61,7 @@ jobs:
             artifact: pramana-linux-arm64
             cross: true
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-latest
             artifact: pramana-darwin-x64
             cross: false
           - target: aarch64-apple-darwin
