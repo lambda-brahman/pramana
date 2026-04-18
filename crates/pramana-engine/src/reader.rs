@@ -2,7 +2,7 @@ use crate::error::EngineError;
 use pramana_storage::{Relationship, SearchResult, Section, Storage};
 use std::collections::{HashSet, VecDeque};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct ArtifactView {
     pub slug: String,
     pub title: String,
@@ -17,7 +17,7 @@ pub struct ArtifactView {
     pub focused_section: Option<FocusedSection>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct FocusedSection {
     pub id: String,
     pub heading: String,

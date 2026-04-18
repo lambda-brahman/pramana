@@ -8,4 +8,5 @@ pramana-parser = { path = "../pramana-parser" }
 pramana-storage = { path = "../pramana-storage" }
 pramana-embedder = { path = "../pramana-embedder" }
 walkdir = "2"
+serde = { version = "1", features = ["derive"] }
 thiserror = "2"

@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct Artifact {
     pub slug: String,
     pub title: String,
@@ -11,7 +11,7 @@ pub struct Artifact {
     pub sections: Vec<Section>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct Relationship {
     pub target: String,
     pub kind: String,
@@ -19,7 +19,7 @@ pub struct Relationship {
     pub section: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct Section {
     pub id: String,
     pub heading: String,
@@ -27,7 +27,7 @@ pub struct Section {
     pub line: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct SearchResult {
     pub slug: String,
     pub title: String,
