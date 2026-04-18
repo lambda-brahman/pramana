@@ -243,4 +243,10 @@ mod tests {
             assert!(validate_tenant_name(name).is_err());
         }
     }
+
+    #[test]
+    fn version_is_reserved() {
+        // /v1/version is a top-level route; a tenant named "version" would shadow it
+        assert!(validate_tenant_name("version").is_err());
+    }
 }
