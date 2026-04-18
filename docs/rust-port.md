@@ -45,6 +45,68 @@ crates/
   pramana-cli/    # binary: CLI surface, daemon, MCP transport
 ```
 
+## TUI keybinding parity matrix
+
+The ratatui TUI (pramana-tui) ports keybindings from the Ink/React TUI. This matrix tracks parity across the three MVP views.
+
+### kb-list
+
+| Key | Ink (TS) | ratatui (Rust) | Notes |
+|-----|----------|----------------|-------|
+| j/k | Navigate | Navigate | |
+| ↑/↓ | Navigate | Navigate | |
+| Enter | Open KB | Open KB | |
+| a | Add KB | Add KB | Name → dir two-step form |
+| d | Delete KB | Delete KB | y/n confirmation |
+| o | Open source dir | Open source dir | macOS/Linux/Windows |
+| r | Reload KB | Reload KB | |
+| S | Toggle daemon | Toggle daemon | Standalone-only message |
+| q | Quit | Quit | |
+| Esc | Quit | Quit | |
+| ? | Help overlay | Help overlay | |
+
+### artifact-detail
+
+| Key | Ink (TS) | ratatui (Rust) | Notes |
+|-----|----------|----------------|-------|
+| j/k | Scroll (content) / Navigate (rel/sec) | Scroll / Navigate | |
+| ↑/↓ | Scroll / Navigate | Scroll / Navigate | |
+| d/u | Half-page scroll | Half-page scroll | Content panel only |
+| h/l | Pan left/right | Pan left/right | Content panel, 10-char step |
+| ←/→ | Pan left/right | — | Not bound (h/l suffice) |
+| 0 | Reset horizontal scroll | Reset horizontal scroll | |
+| Tab | Cycle panels | Cycle panels | content → relationships → sections |
+| Enter | Follow link / jump to section | Follow link / jump to section | |
+| Esc | Back | Back | |
+| q | — | Back | Added for consistency |
+| ? | Help overlay | Help overlay | |
+
+### search
+
+| Key | Ink (TS) | ratatui (Rust) | Notes |
+|-----|----------|----------------|-------|
+| (type) | Search query | Search query | 200ms debounce |
+| Enter/↓ | Focus results | Focus results | From input mode |
+| j/k | Navigate results | Navigate results | Results mode |
+| ↑/↓ | Navigate results | Navigate results | |
+| h/l | Pan snippet | Pan snippet | Results mode, 10-char step |
+| Enter | View artifact | View artifact | Results mode |
+| Esc | Clear / back | Clear / back | Input: clear then back; Results: back to input |
+| ? | Help overlay | Help overlay | Results mode only |
+
+### Dropped from MVP (follow-up issues needed)
+
+| View | Status |
+|------|--------|
+| kb-context (hub menu) | Skipped — kb-list goes directly to search |
+| artifact-list (browse) | Skipped — use search instead |
+| graph (traversal) | Skipped |
+| dashboard (info/stats) | Skipped |
+
+### Diff tolerance
+
+Golden snapshots use ratatui's `Buffer` (cell-level text without ANSI escapes). Snapshot comparisons are text-exact. Color rendering depends on terminal capabilities (256-color assumed). ANSI escape sequences are not compared — only logical content.
+
 ## License aggregation plan
 
 All new Rust dependencies must be permissively licensed (MIT, Apache-2.0, or dual). Before the capstone PR, run `cargo-deny check licenses` and commit the `deny.toml` config. Any dependency with a non-permissive license requires explicit sign-off in the PR description.

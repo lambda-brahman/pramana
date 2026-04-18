@@ -242,10 +242,13 @@ fn run(cmd: Commands) -> i32 {
         } => cmd_daemon_traverse(port, &tenant, &slug, r#type.as_deref(), depth),
         Commands::List { tenant, tags, port } => cmd_daemon_list(port, &tenant, tags.as_deref()),
         Commands::Mcp { source } => cmd_mcp(source),
-        Commands::Tui { .. } => {
-            eprintln!("TUI is not yet available in the Rust port. See issue #113.");
-            1
-        }
+        Commands::Tui {
+            source,
+            port,
+            standalone,
+            no_config,
+            tenant,
+        } => cmd_tui(source, port, standalone, no_config, tenant),
         Commands::Doctor { json, port } => cmd_doctor(port, json),
         Commands::Lint {
             source,
@@ -946,6 +949,69 @@ Use wikilinks to connect artifacts: [[getting-started]]
     println!("  Created {}", sample.display());
     println!("\nServe it with: pramana serve --source {}", dir.display());
     0
+}
+
+// --- tui ---
+
+fn cmd_tui(
+    sources: Vec<String>,
+    port: u16,
+    standalone: bool,
+    no_config: bool,
+    initial_tenant: Option<String>,
+) -> i32 {
+    let cli_sources: Vec<(String, String)> = sources.iter().map(|s| parse_source(s)).collect();
+
+    let use_daemon = !standalone && pramana_tui::DataSource::check_daemon(port);
+
+    let data_source = if use_daemon {
+        pramana_tui::DataSource::Daemon { port }
+    } else {
+        let mut source_map = std::collections::BTreeMap::new();
+
+        if !no_config {
+            if let Ok(cfg) = config::load_config() {
+                for (name, dir) in &cfg.tenants {
+                    source_map.insert(name.clone(), dir.clone());
+                }
+            }
+        }
+
+        for (path, name) in &cli_sources {
+            source_map.insert(name.clone(), path.clone());
+        }
+
+        let mut tm = TenantManager::new();
+        for (name, path) in &source_map {
+            let cfg = TenantConfig {
+                name: name.clone(),
+                source_dir: path.clone(),
+            };
+            match tm.mount(cfg) {
+                Ok(report) => {
+                    eprintln!(
+                        "[{name}] Ingested {}/{} files",
+                        report.succeeded, report.total
+                    );
+                }
+                Err(e) => {
+                    eprintln!("Warning: skipping \"{name}\": {e}");
+                }
+            }
+        }
+
+        pramana_tui::DataSource::Standalone(Box::new(tm))
+    };
+
+    let mut app = pramana_tui::App::new(data_source, port, initial_tenant);
+
+    match pramana_tui::run_event_loop(&mut app) {
+        Ok(()) => 0,
+        Err(e) => {
+            eprintln!("TUI error: {e}");
+            1
+        }
+    }
 }
 
 #[cfg(test)]
