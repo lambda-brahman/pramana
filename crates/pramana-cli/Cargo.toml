@@ -1,0 +1,8 @@
+[package]
+name = "pramana-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "pramana"
+path = "src/main.rs"
