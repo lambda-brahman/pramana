@@ -222,7 +222,17 @@ fn l2_normalize(v: &mut [f32]) {
 }
 
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-    a.iter().zip(b.iter()).map(|(x, y)| x * y).sum()
+    debug_assert_eq!(
+        a.len(),
+        b.len(),
+        "dimension mismatch: {} vs {}",
+        a.len(),
+        b.len()
+    );
+    let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+    let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+    dot / (norm_a * norm_b).max(1e-12)
 }
 
 #[cfg(test)]
@@ -268,6 +278,31 @@ mod tests {
         let b = vec![0.0, 1.0];
         let sim = cosine_similarity(&a, &b);
         assert!(sim.abs() < 1e-6);
+    }
+
+    #[test]
+    fn cosine_similarity_unnormalized_vectors() {
+        // [3, 4] and [6, 8] are parallel — similarity must be 1.0
+        let a = vec![3.0_f32, 4.0];
+        let b = vec![6.0_f32, 8.0];
+        let sim = cosine_similarity(&a, &b);
+        assert!((sim - 1.0).abs() < 1e-5, "expected 1.0, got {sim}");
+    }
+
+    #[test]
+    fn cosine_similarity_zero_vector_returns_finite() {
+        let a = vec![0.0_f32, 0.0];
+        let b = vec![1.0_f32, 0.0];
+        let sim = cosine_similarity(&a, &b);
+        assert!(sim.is_finite());
+    }
+
+    #[test]
+    #[should_panic]
+    fn cosine_similarity_dimension_mismatch_panics_in_debug() {
+        let a = vec![1.0_f32, 0.0];
+        let b = vec![1.0_f32, 0.0, 0.0];
+        let _ = cosine_similarity(&a, &b);
     }
 
     #[test]
