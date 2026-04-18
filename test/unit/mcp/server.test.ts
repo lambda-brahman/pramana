@@ -76,6 +76,16 @@ describe("MCP server tool schemas", () => {
     const tool = result.tools.find((t) => t.name === "list")!;
     expect(tool.inputSchema.required).toContain("tenant");
   });
+
+  test("list rejects tag containing a comma", async () => {
+    const result = await client.callTool({
+      name: "list",
+      arguments: { tenant: "t", tags: ["a,b"] },
+    });
+    expect(result.isError).toBe(true);
+    const text = (result.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toContain("comma");
+  });
 });
 
 describe("MCP server proxy — success paths", () => {

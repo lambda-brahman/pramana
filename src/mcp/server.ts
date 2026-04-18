@@ -134,7 +134,10 @@ export function createMcpServer(opts: McpServerOptions): McpServer {
     "List knowledge artifacts, optionally filtered by tags",
     {
       tenant: z.string().describe("Tenant name"),
-      tags: z.array(z.string()).optional().describe("Filter by tags"),
+      tags: z
+        .array(z.string().regex(/^[^,]+$/, "Tag must not contain commas"))
+        .optional()
+        .describe("Filter by tags"),
     },
     async ({ tenant, tags }) => {
       const params = new URLSearchParams();
