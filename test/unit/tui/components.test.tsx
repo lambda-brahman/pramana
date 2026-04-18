@@ -267,6 +267,21 @@ describe("ScrollableList", () => {
     expect(lines.length).toBe(4);
   });
 
+  test("itemHeight returning 0 is treated as 1 — does not render all items", () => {
+    const items = ["a", "b", "c", "d", "e"];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={2}
+        itemHeight={() => 0}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).not.toContain("c");
+  });
+
 
   test("scroll indicator 'more below' count reflects variable heights", () => {
     // height=4, items each h=2, offset=0 (no scroll-up indicator).

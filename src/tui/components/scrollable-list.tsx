@@ -25,7 +25,7 @@ export function ScrollableList<T>({
   const getItemHeight = useCallback(
     (index: number) => {
       const item = items[index];
-      return item !== undefined && itemHeight ? itemHeight(item, index) : 1;
+      return item !== undefined && itemHeight ? Math.max(1, itemHeight(item, index)) : 1;
     },
     [items, itemHeight],
   );
