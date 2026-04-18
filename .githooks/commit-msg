@@ -3,9 +3,52 @@
 # commit-msg hook — validates conventional commit format
 #
 # Allowed:  type(scope): description   or   type: description
+#           type!: description          or   type(scope)!: description  (breaking change)
 # Types:    feat|fix|docs|refactor|test|chore|ci
 # Scopes:   engine|cli|plugin|author|build  (optional)
 # Also allows merge commits and reverts.
+
+# Self-test mode: bash .githooks/commit-msg --self-test
+if [[ "$1" == "--self-test" ]]; then
+  pass=0; fail=0
+  assert_valid() {
+    local tmp; tmp=$(mktemp); echo "$1" > "$tmp"
+    if bash "$0" "$tmp" 2>/dev/null; then
+      echo "PASS (valid):   $1"; ((pass++))
+    else
+      echo "FAIL (should be valid): $1"; ((fail++))
+    fi
+    rm "$tmp"
+  }
+  assert_invalid() {
+    local tmp; tmp=$(mktemp); echo "$1" > "$tmp"
+    if bash "$0" "$tmp" 2>/dev/null; then
+      echo "FAIL (should be invalid): $1"; ((fail++))
+    else
+      echo "PASS (invalid): $1"; ((pass++))
+    fi
+    rm "$tmp"
+  }
+
+  # Breaking-change marker
+  assert_valid "feat!: add new breaking api"
+  assert_valid "chore(build)!: drop legacy targets"
+  assert_valid "fix!: correct return type"
+  # Existing valid messages
+  assert_valid "feat(engine): add fts5 stemmer"
+  assert_valid "fix(cli): propagate exit code"
+  assert_valid "docs: update README"
+  assert_valid "chore(build): bump biome"
+  assert_valid "ci: add arm64 runner"
+  # Invalid
+  assert_invalid "random!"
+  assert_invalid "random: do something"
+  assert_invalid "fix: chore: double prefix"
+
+  echo ""
+  echo "Results: $pass passed, $fail failed"
+  [[ $fail -eq 0 ]] && exit 0 || exit 1
+fi
 
 msg=$(head -1 "$1")
 
@@ -21,15 +64,15 @@ fi
 
 # Reject double-prefix mistakes like "fix: chore: ..."
 types="feat|fix|docs|refactor|test|chore|ci"
-if [[ "$msg" =~ ^($types)(\([a-z]+\))?:\ ($types) ]]; then
+if [[ "$msg" =~ ^($types)(\([a-z]+\))?!?:\ ($types) ]]; then
   echo "ERROR: double-prefix detected in commit message."
   echo "  $msg"
   exit 1
 fi
 
-# Validate conventional commit format
+# Validate conventional commit format (optional breaking-change marker ! before colon)
 scopes="engine|cli|plugin|author|build"
-if [[ "$msg" =~ ^($types)(\(($scopes)\))?:\ .+ ]]; then
+if [[ "$msg" =~ ^($types)(\(($scopes)\))?!?:\ .+ ]]; then
   exit 0
 fi
 
@@ -37,6 +80,7 @@ echo "ERROR: commit message does not follow conventional commit format."
 echo "  $msg"
 echo ""
 echo "Expected: type(scope): description  or  type: description"
+echo "          type!: description         or  type(scope)!: description"
 echo "Types:    feat, fix, docs, refactor, test, chore, ci"
 echo "Scopes:   engine, cli, plugin, author, build (optional)"
 exit 1
