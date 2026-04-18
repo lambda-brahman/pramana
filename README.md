@@ -17,26 +17,48 @@ Without Pramana, Claude guesses your domain rules. With Pramana, Claude looks th
 
 ### Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with plugin marketplace support
+- An MCP-compatible client: [Claude Desktop](https://claude.ai/download) or [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 
 The install script downloads a standalone binary — no Bun, Node.js, or other runtime needed.
 
 **Platform support:** macOS (arm64, x64), Linux (x64), Windows (x64).
 
-### 1. Install Pramana and the Claude plugin
+### 1. Install Pramana
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lambda-brahman/pramana/main/install.sh | sh
 ```
 
-In Claude Code (requires plugin marketplace support):
+### 2. Configure your MCP client
 
-```
-/plugin marketplace add lambda-brahman/pramana
-/plugin install pramana@lambda-brahman
+Pramana exposes your knowledge base over [MCP](https://modelcontextprotocol.io) via the `pramana mcp` subcommand. Point your client at it once — no separate plugin needed.
+
+**Claude Desktop** — add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+
+```json
+{
+  "mcpServers": {
+    "pramana": {
+      "command": "pramana",
+      "args": ["mcp", "--source", "./knowledge"]
+    }
+  }
+}
 ```
 
-### 2. Write a knowledge file
+**Claude Code** — run once in your terminal:
+
+```bash
+claude mcp add pramana -- pramana mcp --source ./knowledge
+```
+
+Replace `./knowledge` with the path to your knowledge directory. For multiple directories, repeat `--source`:
+
+```bash
+pramana mcp --source ./law --source ./engineering
+```
+
+### 3. Write a knowledge file
 
 Create a Markdown file in a directory (e.g., `./knowledge/onboarding.md`):
 
@@ -68,7 +90,7 @@ New users go through a three-step onboarding.
 
 Each file is a **knowledge artifact** — a self-contained piece of expertise with a name (`slug`), labels (`tags`), and connections to other artifacts (`relationships`).
 
-### 3. Start Pramana and talk to Claude
+### 4. Start Pramana and talk to Claude
 
 In Claude Code, ask Claude to set things up:
 
@@ -211,7 +233,7 @@ Claude helps you name each knowledge base and keeps them separate. When you ask 
 
 ## How Claude uses your knowledge
 
-When the Pramana plugin is installed and running, Claude has four ways to access your knowledge:
+With Pramana connected via MCP, Claude has four ways to access your knowledge:
 
 - **Search** — find artifacts by topic or keyword
 - **Get** — read a specific artifact or section
@@ -252,7 +274,6 @@ See [Releases](https://github.com/lambda-brahman/pramana/releases) for binaries.
 ## Further reading
 
 - [Technical reference](docs/technical.md) — CLI commands, HTTP API, document format, multi-tenant details
-- [Plugin guide](plugin/README.md) — Skill details, invocation modes, architecture
 
 ## Troubleshooting
 
@@ -263,7 +284,7 @@ Check if another process is using port 5111: `lsof -i :5111`. Use `--port` or `P
 Ensure your Markdown files have valid frontmatter with at least a `slug` field. Run `pramana lint ./knowledge` to catch formatting issues.
 
 **Claude isn't using the knowledge base**
-Verify the plugin is installed (`/plugin list` in Claude Code) and Pramana is running. Add a hint like `(use /pramana:query to check the KB)` to your prompt.
+Verify that the MCP server is configured correctly in your client and that Pramana is running. Add a hint like `(use pramana to check the KB)` to your prompt.
 
 **"Connection refused" errors**
 The Pramana daemon may have stopped. Re-run `/pramana:setup ./knowledge` to restart it.
@@ -273,17 +294,13 @@ Restart the daemon — Pramana loads files at startup. Re-run `/pramana:setup` t
 
 ## Uninstall
 
-Remove the binary and the Claude Code plugin:
+Remove the binary:
 
 ```bash
 rm ~/.local/bin/pramana
 ```
 
-In Claude Code:
-
-```
-/plugin uninstall pramana@lambda-brahman
-```
+Then remove the `pramana` entry from your MCP client config (`claude_desktop_config.json` or via `claude mcp remove pramana`).
 
 ## Development
 
