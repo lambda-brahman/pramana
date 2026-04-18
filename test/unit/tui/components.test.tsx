@@ -341,6 +341,8 @@ describe("HelpOverlay", () => {
     const { lastFrame } = render(<HelpOverlay />);
     const frame = lastFrame()!;
     expect(frame).toContain("Scroll content");
+    expect(frame).toContain("Pan horizontally");
+    expect(frame).toContain("Reset horizontal scroll");
     expect(frame).toContain("Cycle panels");
     expect(frame).toContain("Follow relationship");
   });
@@ -350,6 +352,7 @@ describe("HelpOverlay", () => {
     const frame = lastFrame()!;
     expect(frame).toContain("Incremental search");
     expect(frame).toContain("Navigate results");
+    expect(frame).toContain("Pan snippets");
     expect(frame).toContain("View result");
   });
 

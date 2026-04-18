@@ -6,6 +6,7 @@ import type { DataSource } from "../../../../src/tui/data-source.ts";
 import {
   ARTIFACT_DETAIL_CHROME,
   ARTIFACT_DETAIL_SCROLL_INDICATOR,
+  HORIZONTAL_SCROLL_STEP,
 } from "../../../../src/tui/layout.ts";
 import { ArtifactDetailView } from "../../../../src/tui/views/artifact-detail.tsx";
 
@@ -132,5 +133,78 @@ describe("ArtifactDetailView maxScroll invariant", () => {
 
     const frame = lastFrame()!;
     expect(frame).toContain(`/${lineCount}]`);
+  });
+});
+
+describe("ArtifactDetailView heading styling preserved on horizontal scroll", () => {
+  function makeMarkdownArtifact(content: string): ArtifactView {
+    return {
+      slug: "md-test",
+      title: "Markdown Test",
+      tags: [],
+      relationships: [],
+      inverseRelationships: [],
+      sections: [],
+      content,
+      hash: "abc",
+    };
+  }
+
+  test("heading line retains bold styling after horizontal scroll", async () => {
+    const heading = "## Overview of the system architecture";
+    const artifact = makeMarkdownArtifact(`${heading}\nsome body text`);
+    const ds = createDataSource(artifact);
+
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="md-test"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={24}
+      />,
+    );
+    await delay(100);
+
+    const frameBefore = lastFrame()!;
+    expect(frameBefore).toContain("## Overview");
+
+    stdin.write("l");
+    await delay(100);
+
+    const frameAfter = lastFrame()!;
+    const slicedText = heading.slice(HORIZONTAL_SCROLL_STEP);
+    expect(frameAfter).toContain(slicedText);
+    expect(frameAfter).not.toContain("## Overview");
+    expect(frameAfter).toContain("col");
+  });
+
+  test("scrollX is clamped to max line length minus MIN_VISIBLE_COLUMNS", async () => {
+    const shortLine = "short";
+    const artifact = makeMarkdownArtifact(shortLine);
+    const ds = createDataSource(artifact);
+
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="md-test"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={24}
+      />,
+    );
+    await delay(100);
+
+    for (let i = 0; i < 20; i++) {
+      stdin.write("l");
+    }
+    await delay(100);
+
+    const frame = lastFrame()!;
+    expect(frame).not.toContain("col");
   });
 });
