@@ -182,8 +182,11 @@ The `author` skill requires an author to exist before it can create artifacts. A
 
 ## Development
 
+Rust workspace; stable toolchain.
+
 ```bash
-bun install
-bun test
-bun run typecheck
+cargo build --release -p pramana-cli
+cargo test --workspace
+cargo fmt --check
+cargo clippy --workspace -- -D warnings
 ```

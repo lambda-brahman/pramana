@@ -287,11 +287,19 @@ In Claude Code:
 
 ## Development
 
+Rust workspace; stable toolchain.
+
 ```bash
-bun install
-bun run test          # unit + e2e tests
-bun run test:precommit  # plugin workflow tests
-bun run typecheck
+cargo build --release -p pramana-cli   # produces target/release/pramana
+cargo test --workspace                 # full test suite
+cargo fmt --check
+cargo clippy --workspace -- -D warnings
+```
+
+Install the pre-commit hook (`cargo fmt` + `clippy` + lib tests):
+
+```bash
+git config core.hooksPath .githooks
 ```
 
 ## License
