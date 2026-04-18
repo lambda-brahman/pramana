@@ -106,6 +106,7 @@ pub enum KbListAction {
     RemoveKb(String),
     ToggleDaemon,
     OpenDir(String),
+    ShowDashboard,
 }
 
 pub fn handle_kb_list_input(view: &mut KbListView, key: KeyEvent) -> KbListAction {
@@ -172,6 +173,7 @@ fn handle_normal_input(view: &mut KbListView, key: KeyEvent) -> KbListAction {
             }
         }
         KeyCode::Char('S') => KbListAction::ToggleDaemon,
+        KeyCode::Char('i') => KbListAction::ShowDashboard,
         KeyCode::Char('q') | KeyCode::Esc => KbListAction::Quit,
         _ => KbListAction::None,
     }
@@ -471,6 +473,7 @@ pub fn render_kb_list(view: &mut KbListView, area: Rect, buf: &mut Buffer, activ
             ("[r]", "reload"),
             ("[o]", "open dir"),
             ("[S]", "daemon"),
+            ("[i]", "info"),
         ]
     };
 

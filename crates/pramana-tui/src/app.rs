@@ -4,6 +4,9 @@ use crate::io_worker::{IoHandle, IoResponse};
 use crate::views::artifact_detail::{
     handle_detail_input, render_artifact_detail, ArtifactDetailView, DetailAction,
 };
+use crate::views::dashboard::{
+    handle_dashboard_input, render_dashboard, DashboardAction, DashboardView,
+};
 use crate::views::graph::{handle_graph_input, render_graph, GraphAction, GraphView};
 use crate::views::kb_list::{handle_kb_list_input, render_kb_list, KbListAction, KbListView};
 use crate::views::search::{handle_search_input, render_search, SearchAction, SearchView};
@@ -23,6 +26,7 @@ pub enum View {
     Search,
     ArtifactDetail { slug: String },
     Graph { from: String },
+    Dashboard,
 }
 
 struct NavEntry {
@@ -40,6 +44,7 @@ pub struct App {
     pub search: SearchView,
     pub detail: ArtifactDetailView,
     pub graph: GraphView,
+    pub dashboard: DashboardView,
     pub show_help: bool,
     pub should_quit: bool,
     pub last_content_height: u16,
@@ -65,6 +70,7 @@ impl App {
             search: SearchView::new(),
             detail: ArtifactDetailView::new(),
             graph: GraphView::new(),
+            dashboard: DashboardView::new(),
             show_help: false,
             should_quit: false,
             last_content_height: 20,
@@ -114,6 +120,9 @@ impl App {
                     segments.push(self.active_tenant.clone());
                     segments.push(format!("graph:{from}"));
                 }
+                View::Dashboard => {
+                    segments.push("dashboard".into());
+                }
             }
         }
         segments
@@ -125,6 +134,7 @@ impl App {
             View::Search => "search",
             View::ArtifactDetail { .. } => "detail",
             View::Graph { .. } => "graph",
+            View::Dashboard => "dashboard",
         }
     }
 
@@ -158,6 +168,7 @@ impl App {
                 View::Search => self.handle_search_event(key),
                 View::ArtifactDetail { .. } => self.handle_detail_event(key),
                 View::Graph { .. } => self.handle_graph_event(key),
+                View::Dashboard => self.handle_dashboard_event(key),
             }
         }
     }
@@ -189,6 +200,22 @@ impl App {
             KbListAction::ToggleDaemon => {
                 self.kb_list.status_message =
                     Some("Daemon toggle not available in standalone mode".into());
+            }
+            KbListAction::ShowDashboard => {
+                let daemon_status = match self.kb_list.daemon_state {
+                    crate::views::kb_list::DaemonState::Checking => "checking...",
+                    crate::views::kb_list::DaemonState::Running => "running",
+                    crate::views::kb_list::DaemonState::Stopped => "stopped",
+                    crate::views::kb_list::DaemonState::Starting => "starting...",
+                    crate::views::kb_list::DaemonState::Stopping => "stopping...",
+                };
+                self.dashboard.populate(
+                    self.mode_label,
+                    self.port,
+                    daemon_status.into(),
+                    self.kb_list.tenants.clone(),
+                );
+                self.push_view(View::Dashboard);
             }
             KbListAction::None => {}
         }
@@ -275,6 +302,14 @@ impl App {
             depth,
             self.graph_generation,
         );
+    }
+
+    fn handle_dashboard_event(&mut self, key: KeyEvent) {
+        let action = handle_dashboard_input(&mut self.dashboard, key);
+        match action {
+            DashboardAction::Back => self.pop_view(),
+            DashboardAction::None => {}
+        }
     }
 
     fn navigate_to_artifact(&mut self, slug: &str) {
@@ -465,6 +500,7 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
         View::Search => render_search(&mut app.search, content_area, buf),
         View::ArtifactDetail { .. } => render_artifact_detail(&mut app.detail, content_area, buf),
         View::Graph { .. } => render_graph(&mut app.graph, content_area, buf),
+        View::Dashboard => render_dashboard(&mut app.dashboard, content_area, buf),
     }
 
     // Status bar
@@ -487,6 +523,7 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
                 ("r", "Reload KB"),
                 ("o", "Open source dir"),
                 ("S", "Toggle daemon"),
+                ("i", "Dashboard"),
                 ("q/Esc", "Quit"),
                 ("?", "Toggle help"),
             ],
@@ -518,6 +555,7 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
                 ("Esc/q", "Back"),
                 ("?", "Toggle help"),
             ],
+            View::Dashboard => vec![("j/k", "Scroll"), ("Esc/q", "Back"), ("?", "Toggle help")],
         };
         HelpOverlay::new(&bindings).render(area, buf);
     }
