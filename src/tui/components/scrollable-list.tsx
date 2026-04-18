@@ -46,6 +46,7 @@ export function ScrollableList<T>({
   );
 
   useEffect(() => {
+    if (selectedIndex < 0) return;
     if (selectedIndex < scrollOffset) {
       setScrollOffset(selectedIndex);
     } else if (selectedIndex >= endIndexForOffset(scrollOffset)) {

@@ -182,6 +182,39 @@ describe("ScrollableList", () => {
     expect(frame).not.toContain("item-0");
   });
 
+  test("selectedIndex=-1 does not corrupt scroll state (shows all items)", () => {
+    const items = ["alpha", "beta", "gamma"];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={-1}
+        height={10}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("alpha");
+    expect(frame).toContain("beta");
+    expect(frame).toContain("gamma");
+  });
+
+  test("selectedIndex=-1 with many items does not show empty list", () => {
+    const items = Array.from({ length: 10 }, (_, i) => `item-${i}`);
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={-1}
+        height={5}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("item-0");
+    expect(frame).toContain("item-4");
+    expect(frame).not.toContain("item-5");
+    expect(frame).toContain("more below");
+  });
+
   test("scroll indicator 'more below' count reflects variable heights", () => {
     // items: [2, 2, 2, 2] lines each, viewport = 4 lines
     // offset=0 shows items 0 and 1. endIndex=2. "more below" = 4 - 2 = 2 items
