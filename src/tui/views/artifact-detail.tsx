@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from "ink";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import type { ArtifactView } from "../../engine/reader.ts";
 import type { DataSource } from "../data-source.ts";
 import {
@@ -64,6 +64,8 @@ export function ArtifactDetailView({
       ]
     : [];
 
+  const contentLines = useMemo(() => (artifact ? artifact.content.split("\n") : []), [artifact]);
+
   useInput(
     (input, key) => {
       if (key.escape) {
@@ -80,7 +82,6 @@ export function ArtifactDetailView({
       }
 
       if (panel === "content") {
-        const contentLines = artifact?.content.split("\n") ?? [];
         const maxScroll = Math.max(
           0,
           contentLines.length -
@@ -88,7 +89,8 @@ export function ArtifactDetailView({
         );
         let maxLineLen = 0;
         for (const l of contentLines) {
-          if (l.length > maxLineLen) maxLineLen = l.length;
+          const len = graphemeLen(l);
+          if (len > maxLineLen) maxLineLen = len;
         }
         const maxScrollX = Math.max(0, maxLineLen - MIN_VISIBLE_COLUMNS);
         if (input === "j" || key.downArrow) {
@@ -143,7 +145,6 @@ export function ArtifactDetailView({
   if (error) return <Text color={theme.error}>Error: {error}</Text>;
   if (!artifact) return <Text color={theme.error}>Not found: {slug}</Text>;
 
-  const contentLines = artifact.content.split("\n");
   const visibleHeight = height - ARTIFACT_DETAIL_CHROME - ARTIFACT_DETAIL_SCROLL_INDICATOR;
   const visibleContent = contentLines.slice(scrollOffset, scrollOffset + visibleHeight);
 
@@ -298,7 +299,7 @@ type InlineSegment = {
 };
 
 function renderContentLine(line: string, scrollX: number): ReactNode {
-  const displayText = scrollX > 0 ? line.slice(scrollX) : line;
+  const displayText = scrollX > 0 ? graphemeSlice(line, scrollX) : line;
 
   if (line.startsWith("### ")) {
     return (
@@ -370,12 +371,13 @@ function applyScrollX(segments: InlineSegment[], scrollX: number): InlineSegment
   const result: InlineSegment[] = [];
 
   for (const seg of segments) {
-    if (skip >= seg.text.length) {
-      skip -= seg.text.length;
+    const len = graphemeLen(seg.text);
+    if (skip >= len) {
+      skip -= len;
       continue;
     }
     if (skip > 0) {
-      result.push({ text: seg.text.slice(skip), style: seg.style });
+      result.push({ text: graphemeSlice(seg.text, skip), style: seg.style });
       skip = 0;
     } else {
       result.push(seg);
@@ -383,6 +385,14 @@ function applyScrollX(segments: InlineSegment[], scrollX: number): InlineSegment
   }
 
   return result;
+}
+
+function graphemeLen(s: string): number {
+  return Array.from(s).length;
+}
+
+function graphemeSlice(s: string, start: number): string {
+  return Array.from(s).slice(start).join("");
 }
 
 function renderSegments(segments: InlineSegment[]): ReactNode {

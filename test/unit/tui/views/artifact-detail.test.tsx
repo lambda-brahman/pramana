@@ -181,7 +181,7 @@ describe("ArtifactDetailView heading styling preserved on horizontal scroll", ()
     expect(frameAfter).toContain("col");
   });
 
-  test("scrollX is clamped to max line length minus MIN_VISIBLE_COLUMNS", async () => {
+  test("scrollX is clamped to max grapheme length minus MIN_VISIBLE_COLUMNS", async () => {
     const shortLine = "short";
     const artifact = makeMarkdownArtifact(shortLine);
     const ds = createDataSource(artifact);
@@ -206,5 +206,75 @@ describe("ArtifactDetailView heading styling preserved on horizontal scroll", ()
 
     const frame = lastFrame()!;
     expect(frame).not.toContain("col");
+  });
+});
+
+describe("ArtifactDetailView grapheme-safe horizontal scroll", () => {
+  function makeEmojiArtifact(content: string): ArtifactView {
+    return {
+      slug: "emoji-test",
+      title: "Emoji Test",
+      tags: [],
+      relationships: [],
+      inverseRelationships: [],
+      sections: [],
+      content,
+      hash: "abc",
+    };
+  }
+
+  test("emoji counted as single graphemes: scrolling 10 steps past 10 emoji leaves none visible", async () => {
+    // Each 🔵 is 1 grapheme but 2 UTF-16 code units. Without grapheme-aware
+    // counting, .slice(10) only skips 5 emoji instead of all 10.
+    const line = "🔵".repeat(10) + "x".repeat(20);
+    const artifact = makeEmojiArtifact(line);
+    const ds = createDataSource(artifact);
+
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="emoji-test"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={24}
+      />,
+    );
+    await delay(100);
+
+    stdin.write("l");
+    await delay(100);
+
+    const frame = lastFrame()!;
+    expect(frame).not.toContain("🔵");
+    expect(frame).toContain("x");
+  });
+
+  test("no replacement characters when emoji sit near scroll boundary", async () => {
+    // A line where emoji are at positions that could split surrogate pairs
+    // if UTF-16 slice is used at the wrong offset.
+    const line = "abc🔵def🔵" + "y".repeat(25);
+    const artifact = makeEmojiArtifact(line);
+    const ds = createDataSource(artifact);
+
+    const { lastFrame, stdin } = render(
+      <ArtifactDetailView
+        dataSource={ds}
+        tenant="test"
+        slug="emoji-test"
+        isActive={true}
+        onBack={() => {}}
+        onNavigate={() => {}}
+        height={24}
+      />,
+    );
+    await delay(100);
+
+    stdin.write("l");
+    await delay(100);
+
+    const frame = lastFrame()!;
+    expect(frame).not.toContain("\uFFFD");
   });
 });
