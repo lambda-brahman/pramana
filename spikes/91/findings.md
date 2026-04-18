@@ -2,9 +2,9 @@
 
 ## TL;DR
 
-**defer** — `sqlite-vec` works and wins on latency above ~1k docs (5k: p95 **1.7ms vs 4.2ms**, 50k: **24ms vs 36ms**), but at today's scale (≤100 docs) both are sub-millisecond and the shipping cost is non-trivial (loadable `.dylib/.so/.dll` cache + extension-loading libsqlite on macOS, same shape as #38/#90). Recommend revisiting when any tenant crosses ~1000 docs or once a reusable native-binary loader lands.
+**defer** — `sqlite-vec` works, produces **bit-identical semantic results** to the current brute-force backend (90/90 top-1 match across the issue #28 judged set, ΔMRR=0 [0,0]), and wins on latency above ~1k docs (5k: p95 **1.7 ms vs 4.2 ms**, 50k: **24 ms vs 36 ms**). But at today's scale (≤100 docs) both are sub-millisecond, so the tangible benefit is architectural; shipping cost is non-trivial (loadable `.dylib/.so/.dll` cache + extension-loading libsqlite on macOS, same shape as #38/#90). Recommend revisiting when any tenant crosses ~1000 docs or once a reusable native-binary loader lands.
 
-Synthetic-only: results here measure pure vector retrieval. The architectural simplification (single source of truth + hybrid RRF expressed as one SQL) is demonstrated but not the deciding factor at current scale.
+Recall/precision were checked empirically (not just assumed from identical math) using the judged set and bge-small-en-v1.5 embeddings — see Q5 below.
 
 ## Method
 
@@ -60,6 +60,23 @@ Reads:
 - Ingest cost shifts from ~free to ~20 µs/insert under vec-exact — meaningful at 50k (~1 s) but trivial at 5k.
 - RSS delta is ~+50 MB at 50k. Disk: 76 MB at 50k.
 
+### Q5 — semantic accuracy on the judged set — **bit-identical**
+
+Re-ran the judged set from issue #28 / `exploration/search-benchmark` (3 corpora — specs, REST API, formal CS — 36 fixtures, 90 queries) with real `Xenova/bge-small-en-v1.5` embeddings through both backends.
+
+| | js-map | vec-exact | Δ |
+|---|---:|---:|---:|
+| P@1 | 0.878 | 0.878 | +0.000 |
+| P@5 | 0.376 | 0.376 | +0.000 |
+| R@5 | 0.799 | 0.799 | +0.000 |
+| MRR | 0.924 | 0.924 | +0.000 |
+| nDCG@5 | 0.815 | 0.815 | +0.000 |
+| failure | 0.011 | 0.011 | +0.000 |
+
+Per-corpus: top-1 matched **90/90** queries; full top-5 slug order matched **90/90**. Paired bootstrap 95% CI: ΔMRR = 0.000 [0.000, 0.000], ΔnDCG@5 = 0.000 [0.000, 0.000] — `significant=false` (no measurable difference).
+
+Expected result — `vec_distance_cosine` against L2-normalized vectors is the same math as the existing JS dot-product — but this confirms there is no precision or tie-break drift in practice. Switching backends does not change what users see. Reproduce: `bun spikes/91/q5-accuracy.ts`.
+
 ### Q4 — hybrid-search shape — **parity demonstrated**
 
 Single-SQL RRF reproduces the existing JS RRF (`src/storage/sqlite/index.ts:244-291`) exactly:
@@ -78,10 +95,10 @@ Recall between brute-force and exact `vec_distance_cosine` is trivially identica
 
 ## Caveats
 
-- **Synthetic vectors.** Uniform `[-1, 1]` noise normalized to the unit sphere. Real BGE embeddings are structured; perf won't change but relevance tuning (which we didn't test) could.
+- **Synthetic vectors for perf.** Q3 used uniform `[-1, 1]` noise normalized to the unit sphere. Real BGE embeddings are structured; perf won't change materially. Q5 used real BGE-small embeddings against the issue #28 judged set.
 - **One machine.** Apple Silicon M-series. Intel Mac, Linux ARM, and Linux x64 not measured. Linux avoids the `setCustomSQLite` hack.
 - **No end-to-end ingest timing.** We didn't measure pramana startup + `buildEmbeddings` rebuild end-to-end; only the vector-store piece.
-- **Judged relevance set not built.** Without real docs+queries, a recall/NDCG comparison would be synthetic and uninformative. If we adopt, a 20-query judged set should be built from real `ggo` docs before switching the default backend.
+- **Judged set is re-used, not new.** The 90 queries come from issue #28's `exploration/search-benchmark`, authored by the same builder who wrote the fixtures. If we adopt, it's worth adding queries drawn from real user sessions to guard against vocabulary leakage.
 - **sqlite-vec 0.1.9 is pre-1.0.** API may shift; the `vec0` virtual table is the stable bit.
 
 ## Shipping cost (what "adopt" actually requires)
@@ -116,4 +133,5 @@ bun install
 # macOS only: brew install sqlite
 bun bench.ts --n=5000 --queries=200 --k=10
 bun q4-hybrid.ts
+bun q5-accuracy.ts      # judged set — downloads bge-small on first run
 ```

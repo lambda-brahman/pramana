@@ -10,6 +10,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.1.0",
     "sqlite-vec": "^0.1.9"
   }
 }
