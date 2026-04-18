@@ -2,9 +2,9 @@ name: CI (Rust)
 
 on:
   push:
-    branches: [rust-port]
+    branches: [main, rust-port]
   pull_request:
-    branches: [rust-port]
+    branches: [main, rust-port]
 
 jobs:
   rust:
