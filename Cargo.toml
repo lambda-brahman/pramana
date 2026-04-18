@@ -3,4 +3,5 @@ resolver = "2"
 members = [
     "crates/pramana-core",
     "crates/pramana-cli",
+    "crates/pramana-parser",
 ]
