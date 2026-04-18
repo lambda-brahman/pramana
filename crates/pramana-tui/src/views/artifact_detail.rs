@@ -8,6 +8,7 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Tabs, Widget};
+use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Panel {
@@ -42,6 +43,7 @@ pub struct ArtifactDetailView {
     pub scroll_x: usize,
     pub content_lines: Vec<String>,
     pub scroll_state: ScrollableListState,
+    pub last_viewport_height: usize,
 }
 
 impl Default for ArtifactDetailView {
@@ -54,6 +56,7 @@ impl Default for ArtifactDetailView {
             scroll_x: 0,
             content_lines: Vec::new(),
             scroll_state: ScrollableListState::new(),
+            last_viewport_height: 20,
         }
     }
 }
@@ -71,6 +74,7 @@ impl ArtifactDetailView {
         self.rel_index = 0;
         self.scroll_x = 0;
         self.scroll_state = ScrollableListState::new();
+        self.last_viewport_height = 20;
     }
 }
 
@@ -148,14 +152,22 @@ fn handle_rel_input(view: &mut ArtifactDetailView, key: KeyEvent) -> DetailActio
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => {
             view.rel_index = (view.rel_index + 1).min(total - 1);
-            view.scroll_state
-                .ensure_visible(view.rel_index as isize, total, 20, &|_| 1);
+            view.scroll_state.ensure_visible(
+                view.rel_index as isize,
+                total,
+                view.last_viewport_height,
+                &|_| 1,
+            );
             DetailAction::None
         }
         KeyCode::Char('k') | KeyCode::Up => {
             view.rel_index = view.rel_index.saturating_sub(1);
-            view.scroll_state
-                .ensure_visible(view.rel_index as isize, total, 20, &|_| 1);
+            view.scroll_state.ensure_visible(
+                view.rel_index as isize,
+                total,
+                view.last_viewport_height,
+                &|_| 1,
+            );
             DetailAction::None
         }
         KeyCode::Enter => {
@@ -195,14 +207,22 @@ fn handle_sections_input(view: &mut ArtifactDetailView, key: KeyEvent) -> Detail
     match key.code {
         KeyCode::Char('j') | KeyCode::Down => {
             view.rel_index = (view.rel_index + 1).min(total - 1);
-            view.scroll_state
-                .ensure_visible(view.rel_index as isize, total, 20, &|_| 1);
+            view.scroll_state.ensure_visible(
+                view.rel_index as isize,
+                total,
+                view.last_viewport_height,
+                &|_| 1,
+            );
             DetailAction::None
         }
         KeyCode::Char('k') | KeyCode::Up => {
             view.rel_index = view.rel_index.saturating_sub(1);
-            view.scroll_state
-                .ensure_visible(view.rel_index as isize, total, 20, &|_| 1);
+            view.scroll_state.ensure_visible(
+                view.rel_index as isize,
+                total,
+                view.last_viewport_height,
+                &|_| 1,
+            );
             DetailAction::None
         }
         KeyCode::Enter => {
@@ -217,7 +237,7 @@ fn handle_sections_input(view: &mut ArtifactDetailView, key: KeyEvent) -> Detail
     }
 }
 
-pub fn render_artifact_detail(view: &ArtifactDetailView, area: Rect, buf: &mut Buffer) {
+pub fn render_artifact_detail(view: &mut ArtifactDetailView, area: Rect, buf: &mut Buffer) {
     let artifact = match &view.artifact {
         Some(a) => a,
         None => {
@@ -288,6 +308,7 @@ pub fn render_artifact_detail(view: &ArtifactDetailView, area: Rect, buf: &mut B
     tabs.render(chunks[2], buf);
 
     // Content area
+    view.last_viewport_height = chunks[3].height as usize;
     match view.panel {
         Panel::Content => render_content_panel(view, chunks[3], buf),
         Panel::Relationships => render_relationships_panel(view, chunks[3], buf),
@@ -410,10 +431,10 @@ fn render_sections_panel(view: &ArtifactDetailView, area: Rect, buf: &mut Buffer
 
 /// Grapheme-safe horizontal scroll and markdown styling (issue #63).
 fn style_markdown_line(line: &str, scroll_x: usize, width: usize) -> Line<'static> {
-    let chars: Vec<char> = line.chars().collect();
-    let visible_start = scroll_x.min(chars.len());
-    let visible_end = (scroll_x + width).min(chars.len());
-    let visible: String = chars[visible_start..visible_end].iter().collect();
+    let graphemes: Vec<&str> = line.graphemes(true).collect();
+    let visible_start = scroll_x.min(graphemes.len());
+    let visible_end = (scroll_x + width).min(graphemes.len());
+    let visible: String = graphemes[visible_start..visible_end].concat();
 
     if line.starts_with("### ") {
         return Line::styled(visible, Style::default().fg(THEME.heading3));
@@ -502,6 +523,10 @@ fn style_markdown_line(line: &str, scroll_x: usize, width: usize) -> Line<'stati
     Line::from(spans)
 }
 
+pub fn style_markdown_line_for_test(line: &str, scroll_x: usize, width: usize) -> Line<'static> {
+    style_markdown_line(line, scroll_x, width)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -523,5 +548,12 @@ mod tests {
         let line = style_markdown_line("Hello World", 3, 5);
         let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
         assert_eq!(text, "lo Wo");
+    }
+
+    #[test]
+    fn horizontal_scroll_preserves_grapheme_clusters() {
+        let line = style_markdown_line("Hi 👨\u{200d}👩\u{200d}👧 end", 3, 5);
+        let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+        assert_eq!(text, "👨\u{200d}👩\u{200d}👧 end");
     }
 }

@@ -10,6 +10,7 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Widget};
 use std::time::Instant;
+use unicode_segmentation::UnicodeSegmentation;
 
 const DEBOUNCE_MS: u128 = 200;
 
@@ -23,6 +24,8 @@ pub struct SearchView {
     pub scroll_state: ScrollableListState,
     pub last_input_time: Option<Instant>,
     pub pending_query: Option<String>,
+    pub error_message: Option<String>,
+    pub last_viewport_height: usize,
 }
 
 impl Default for SearchView {
@@ -37,6 +40,8 @@ impl Default for SearchView {
             scroll_state: ScrollableListState::new(),
             last_input_time: None,
             pending_query: None,
+            error_message: None,
+            last_viewport_height: 20,
         }
     }
 }
@@ -68,6 +73,7 @@ impl SearchView {
     fn schedule_search(&mut self) {
         self.last_input_time = Some(Instant::now());
         self.pending_query = Some(self.input.value.clone());
+        self.error_message = None;
     }
 }
 
@@ -104,7 +110,9 @@ fn handle_input_mode(view: &mut SearchView, key: KeyEvent) -> SearchAction {
                 let heights = compute_heights(&view.results);
                 let len = heights.len();
                 view.scroll_state
-                    .ensure_visible(0, len, 20, &|i| heights.get(i).copied().unwrap_or(1));
+                    .ensure_visible(0, len, view.last_viewport_height, &|i| {
+                        heights.get(i).copied().unwrap_or(1)
+                    });
             }
             SearchAction::None
         }
@@ -135,10 +143,12 @@ fn handle_results_mode(view: &mut SearchView, key: KeyEvent) -> SearchAction {
                 view.selected_index = (view.selected_index + 1).min(max);
                 let heights = compute_heights(&view.results);
                 let len = heights.len();
-                view.scroll_state
-                    .ensure_visible(view.selected_index, len, 20, &|i| {
-                        heights.get(i).copied().unwrap_or(1)
-                    });
+                view.scroll_state.ensure_visible(
+                    view.selected_index,
+                    len,
+                    view.last_viewport_height,
+                    &|i| heights.get(i).copied().unwrap_or(1),
+                );
             }
             SearchAction::None
         }
@@ -147,10 +157,12 @@ fn handle_results_mode(view: &mut SearchView, key: KeyEvent) -> SearchAction {
                 view.selected_index -= 1;
                 let heights = compute_heights(&view.results);
                 let len = heights.len();
-                view.scroll_state
-                    .ensure_visible(view.selected_index, len, 20, &|i| {
-                        heights.get(i).copied().unwrap_or(1)
-                    });
+                view.scroll_state.ensure_visible(
+                    view.selected_index,
+                    len,
+                    view.last_viewport_height,
+                    &|i| heights.get(i).copied().unwrap_or(1),
+                );
             } else {
                 view.input_focused = true;
                 view.selected_index = -1;
@@ -184,7 +196,7 @@ fn compute_heights(results: &[SearchResult]) -> Vec<usize> {
         .collect()
 }
 
-pub fn render_search(view: &SearchView, area: Rect, buf: &mut Buffer) {
+pub fn render_search(view: &mut SearchView, area: Rect, buf: &mut Buffer) {
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(THEME.border))
@@ -227,17 +239,23 @@ pub fn render_search(view: &SearchView, area: Rect, buf: &mut Buffer) {
     }
     Line::from(input_spans).render(chunks[0], buf);
 
-    // Result count
-    let count_msg = if view.results.is_empty() && !view.input.value.is_empty() && !view.loading {
-        "  No results".to_string()
-    } else if !view.results.is_empty() {
-        format!("  {} results", view.results.len())
+    // Result count / error
+    if let Some(ref err) = view.error_message {
+        Line::styled(format!("  {err}"), Style::default().fg(THEME.error)).render(chunks[1], buf);
     } else {
-        String::new()
-    };
-    Line::styled(count_msg, Style::default().fg(THEME.muted)).render(chunks[1], buf);
+        let count_msg = if view.results.is_empty() && !view.input.value.is_empty() && !view.loading
+        {
+            "  No results".to_string()
+        } else if !view.results.is_empty() {
+            format!("  {} results", view.results.len())
+        } else {
+            String::new()
+        };
+        Line::styled(count_msg, Style::default().fg(THEME.muted)).render(chunks[1], buf);
+    }
 
     // Results list
+    view.last_viewport_height = chunks[2].height as usize;
     let items: Vec<Vec<Line>> = view
         .results
         .iter()
@@ -251,10 +269,10 @@ pub fn render_search(view: &SearchView, area: Rect, buf: &mut Buffer) {
                 ),
             ])];
             if !r.snippet.is_empty() {
-                let snippet_chars: Vec<char> = r.snippet.chars().collect();
-                let start = view.scroll_x.min(snippet_chars.len());
-                let end = (view.scroll_x + area.width as usize).min(snippet_chars.len());
-                let visible: String = snippet_chars[start..end].iter().collect();
+                let graphemes: Vec<&str> = r.snippet.graphemes(true).collect();
+                let start = view.scroll_x.min(graphemes.len());
+                let end = (view.scroll_x + area.width as usize).min(graphemes.len());
+                let visible: String = graphemes[start..end].concat();
                 lines.push(Line::styled(
                     format!("    {visible}"),
                     Style::default().fg(THEME.muted),

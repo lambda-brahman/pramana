@@ -35,6 +35,7 @@ pub struct App {
     pub detail: ArtifactDetailView,
     pub show_help: bool,
     pub should_quit: bool,
+    pub last_content_height: u16,
 }
 
 impl App {
@@ -50,6 +51,7 @@ impl App {
             detail: ArtifactDetailView::new(),
             show_help: false,
             should_quit: false,
+            last_content_height: 20,
         };
         app.refresh_tenants();
         app
@@ -241,8 +243,10 @@ impl App {
     }
 
     fn navigate_to_artifact(&mut self, slug: &str) {
+        self.search.loading = true;
         match self.data_source.get(&self.active_tenant, slug) {
             Ok(Some(artifact)) => {
+                self.search.loading = false;
                 self.detail = ArtifactDetailView::new();
                 self.detail.set_artifact(artifact);
                 self.push_view(View::ArtifactDetail {
@@ -251,17 +255,21 @@ impl App {
             }
             Ok(None) => {
                 self.search.loading = false;
+                self.search.error_message = Some(format!("Artifact '{slug}' not found"));
             }
-            Err(_) => {
+            Err(e) => {
                 self.search.loading = false;
+                self.search.error_message = Some(format!("Failed to load '{slug}': {e}"));
             }
         }
     }
 
     pub fn tick(&mut self) {
         if matches!(self.current_view(), View::KbList) && self.kb_list.needs_health_check() {
+            self.kb_list.status_message = Some("Checking daemon...".into());
             let running = DataSource::check_daemon(self.port);
             self.kb_list.set_health_result(running);
+            self.kb_list.status_message = None;
         }
 
         if matches!(self.current_view(), View::Search) && self.search.needs_search() {
@@ -269,14 +277,17 @@ impl App {
                 self.search.loading = true;
                 match self.data_source.search(&self.active_tenant, &query) {
                     Ok(results) => self.search.set_results(results),
-                    Err(_) => self.search.set_results(Vec::new()),
+                    Err(e) => {
+                        self.search.set_results(Vec::new());
+                        self.search.error_message = Some(format!("Search failed: {e}"));
+                    }
                 }
             }
         }
     }
 }
 
-pub fn render_app(app: &App, area: Rect, buf: &mut Buffer) {
+pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
     let chunks = Layout::vertical([
         Constraint::Length(1), // breadcrumb
         Constraint::Min(1),    // content
@@ -290,10 +301,11 @@ pub fn render_app(app: &App, area: Rect, buf: &mut Buffer) {
 
     // Content
     let content_area = chunks[1];
+    app.last_content_height = content_area.height;
     match app.current_view() {
-        View::KbList => render_kb_list(&app.kb_list, content_area, buf, &app.active_tenant),
-        View::Search => render_search(&app.search, content_area, buf),
-        View::ArtifactDetail { .. } => render_artifact_detail(&app.detail, content_area, buf),
+        View::KbList => render_kb_list(&mut app.kb_list, content_area, buf, &app.active_tenant),
+        View::Search => render_search(&mut app.search, content_area, buf),
+        View::ArtifactDetail { .. } => render_artifact_detail(&mut app.detail, content_area, buf),
     }
 
     // Status bar
@@ -360,26 +372,35 @@ fn open_directory(dir: &str) -> Result<(), std::io::Error> {
 }
 
 pub fn run_event_loop(app: &mut App) -> Result<(), TuiError> {
+    let prev_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        ratatui::restore();
+        prev_hook(info);
+    }));
+
     let mut terminal = ratatui::init();
 
-    loop {
-        terminal.draw(|frame| {
-            let area = frame.area();
-            render_app(app, area, frame.buffer_mut());
-        })?;
+    let result = (|| -> Result<(), TuiError> {
+        loop {
+            terminal.draw(|frame| {
+                let area = frame.area();
+                render_app(app, area, frame.buffer_mut());
+            })?;
 
-        if app.should_quit {
-            break;
+            if app.should_quit {
+                break;
+            }
+
+            if event::poll(Duration::from_millis(100))? {
+                let ev = event::read()?;
+                app.handle_event(ev);
+            }
+
+            app.tick();
         }
-
-        if event::poll(Duration::from_millis(100))? {
-            let ev = event::read()?;
-            app.handle_event(ev);
-        }
-
-        app.tick();
-    }
+        Ok(())
+    })();
 
     ratatui::restore();
-    Ok(())
+    result
 }

@@ -40,6 +40,7 @@ pub struct KbListView {
     pub last_health_check: Option<Instant>,
     pub status_message: Option<String>,
     pub error_message: Option<String>,
+    pub last_viewport_height: usize,
 }
 
 impl Default for KbListView {
@@ -55,6 +56,7 @@ impl Default for KbListView {
             last_health_check: None,
             status_message: None,
             error_message: None,
+            last_viewport_height: 20,
         }
     }
 }
@@ -308,12 +310,12 @@ fn update_scroll(view: &mut KbListView) {
     view.scroll_state.ensure_visible(
         view.selected_index as isize,
         view.tenants.len(),
-        20, // will be recalculated at render time
+        view.last_viewport_height,
         &|_| 1,
     );
 }
 
-pub fn render_kb_list(view: &KbListView, area: Rect, buf: &mut Buffer, active_tenant: &str) {
+pub fn render_kb_list(view: &mut KbListView, area: Rect, buf: &mut Buffer, active_tenant: &str) {
     let daemon_label = match view.daemon_state {
         DaemonState::Checking => "checking...",
         DaemonState::Running => "daemon: running",
@@ -354,6 +356,7 @@ pub fn render_kb_list(view: &KbListView, area: Rect, buf: &mut Buffer, active_te
     let list_height = inner
         .height
         .saturating_sub(form_lines + hint_lines + msg_lines);
+    view.last_viewport_height = list_height as usize;
 
     let chunks = Layout::vertical([
         Constraint::Length(list_height),

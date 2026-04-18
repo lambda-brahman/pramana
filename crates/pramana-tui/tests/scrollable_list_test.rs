@@ -54,17 +54,16 @@ mod scrollable_list_algorithm {
     }
 
     /// Regression test for issue #63: grapheme-safe horizontal scroll.
-    /// Multi-byte characters should not cause panics when scrolled.
+    /// Scrolling through multi-codepoint graphemes (ZWJ family emoji)
+    /// must not split them mid-cluster.
     #[test]
     fn grapheme_safe_scroll() {
-        // Test with emoji and CJK characters
-        let line = "Hello 🌍 世界 test";
-        let chars: Vec<char> = line.chars().collect();
-        let start = 5usize.min(chars.len());
-        let end = 10usize.min(chars.len());
-        let visible: String = chars[start..end].iter().collect();
-        // Should not panic and should produce valid UTF-8
-        assert!(visible.is_char_boundary(0));
+        use pramana_tui::views::artifact_detail;
+
+        let line =
+            artifact_detail::style_markdown_line_for_test("Hi 👨\u{200d}👩\u{200d}👧 end", 3, 5);
+        let text: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
+        assert_eq!(text, "👨\u{200d}👩\u{200d}👧 end");
     }
 }
 
@@ -76,7 +75,7 @@ mod golden_snapshots {
         App::new(ds, 5111, None)
     }
 
-    fn render_to_string(app: &App, width: u16, height: u16) -> String {
+    fn render_to_string(app: &mut App, width: u16, height: u16) -> String {
         let area = Rect::new(0, 0, width, height);
         let mut buf = Buffer::empty(area);
         render_app(app, area, &mut buf);
@@ -98,8 +97,8 @@ mod golden_snapshots {
     /// ratatui's TestBackend (no ANSI escapes).
     #[test]
     fn kb_list_empty() {
-        let app = make_test_app();
-        let output = render_to_string(&app, 60, 15);
+        let mut app = make_test_app();
+        let output = render_to_string(&mut app, 60, 15);
         assert!(output.contains("Knowledge Bases (0)"));
         assert!(output.contains("No knowledge bases configured"));
         assert!(output.contains("pramana"));
@@ -108,8 +107,8 @@ mod golden_snapshots {
     /// Golden snapshot: kb-list view renders breadcrumb and status bar.
     #[test]
     fn kb_list_chrome() {
-        let app = make_test_app();
-        let output = render_to_string(&app, 80, 20);
+        let mut app = make_test_app();
+        let output = render_to_string(&mut app, 80, 20);
         // Breadcrumb
         assert!(output.contains("pramana"));
         assert!(output.contains("kb-list"));
@@ -121,8 +120,8 @@ mod golden_snapshots {
     /// Golden snapshot: search view renders input and hints.
     #[test]
     fn search_view_empty() {
-        let app = make_test_app();
-        let output = render_to_string(&app, 60, 15);
+        let mut app = make_test_app();
+        let output = render_to_string(&mut app, 60, 15);
         assert!(output.contains("Knowledge Bases"));
     }
 }
