@@ -73,7 +73,7 @@ fn build_tool_definitions() -> Vec<Tool> {
                     "tenant": { "type": "string", "description": "Tenant name" },
                     "from": { "type": "string", "description": "Starting artifact slug" },
                     "type": { "type": "string", "description": "Relationship type filter" },
-                    "depth": { "type": "number", "description": "Traversal depth (default: 1)" }
+                    "depth": { "type": "integer", "minimum": 0, "description": "Traversal depth (default: 1)" }
                 },
                 "required": ["tenant", "from"]
             })),
@@ -87,7 +87,7 @@ fn build_tool_definitions() -> Vec<Tool> {
                     "tenant": { "type": "string", "description": "Tenant name" },
                     "tags": {
                         "type": "array",
-                        "items": { "type": "string" },
+                        "items": { "type": "string", "pattern": "^[^,]+$" },
                         "description": "Filter by tags"
                     }
                 },
