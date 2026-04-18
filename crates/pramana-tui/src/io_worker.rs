@@ -28,6 +28,12 @@ pub enum IoResponse {
         name: String,
         result: Result<(), TuiError>,
     },
+    GraphData {
+        generation: u64,
+        slug: String,
+        depth: usize,
+        result: Box<Result<(ArtifactView, Vec<ArtifactView>), TuiError>>,
+    },
 }
 
 pub struct IoHandle {
@@ -119,6 +125,34 @@ impl IoHandle {
                 Err(e) => Err(e),
             };
             let _ = tx.send(IoResponse::AddKb { name, result });
+        });
+    }
+
+    pub fn spawn_graph_traverse(
+        &self,
+        tenant: String,
+        slug: String,
+        depth: usize,
+        generation: u64,
+    ) {
+        let ds = self.data_source.clone();
+        let tx = self.tx.clone();
+        let slug_clone = slug.clone();
+        std::thread::spawn(move || {
+            let result = (|| -> Result<(ArtifactView, Vec<ArtifactView>), TuiError> {
+                let guard = acquire(&ds)?;
+                let root = guard.get(&tenant, &slug_clone)?.ok_or_else(|| {
+                    TuiError::General(format!("Artifact '{slug_clone}' not found"))
+                })?;
+                let traversed = guard.traverse(&tenant, &slug_clone, None, depth)?;
+                Ok((root, traversed))
+            })();
+            let _ = tx.send(IoResponse::GraphData {
+                generation,
+                slug,
+                depth,
+                result: Box::new(result),
+            });
         });
     }
 

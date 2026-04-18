@@ -150,7 +150,7 @@ impl DataSource {
         match self {
             DataSource::Standalone(tm) => {
                 let reader = tm.reader(tenant)?;
-                Ok(reader.traverse(from, rel_type, depth)?)
+                Ok(reader.traverse(from, rel_type, depth, None)?)
             }
             DataSource::Daemon { port } => {
                 let mut url =

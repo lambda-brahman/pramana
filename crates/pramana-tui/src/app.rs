@@ -45,6 +45,7 @@ pub struct App {
     pub last_content_height: u16,
     search_generation: u64,
     get_generation: u64,
+    graph_generation: u64,
     health_check_in_flight: bool,
 }
 
@@ -69,6 +70,7 @@ impl App {
             last_content_height: 20,
             search_generation: 0,
             get_generation: 0,
+            graph_generation: 0,
             health_check_in_flight: false,
         };
         app.refresh_tenants();
@@ -255,45 +257,24 @@ impl App {
     }
 
     fn navigate_to_graph(&mut self, slug: &str) {
-        match self.data_source.get(&self.active_tenant, slug) {
-            Ok(Some(root)) => {
-                let depth = self.graph.depth.max(1);
-                let traversed = self
-                    .data_source
-                    .traverse(&self.active_tenant, slug, None, depth)
-                    .unwrap_or_default();
-                self.graph = GraphView::new();
-                self.graph.depth = depth;
-                self.graph.set_root(&root, &traversed);
-                self.push_view(View::Graph {
-                    from: slug.to_string(),
-                });
-            }
-            Ok(None) => {
-                self.graph.error_message = Some(format!("Artifact '{slug}' not found"));
-            }
-            Err(e) => {
-                self.graph.error_message = Some(format!("Failed to load graph: {e}"));
-            }
-        }
+        self.graph_generation += 1;
+        let depth = self.graph.depth.max(1);
+        self.io.spawn_graph_traverse(
+            self.active_tenant.clone(),
+            slug.to_string(),
+            depth,
+            self.graph_generation,
+        );
     }
 
     fn refresh_graph(&mut self, slug: &str, depth: usize) {
-        match self.data_source.get(&self.active_tenant, slug) {
-            Ok(Some(root)) => {
-                let traversed = self
-                    .data_source
-                    .traverse(&self.active_tenant, slug, None, depth)
-                    .unwrap_or_default();
-                self.graph.set_root(&root, &traversed);
-            }
-            Ok(None) => {
-                self.graph.error_message = Some(format!("Artifact '{slug}' not found"));
-            }
-            Err(e) => {
-                self.graph.error_message = Some(format!("Failed to refresh: {e}"));
-            }
-        }
+        self.graph_generation += 1;
+        self.io.spawn_graph_traverse(
+            self.active_tenant.clone(),
+            slug.to_string(),
+            depth,
+            self.graph_generation,
+        );
     }
 
     fn navigate_to_artifact(&mut self, slug: &str) {
@@ -389,6 +370,30 @@ impl App {
                         }
                     }
                     self.refresh_tenants();
+                }
+                IoResponse::GraphData {
+                    generation,
+                    slug,
+                    depth,
+                    result,
+                } => {
+                    if generation == self.graph_generation {
+                        match *result {
+                            Ok((root, traversed)) => {
+                                let is_reroot = !matches!(self.current_view(), View::Graph { .. });
+                                self.graph = GraphView::new();
+                                self.graph.depth = depth;
+                                self.graph.set_root(&root, &traversed);
+                                if is_reroot {
+                                    self.push_view(View::Graph { from: slug });
+                                }
+                            }
+                            Err(e) => {
+                                self.graph.error_message =
+                                    Some(format!("Failed to load graph: {e}"));
+                            }
+                        }
+                    }
                 }
                 IoResponse::RemoveKb { name, result } => {
                     match result {
