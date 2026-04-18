@@ -71,7 +71,7 @@ Usage:
   pramana upgrade
 
 Options:
-  --standalone    Force rebuild mode (skip server detection)
+  --standalone    (tui only) Force in-process mode, skip daemon
   --port <n>      Server port (default: PRAMANA_PORT env or 5111)
   --tenant <name> Target a specific tenant (required for all queries)
   --source <dir>[:name]  Knowledge source directory (repeatable for multi-tenant)
@@ -640,119 +640,13 @@ async function main() {
     return;
   }
 
-  // Client mode: try connecting to running daemon (unless --standalone)
-  if (!standalone) {
-    const reachable = await isServerReachable(port);
-    if (reachable) {
-      await httpClient(port);
-      return;
-    }
-  }
-
-  // Fallback: standalone rebuild using TenantManager
-  const sourceDir = getFlag("source");
-  if (!sourceDir) {
-    console.error("Missing --source <dir> (no running daemon found)");
+  // Read commands route exclusively through the daemon
+  const reachable = await isServerReachable(port);
+  if (!reachable) {
+    console.error("Pramana daemon not running. Start it with: pramana serve");
     process.exit(1);
   }
-
-  const tenantName = getFlag("tenant") ?? basename(sourceDir);
-
-  const tm = new TenantManager();
-  await tm.initEmbedder();
-  const mountResult = await tm.mount({ name: tenantName, sourceDir });
-  if (!mountResult.ok) {
-    console.error(`Mount failed: ${mountResult.error.message}`);
-    process.exit(1);
-  }
-
-  const report = mountResult.value;
-  console.error(
-    `Ingested ${report.succeeded}/${report.total} files` +
-      (report.failed.length > 0 ? ` (${report.failed.length} failed)` : ""),
-  );
-  for (const f of report.failed) {
-    console.error(`  ✗ ${f.file}: ${f.error.message}`);
-  }
-
-  const readerResult = tm.getReader(tenantName);
-  if (!readerResult.ok) {
-    console.error(readerResult.error.message);
-    process.exit(1);
-  }
-  const reader = readerResult.value;
-
-  switch (command) {
-    case "get": {
-      const slug = args[1];
-      if (!slug) {
-        console.error("Missing slug");
-        process.exit(1);
-      }
-      const result = reader.get(slug);
-      if (!result.ok) {
-        console.error(result.error.message);
-        process.exit(1);
-      }
-      if (!result.value) {
-        console.error("Not found");
-        process.exit(1);
-      }
-      console.log(JSON.stringify(result.value, null, 2));
-      tm.close();
-      break;
-    }
-
-    case "search": {
-      const query = args[1];
-      if (!query) {
-        console.error("Missing query");
-        process.exit(1);
-      }
-      const result = await reader.search(query);
-      if (!result.ok) {
-        console.error(result.error.message);
-        process.exit(1);
-      }
-      console.log(JSON.stringify(result.value, null, 2));
-      tm.close();
-      break;
-    }
-
-    case "traverse": {
-      const slug = args[1];
-      if (!slug) {
-        console.error("Missing slug");
-        process.exit(1);
-      }
-      const relType = getFlag("type");
-      const depth = Number.parseInt(getFlag("depth") ?? "1", 10);
-      const result = reader.traverse(slug, relType, depth);
-      if (!result.ok) {
-        console.error(result.error.message);
-        process.exit(1);
-      }
-      console.log(JSON.stringify(result.value, null, 2));
-      tm.close();
-      break;
-    }
-
-    case "list": {
-      const tagsStr = getFlag("tags");
-      const tags = tagsStr ? tagsStr.split(",").map((t) => t.trim()) : undefined;
-      const result = reader.list(tags ? { tags } : undefined);
-      if (!result.ok) {
-        console.error(result.error.message);
-        process.exit(1);
-      }
-      console.log(JSON.stringify(result.value, null, 2));
-      tm.close();
-      break;
-    }
-
-    default:
-      usage();
-  }
+  await httpClient(port);
 }
 
 main();

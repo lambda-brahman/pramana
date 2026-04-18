@@ -237,12 +237,12 @@ describe("Single-tenant daemon", () => {
     expect(triedTui).toBe(true);
   });
 
-  test("standalone ingestion prints report to stderr", async () => {
-    const { stderr } = await runCli([
-      "list", "--source", FIXTURES_DIR, "--standalone",
+  test("read command errors when daemon is not reachable", async () => {
+    const { stderr, exitCode } = await runCli([
+      "list", "--tenant", "any", "--port", "59998",
     ]);
-    expect(stderr).toContain("Ingested");
-    expect(stderr).toContain("4/4");
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Pramana daemon not running. Start it with: pramana serve");
   });
 
   test("list returns all 4 fixture artifacts", async () => {
