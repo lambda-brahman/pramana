@@ -188,7 +188,10 @@ impl Storage {
     }
 
     pub fn get_inverse(&self, slug: &str) -> StorageResult<Vec<Relationship>> {
-        let escaped = slug.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        let escaped = slug
+            .replace('\\', "\\\\")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
         let like_pattern = format!("{escaped}#%");
         let mut stmt = self.conn.prepare(
             "SELECT source as target, type, line, section \
