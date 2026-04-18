@@ -58,7 +58,11 @@ enum Commands {
     /// Get an artifact by slug
     Get {
         /// Artifact slug (optionally with #section)
-        slug: String,
+        #[arg(value_name = "SLUG", required_unless_present = "slug_flag")]
+        slug: Option<String>,
+        /// Artifact slug (flag form, for backward compat with TS release)
+        #[arg(long = "slug", conflicts_with = "slug", hide = true)]
+        slug_flag: Option<String>,
         /// Target tenant name
         #[arg(long)]
         tenant: String,
@@ -69,7 +73,11 @@ enum Commands {
     /// Search artifacts by query
     Search {
         /// Search query
-        query: String,
+        #[arg(value_name = "QUERY", required_unless_present = "query_flag")]
+        query: Option<String>,
+        /// Search query (flag form, for backward compat with TS release)
+        #[arg(long = "query", conflicts_with = "query", hide = true)]
+        query_flag: Option<String>,
         /// Target tenant name
         #[arg(long)]
         tenant: String,
@@ -229,12 +237,28 @@ fn run(cmd: Commands) -> i32 {
             save,
             no_config,
         } => cmd_serve(source, port, &host, save, no_config),
-        Commands::Get { slug, tenant, port } => cmd_daemon_get(port, &tenant, &slug),
-        Commands::Search {
-            query,
+        Commands::Get {
+            slug,
+            slug_flag,
             tenant,
             port,
-        } => cmd_daemon_search(port, &tenant, &query),
+        } => {
+            let resolved = slug
+                .or(slug_flag)
+                .expect("clap ensures slug or --slug is present");
+            cmd_daemon_get(port, &tenant, &resolved)
+        }
+        Commands::Search {
+            query,
+            query_flag,
+            tenant,
+            port,
+        } => {
+            let resolved = query
+                .or(query_flag)
+                .expect("clap ensures query or --query is present");
+            cmd_daemon_search(port, &tenant, &resolved)
+        }
         Commands::Traverse {
             slug,
             tenant,
@@ -1093,6 +1117,85 @@ mod tests {
         assert!(validate_tenant_name("search").is_err());
         assert!(validate_tenant_name("list").is_err());
         assert!(validate_tenant_name("version").is_err());
+    }
+
+    #[test]
+    fn get_accepts_positional_slug() {
+        let cli = Cli::parse_from(["pramana", "get", "--tenant", "kb", "my-slug"]);
+        match cli.command.unwrap() {
+            Commands::Get {
+                slug,
+                slug_flag,
+                tenant,
+                ..
+            } => {
+                assert_eq!(slug.as_deref(), Some("my-slug"));
+                assert!(slug_flag.is_none());
+                assert_eq!(tenant, "kb");
+            }
+            _ => panic!("expected Get"),
+        }
+    }
+
+    #[test]
+    fn get_accepts_flag_slug() {
+        let cli = Cli::parse_from(["pramana", "get", "--tenant", "kb", "--slug", "my-slug"]);
+        match cli.command.unwrap() {
+            Commands::Get {
+                slug,
+                slug_flag,
+                tenant,
+                ..
+            } => {
+                assert!(slug.is_none());
+                assert_eq!(slug_flag.as_deref(), Some("my-slug"));
+                assert_eq!(tenant, "kb");
+            }
+            _ => panic!("expected Get"),
+        }
+    }
+
+    #[test]
+    fn search_accepts_positional_query() {
+        let cli = Cli::parse_from(["pramana", "search", "--tenant", "kb", "hello world"]);
+        match cli.command.unwrap() {
+            Commands::Search {
+                query,
+                query_flag,
+                tenant,
+                ..
+            } => {
+                assert_eq!(query.as_deref(), Some("hello world"));
+                assert!(query_flag.is_none());
+                assert_eq!(tenant, "kb");
+            }
+            _ => panic!("expected Search"),
+        }
+    }
+
+    #[test]
+    fn search_accepts_flag_query() {
+        let cli = Cli::parse_from([
+            "pramana",
+            "search",
+            "--tenant",
+            "kb",
+            "--query",
+            "hello world",
+        ]);
+        match cli.command.unwrap() {
+            Commands::Search {
+                query,
+                query_flag,
+                tenant,
+                ..
+            } => {
+                assert!(query.is_none());
+                assert_eq!(query_flag.as_deref(), Some("hello world"));
+                assert_eq!(tenant, "kb");
+            }
+            _ => panic!("expected Search"),
+        }
     }
 
     #[test]
