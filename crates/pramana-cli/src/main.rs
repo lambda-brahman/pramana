@@ -375,11 +375,17 @@ fn daemon_request(method: &str, url: &str) -> Result<String, String> {
             let parsed: Result<serde_json::Value, _> = serde_json::from_str(&body);
             let msg = parsed
                 .ok()
-                .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(|s| s.to_string()))
+                .and_then(|v| {
+                    v.get("error")
+                        .and_then(|e| e.as_str())
+                        .map(|s| s.to_string())
+                })
                 .unwrap_or_else(|| format!("HTTP {code}"));
             Err(msg)
         }
-        Err(e) => Err(format!("Pramana daemon not running. Start it with: pramana serve ({e})")),
+        Err(e) => Err(format!(
+            "Pramana daemon not running. Start it with: pramana serve ({e})"
+        )),
     }
 }
 
@@ -562,13 +568,16 @@ fn cmd_lint(source: Option<String>, tenant: Option<String>, strict: bool, port: 
     let url = format!("http://localhost:{port}/v1/{tenant}/list");
     match daemon_request("GET", &url) {
         Ok(body) => {
-            let artifacts: Vec<serde_json::Value> =
-                serde_json::from_str(&body).unwrap_or_default();
+            let artifacts: Vec<serde_json::Value> = serde_json::from_str(&body).unwrap_or_default();
             let mut errors = 0usize;
             let warnings = 0usize;
             let slug_set: std::collections::HashSet<String> = artifacts
                 .iter()
-                .filter_map(|a| a.get("slug").and_then(|s| s.as_str()).map(|s| s.to_string()))
+                .filter_map(|a| {
+                    a.get("slug")
+                        .and_then(|s| s.as_str())
+                        .map(|s| s.to_string())
+                })
                 .collect();
 
             for artifact in &artifacts {
@@ -582,10 +591,7 @@ fn cmd_lint(source: Option<String>, tenant: Option<String>, strict: bool, port: 
                     .cloned()
                     .unwrap_or_default();
                 for rel in rels {
-                    let target = rel
-                        .get("target")
-                        .and_then(|t| t.as_str())
-                        .unwrap_or("");
+                    let target = rel.get("target").and_then(|t| t.as_str()).unwrap_or("");
                     let target_slug = target.split('#').next().unwrap_or(target);
                     if !slug_set.contains(target_slug) {
                         eprintln!("  error  {slug}: dangling link to \"{target_slug}\"");
@@ -698,9 +704,7 @@ fn cmd_config(action: ConfigAction) -> i32 {
             }
             match config::add_tenant(&name, &dir) {
                 Ok(()) => {
-                    let abs = dir
-                        .canonicalize()
-                        .unwrap_or_else(|_| dir.clone());
+                    let abs = dir.canonicalize().unwrap_or_else(|_| dir.clone());
                     println!("Added \"{name}\" → {}", abs.display());
                     0
                 }

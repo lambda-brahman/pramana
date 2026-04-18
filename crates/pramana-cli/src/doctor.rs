@@ -52,7 +52,11 @@ pub fn run_doctor(port: u16) -> Result<DoctorReport, CliError> {
             if daemon_version.is_some() {
                 match fetch_daemon_tenants(port) {
                     Ok(runtime_names) => {
-                        check_runtime_tenants_match(&config_names, &runtime_names, &mut diagnostics);
+                        check_runtime_tenants_match(
+                            &config_names,
+                            &runtime_names,
+                            &mut diagnostics,
+                        );
                     }
                     Err(msg) => {
                         diagnostics.push(DoctorDiagnostic {
@@ -110,7 +114,11 @@ fn fetch_daemon_tenants(port: u16) -> Result<Vec<String>, String> {
 
     Ok(tenants
         .iter()
-        .filter_map(|t| t.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
+        .filter_map(|t| {
+            t.get("name")
+                .and_then(|n| n.as_str())
+                .map(|s| s.to_string())
+        })
         .collect())
 }
 
@@ -123,7 +131,9 @@ fn check_version_match(daemon_version: &str, diagnostics: &mut Vec<DoctorDiagnos
             diagnostics.push(DoctorDiagnostic {
                 severity: "warn".into(),
                 check: "version-match".into(),
-                message: format!("CLI version {VERSION} does not match daemon version {daemon_version}"),
+                message: format!(
+                    "CLI version {VERSION} does not match daemon version {daemon_version}"
+                ),
             });
         }
         _ => {}
@@ -186,8 +196,7 @@ fn check_runtime_tenants_match(
     runtime_names: &[String],
     diagnostics: &mut Vec<DoctorDiagnostic>,
 ) {
-    let config_set: std::collections::HashSet<&str> =
-        config_names.iter().copied().collect();
+    let config_set: std::collections::HashSet<&str> = config_names.iter().copied().collect();
     let runtime_set: std::collections::HashSet<&str> =
         runtime_names.iter().map(|s| s.as_str()).collect();
 
@@ -206,7 +215,10 @@ fn check_runtime_tenants_match(
         diagnostics.push(DoctorDiagnostic {
             severity: "warn".into(),
             check: "runtime-tenants-match".into(),
-            message: format!("Tenants in config but not running: {}", in_config_only.join(", ")),
+            message: format!(
+                "Tenants in config but not running: {}",
+                in_config_only.join(", ")
+            ),
         });
     }
     if !in_runtime_only.is_empty() {

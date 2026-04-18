@@ -105,11 +105,7 @@ fn handle_traverse(
     serde_json::to_string(&results).map_err(|e| (500, e.to_string()))
 }
 
-fn handle_list(
-    tm: &TenantManager,
-    tenant: &str,
-    query_str: &str,
-) -> Result<String, (u16, String)> {
+fn handle_list(tm: &TenantManager, tenant: &str, query_str: &str) -> Result<String, (u16, String)> {
     let tags = parse_query_param(query_str, "tags");
     let filter = tags.map(|t| ListFilter {
         tags: Some(t.split(',').map(|s| s.trim().to_string()).collect()),
@@ -168,11 +164,7 @@ fn hex_val(b: u8) -> Option<u8> {
 fn respond_json(request: tiny_http::Request, status: u16, body: &str) {
     let response = tiny_http::Response::new(
         tiny_http::StatusCode(status),
-        vec![tiny_http::Header::from_bytes(
-            b"Content-Type",
-            b"application/json",
-        )
-        .unwrap()],
+        vec![tiny_http::Header::from_bytes(b"Content-Type", b"application/json").unwrap()],
         Cursor::new(body.as_bytes().to_vec()),
         Some(body.len()),
         None,
