@@ -7,4 +7,5 @@ members = [
     "crates/pramana-embedder",
     "crates/pramana-storage",
     "crates/pramana-engine",
+    "crates/pramana-mcp",
 ]

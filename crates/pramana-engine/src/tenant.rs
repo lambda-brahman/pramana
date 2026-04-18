@@ -14,7 +14,7 @@ pub struct TenantConfig {
     pub source_dir: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct TenantInfo {
     pub name: String,
     pub source_dir: String,
