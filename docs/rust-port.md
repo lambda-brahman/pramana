@@ -125,13 +125,26 @@ The ratatui TUI (pramana-tui) ports keybindings from the Ink/React TUI. This mat
 | Esc | Clear / back | Clear / back | Input: clear then back; Results: back to input |
 | ? | Help overlay | Help overlay | Results mode only |
 
+### graph
+
+| Key | ratatui (Rust) | Notes |
+|-----|----------------|-------|
+| j/k | Navigate | |
+| ↑/↓ | Navigate | |
+| Enter | View artifact | Opens artifact-detail for selected node |
+| g | Re-root graph | Traverses from selected node |
+| +/- | Change depth | Depth 1–5, re-fetches traversal |
+| Esc | Back | |
+| q | Back | |
+| ? | Help overlay | |
+
 ### Dropped from MVP (follow-up issues needed)
 
 | View | Status |
 |------|--------|
 | kb-context (hub menu) | Skipped — kb-list goes directly to search |
 | artifact-list (browse) | Skipped — use search instead |
-| graph (traversal) | Skipped |
+| graph (traversal) | Implemented (#157) |
 | dashboard (info/stats) | Skipped |
 
 ### Diff tolerance

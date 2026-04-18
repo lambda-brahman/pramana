@@ -82,11 +82,13 @@ pub enum DetailAction {
     None,
     Back,
     NavigateTo(String),
+    OpenGraph,
 }
 
 pub fn handle_detail_input(view: &mut ArtifactDetailView, key: KeyEvent) -> DetailAction {
     match key.code {
         KeyCode::Esc => DetailAction::Back,
+        KeyCode::Char('g') => DetailAction::OpenGraph,
         KeyCode::Tab => {
             view.panel = view.panel.next();
             view.rel_index = 0;
@@ -347,9 +349,9 @@ pub fn render_artifact_detail(view: &mut ArtifactDetailView, area: Rect, buf: &m
 
     // Hints
     let hints = match view.panel {
-        Panel::Content => "[Esc] back [Tab] panels [j/k] scroll [d/u] page [h/l] pan",
+        Panel::Content => "[Esc] back [Tab] panels [j/k] scroll [d/u] page [h/l] pan [g] graph",
         Panel::Relationships | Panel::Sections => {
-            "[Esc] back [Tab] panels [j/k] nav [Enter] follow"
+            "[Esc] back [Tab] panels [j/k] nav [Enter] follow [g] graph"
         }
     };
     Line::styled(hints, Style::default().fg(THEME.hint_desc)).render(chunks[5], buf);

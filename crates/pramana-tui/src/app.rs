@@ -4,6 +4,7 @@ use crate::io_worker::{IoHandle, IoResponse};
 use crate::views::artifact_detail::{
     handle_detail_input, render_artifact_detail, ArtifactDetailView, DetailAction,
 };
+use crate::views::graph::{handle_graph_input, render_graph, GraphAction, GraphView};
 use crate::views::kb_list::{handle_kb_list_input, render_kb_list, KbListAction, KbListView};
 use crate::views::search::{handle_search_input, render_search, SearchAction, SearchView};
 use crate::widgets::breadcrumb::Breadcrumb;
@@ -21,6 +22,7 @@ pub enum View {
     KbList,
     Search,
     ArtifactDetail { slug: String },
+    Graph { from: String },
 }
 
 struct NavEntry {
@@ -37,6 +39,7 @@ pub struct App {
     pub kb_list: KbListView,
     pub search: SearchView,
     pub detail: ArtifactDetailView,
+    pub graph: GraphView,
     pub show_help: bool,
     pub should_quit: bool,
     pub last_content_height: u16,
@@ -60,6 +63,7 @@ impl App {
             kb_list: KbListView::new(),
             search: SearchView::new(),
             detail: ArtifactDetailView::new(),
+            graph: GraphView::new(),
             show_help: false,
             should_quit: false,
             last_content_height: 20,
@@ -104,6 +108,10 @@ impl App {
                     segments.push(self.active_tenant.clone());
                     segments.push(slug.clone());
                 }
+                View::Graph { from } => {
+                    segments.push(self.active_tenant.clone());
+                    segments.push(format!("graph:{from}"));
+                }
             }
         }
         segments
@@ -114,6 +122,7 @@ impl App {
             View::KbList => "kb-list",
             View::Search => "search",
             View::ArtifactDetail { .. } => "detail",
+            View::Graph { .. } => "graph",
         }
     }
 
@@ -146,6 +155,7 @@ impl App {
                 View::KbList => self.handle_kb_list_event(key),
                 View::Search => self.handle_search_event(key),
                 View::ArtifactDetail { .. } => self.handle_detail_event(key),
+                View::Graph { .. } => self.handle_graph_event(key),
             }
         }
     }
@@ -210,7 +220,79 @@ impl App {
             DetailAction::NavigateTo(slug) => {
                 self.navigate_to_artifact(&slug);
             }
+            DetailAction::OpenGraph => {
+                if let Some(artifact) = &self.detail.artifact {
+                    let slug = artifact.slug.clone();
+                    self.navigate_to_graph(&slug);
+                }
+            }
             DetailAction::None => {}
+        }
+    }
+
+    fn handle_graph_event(&mut self, key: KeyEvent) {
+        if key.code == KeyCode::Char('?') {
+            self.show_help = true;
+            return;
+        }
+
+        let action = handle_graph_input(&mut self.graph, key);
+        match action {
+            GraphAction::Back => self.pop_view(),
+            GraphAction::NavigateTo(slug) => {
+                self.navigate_to_artifact(&slug);
+            }
+            GraphAction::Reroot(slug) => {
+                self.navigate_to_graph(&slug);
+            }
+            GraphAction::DepthChanged => {
+                let slug = self.graph.from_slug.clone();
+                let depth = self.graph.depth;
+                self.refresh_graph(&slug, depth);
+            }
+            GraphAction::None => {}
+        }
+    }
+
+    fn navigate_to_graph(&mut self, slug: &str) {
+        match self.data_source.get(&self.active_tenant, slug) {
+            Ok(Some(root)) => {
+                let depth = self.graph.depth.max(1);
+                let traversed = self
+                    .data_source
+                    .traverse(&self.active_tenant, slug, None, depth)
+                    .unwrap_or_default();
+                self.graph = GraphView::new();
+                self.graph.depth = depth;
+                self.graph.set_root(&root, &traversed);
+                self.push_view(View::Graph {
+                    from: slug.to_string(),
+                });
+            }
+            Ok(None) => {
+                self.graph.error_message = Some(format!("Artifact '{slug}' not found"));
+            }
+            Err(e) => {
+                self.graph.error_message = Some(format!("Failed to load graph: {e}"));
+            }
+        }
+    }
+
+    fn refresh_graph(&mut self, slug: &str, depth: usize) {
+        match self.data_source.get(&self.active_tenant, slug) {
+            Ok(Some(root)) => {
+                let traversed = self
+                    .data_source
+                    .traverse(&self.active_tenant, slug, None, depth)
+                    .unwrap_or_default();
+                self.graph.set_root(&root, &traversed);
+            }
+            Ok(None) => {
+                self.graph.error_message = Some(format!("Artifact '{slug}' not found"));
+            }
+            Err(e) => {
+                self.graph.error_message = Some(format!("Failed to refresh: {e}"));
+            }
         }
     }
 
@@ -377,6 +459,7 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
         View::KbList => render_kb_list(&mut app.kb_list, content_area, buf, &app.active_tenant),
         View::Search => render_search(&mut app.search, content_area, buf),
         View::ArtifactDetail { .. } => render_artifact_detail(&mut app.detail, content_area, buf),
+        View::Graph { .. } => render_graph(&mut app.graph, content_area, buf),
     }
 
     // Status bar
@@ -418,6 +501,15 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
                 ("0", "Reset scroll"),
                 ("Tab", "Cycle panels"),
                 ("Enter", "Follow link"),
+                ("g", "Graph view"),
+                ("Esc/q", "Back"),
+                ("?", "Toggle help"),
+            ],
+            View::Graph { .. } => vec![
+                ("j/k", "Navigate"),
+                ("Enter", "View artifact"),
+                ("g", "Re-root graph"),
+                ("+/-", "Change depth"),
                 ("Esc/q", "Back"),
                 ("?", "Toggle help"),
             ],
