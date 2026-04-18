@@ -3,20 +3,19 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createMcpServer } from "../../../src/mcp/server.ts";
 
-const PORT = 19876;
-
 function mockDaemon(
   handler: (req: Request) => Response | Promise<Response>,
-): ReturnType<typeof Bun.serve> {
-  return Bun.serve({
-    port: PORT,
+): { port: number; stop: (force?: boolean) => void } {
+  const srv = Bun.serve({
+    port: 0,
     hostname: "127.0.0.1",
     fetch: handler,
   });
+  return { port: srv.port as number, stop: (force) => srv.stop(force) };
 }
 
-async function createTestClient() {
-  const server = createMcpServer({ port: PORT });
+async function createTestClient(port: number) {
+  const server = createMcpServer({ port });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test-client", version: "1.0.0" });
   await server.connect(serverTransport);
@@ -29,7 +28,7 @@ describe("MCP server tool schemas", () => {
   let server: ReturnType<typeof createMcpServer>;
 
   beforeAll(async () => {
-    const pair = await createTestClient();
+    const pair = await createTestClient(0);
     client = pair.client;
     server = pair.server;
   });
@@ -80,7 +79,7 @@ describe("MCP server tool schemas", () => {
 });
 
 describe("MCP server proxy — success paths", () => {
-  let daemon: ReturnType<typeof Bun.serve>;
+  let daemon: ReturnType<typeof mockDaemon>;
   let client: Client;
   let server: ReturnType<typeof createMcpServer>;
 
@@ -130,7 +129,7 @@ describe("MCP server proxy — success paths", () => {
       return Response.json({ error: "Not found" }, { status: 404 });
     });
 
-    const pair = await createTestClient();
+    const pair = await createTestClient(daemon.port);
     client = pair.client;
     server = pair.server;
   });
@@ -234,13 +233,9 @@ describe("MCP server proxy — error paths", () => {
       return Response.json({ error: 'Tenant "missing" not found' }, { status: 404 });
     });
 
-    const server = createMcpServer({ port: PORT });
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-    const client = new Client({ name: "test-client", version: "1.0.0" });
-    await server.connect(serverTransport);
-    await client.connect(clientTransport);
+    const pair = await createTestClient(daemon.port);
 
-    const result = await client.callTool({
+    const result = await pair.client.callTool({
       name: "get",
       arguments: { tenant: "missing", slug: "nonexistent" },
     });
@@ -248,8 +243,8 @@ describe("MCP server proxy — error paths", () => {
     const text = (result.content as Array<{ text: string }>)[0]!.text;
     expect(text).toContain("missing");
 
-    await client.close();
-    await server.close();
+    await pair.client.close();
+    await pair.server.close();
     daemon.stop(true);
   });
 
@@ -258,13 +253,9 @@ describe("MCP server proxy — error paths", () => {
       return Response.json({ error: "Internal engine failure" }, { status: 500 });
     });
 
-    const server = createMcpServer({ port: PORT });
-    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-    const client = new Client({ name: "test-client", version: "1.0.0" });
-    await server.connect(serverTransport);
-    await client.connect(clientTransport);
+    const pair = await createTestClient(daemon.port);
 
-    const result = await client.callTool({
+    const result = await pair.client.callTool({
       name: "search",
       arguments: { tenant: "test", query: "anything" },
     });
@@ -272,8 +263,51 @@ describe("MCP server proxy — error paths", () => {
     const text = (result.content as Array<{ text: string }>)[0]!.text;
     expect(text).toBe("Internal engine failure");
 
-    await client.close();
-    await server.close();
+    await pair.client.close();
+    await pair.server.close();
+    daemon.stop(true);
+  });
+
+  test("daemon non-JSON error response returns structured MCP error", async () => {
+    const daemon = mockDaemon(() => {
+      return new Response("<html>502 Bad Gateway</html>", {
+        status: 502,
+        headers: { "Content-Type": "text/html" },
+      });
+    });
+
+    const pair = await createTestClient(daemon.port);
+
+    const result = await pair.client.callTool({
+      name: "list-tenants",
+      arguments: {},
+    });
+    expect(result.isError).toBe(true);
+    const text = (result.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toContain("Daemon returned 502");
+
+    await pair.client.close();
+    await pair.server.close();
+    daemon.stop(true);
+  });
+
+  test("daemon 200 with non-JSON body returns structured MCP error", async () => {
+    const daemon = mockDaemon(() => {
+      return new Response("OK but not JSON", { status: 200 });
+    });
+
+    const pair = await createTestClient(daemon.port);
+
+    const result = await pair.client.callTool({
+      name: "list-tenants",
+      arguments: {},
+    });
+    expect(result.isError).toBe(true);
+    const text = (result.content as Array<{ text: string }>)[0]!.text;
+    expect(text).toContain("invalid JSON");
+
+    await pair.client.close();
+    await pair.server.close();
     daemon.stop(true);
   });
 });

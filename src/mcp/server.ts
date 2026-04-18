@@ -11,6 +11,14 @@ type DaemonError = { type: "daemon-unreachable" | "not-found" | "server-error"; 
 
 const DAEMON_UNREACHABLE_MSG = "Pramana daemon not running. Start it with: pramana serve";
 
+function safeJsonParse(text: string): { error?: string } | null {
+  try {
+    return JSON.parse(text) as { error?: string };
+  } catch {
+    return null;
+  }
+}
+
 async function daemonFetch(port: number, path: string): Promise<Result<unknown, DaemonError>> {
   let res: Response;
   try {
@@ -19,23 +27,33 @@ async function daemonFetch(port: number, path: string): Promise<Result<unknown, 
     return err({ type: "daemon-unreachable", message: DAEMON_UNREACHABLE_MSG });
   }
 
+  const text = await res.text();
+
   if (res.status === 404) {
-    const body = (await res.json()) as { error?: string };
+    const body = safeJsonParse(text);
     return err({
       type: "not-found",
-      message: body.error ?? "Not found",
+      message: body?.error ?? "Not found",
     });
   }
 
   if (!res.ok) {
-    const body = (await res.json()) as { error?: string };
+    const body = safeJsonParse(text);
     return err({
       type: "server-error",
-      message: body.error ?? `Daemon returned ${res.status}`,
+      message: body?.error ?? `Daemon returned ${res.status}`,
     });
   }
 
-  return ok(await res.json());
+  const parsed = safeJsonParse(text);
+  if (parsed === null) {
+    return err({
+      type: "server-error",
+      message: `Daemon returned invalid JSON (status ${res.status})`,
+    });
+  }
+
+  return ok(parsed);
 }
 
 function errorResult(message: string): CallToolResult {
@@ -99,7 +117,7 @@ export function createMcpServer(opts: McpServerOptions): McpServer {
       tenant: z.string().describe("Tenant name"),
       from: z.string().describe("Starting artifact slug"),
       type: z.string().optional().describe("Relationship type filter"),
-      depth: z.number().optional().describe("Traversal depth (default: 1)"),
+      depth: z.number().int().nonnegative().optional().describe("Traversal depth (default: 1)"),
     },
     async ({ tenant, from, type, depth }) => {
       const params = new URLSearchParams();
@@ -133,5 +151,14 @@ export function createMcpServer(opts: McpServerOptions): McpServer {
 export async function startMcpServer(opts: McpServerOptions): Promise<void> {
   const server = createMcpServer(opts);
   const transport = new StdioServerTransport();
+
+  transport.onerror = () => {
+    process.exit(1);
+  };
+
+  transport.onclose = () => {
+    process.exit(0);
+  };
+
   await server.connect(transport);
 }
