@@ -1,5 +1,5 @@
 target/
 Cargo.lock
-assets/bge/*.onnx
-assets/bge/*.bin
-assets/bge/*.safetensors
+assets/**/*.onnx
+assets/**/*.bin
+assets/**/*.safetensors
