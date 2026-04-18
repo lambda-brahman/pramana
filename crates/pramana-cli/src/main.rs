@@ -107,12 +107,14 @@ enum Commands {
         port: u16,
     },
     /// Start MCP stdio server
+    #[cfg(feature = "mcp")]
     Mcp {
         /// Knowledge source directory, optionally named (repeatable)
         #[arg(long, value_name = "DIR[:NAME]")]
         source: Vec<String>,
     },
     /// Launch interactive terminal interface
+    #[cfg(feature = "tui")]
     Tui {
         /// Knowledge source directories
         #[arg(long, value_name = "DIR[:NAME]")]
@@ -241,7 +243,9 @@ fn run(cmd: Commands) -> i32 {
             port,
         } => cmd_daemon_traverse(port, &tenant, &slug, r#type.as_deref(), depth),
         Commands::List { tenant, tags, port } => cmd_daemon_list(port, &tenant, tags.as_deref()),
+        #[cfg(feature = "mcp")]
         Commands::Mcp { source } => cmd_mcp(source),
+        #[cfg(feature = "tui")]
         Commands::Tui {
             source,
             port,
@@ -367,6 +371,7 @@ fn cmd_serve(sources: Vec<String>, port: u16, host: &str, save: bool, no_config:
 
 // --- mcp ---
 
+#[cfg(feature = "mcp")]
 fn cmd_mcp(sources: Vec<String>) -> i32 {
     if sources.is_empty() {
         eprintln!("At least one --source is required");
@@ -953,6 +958,7 @@ Use wikilinks to connect artifacts: [[getting-started]]
 
 // --- tui ---
 
+#[cfg(feature = "tui")]
 fn cmd_tui(
     sources: Vec<String>,
     port: u16,

@@ -1,6 +1,7 @@
 use crate::builder::{BuildReport, Builder};
 use crate::error::EngineError;
 use crate::reader::Reader;
+#[cfg(feature = "embeddings")]
 use pramana_embedder::Embedder;
 use pramana_storage::Storage;
 use std::collections::HashMap;
@@ -32,6 +33,7 @@ struct TenantState {
 
 pub struct TenantManager {
     tenants: HashMap<String, TenantState>,
+    #[cfg(feature = "embeddings")]
     embedder: Option<Embedder>,
 }
 
@@ -39,10 +41,12 @@ impl TenantManager {
     pub fn new() -> Self {
         Self {
             tenants: HashMap::new(),
+            #[cfg(feature = "embeddings")]
             embedder: None,
         }
     }
 
+    #[cfg(feature = "embeddings")]
     pub fn init_embedder(&mut self, model_id: &str) -> Result<(), EngineError> {
         let embedder = Embedder::load(model_id)?;
         self.embedder = Some(embedder);
@@ -143,6 +147,7 @@ impl TenantManager {
         let builder = Builder::new(&storage);
         let report = builder.ingest(Path::new(source_dir))?;
 
+        #[cfg(feature = "embeddings")]
         if let Some(ref embedder) = self.embedder {
             self.build_embeddings(&storage, embedder)?;
         }
@@ -154,6 +159,7 @@ impl TenantManager {
         })
     }
 
+    #[cfg(feature = "embeddings")]
     fn build_embeddings(&self, storage: &Storage, embedder: &Embedder) -> Result<(), EngineError> {
         let artifacts = storage.list(None)?;
 
