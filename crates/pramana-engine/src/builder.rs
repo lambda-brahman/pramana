@@ -5,7 +5,8 @@ use std::collections::HashSet;
 use std::path::Path;
 use walkdir::WalkDir;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 #[must_use]
 pub struct BuildReport {
     pub total: usize,
@@ -15,7 +16,7 @@ pub struct BuildReport {
     pub duplicate_slugs: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct BuildFailure {
     pub file: String,
     pub error: String,

@@ -110,8 +110,8 @@ fn get_with_section() {
     assert!(is_success(&result));
     let data: Value = parse_result(&result);
     assert_eq!(data["slug"], "order");
-    assert!(data["focused_section"].is_object());
-    assert_eq!(data["focused_section"]["id"], "attributes");
+    assert!(data["focusedSection"].is_object());
+    assert_eq!(data["focusedSection"]["id"], "attributes");
 }
 
 #[test]

@@ -6,7 +6,9 @@ use pramana_storage::Storage;
 use std::collections::HashMap;
 use std::path::Path;
 
-const RESERVED_NAMES: &[&str] = &["get", "search", "traverse", "list", "tenants", "reload"];
+const RESERVED_NAMES: &[&str] = &[
+    "get", "search", "traverse", "list", "tenants", "reload", "version",
+];
 
 #[derive(Debug, Clone)]
 pub struct TenantConfig {
@@ -15,6 +17,7 @@ pub struct TenantConfig {
 }
 
 #[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TenantInfo {
     pub name: String,
     pub source_dir: String,

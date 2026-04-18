@@ -3,6 +3,7 @@ use pramana_storage::{Relationship, SearchResult, Section, Storage};
 use std::collections::{HashSet, VecDeque};
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ArtifactView {
     pub slug: String,
     pub title: String,
