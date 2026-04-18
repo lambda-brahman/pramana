@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
+import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { theme } from "../theme.ts";
 
 type Props<T> = {
@@ -7,6 +7,7 @@ type Props<T> = {
   selectedIndex: number;
   height: number;
   renderItem: (item: T, index: number, isSelected: boolean) => ReactNode;
+  itemHeight?: (item: T, index: number) => number;
   emptyMessage?: string;
 };
 
@@ -15,22 +16,57 @@ export function ScrollableList<T>({
   selectedIndex,
   height,
   renderItem,
+  itemHeight,
   emptyMessage = "No items",
 }: Props<T>) {
   const [scrollOffset, setScrollOffset] = useState(0);
   const viewportHeight = Math.max(1, height);
 
+  const getItemHeight = useCallback(
+    (index: number) => {
+      const item = items[index];
+      return item !== undefined && itemHeight ? itemHeight(item, index) : 1;
+    },
+    [items, itemHeight],
+  );
+
+  const endIndexForOffset = useCallback(
+    (offset: number): number => {
+      let consumed = 0;
+      let i = offset;
+      while (i < items.length) {
+        const h = getItemHeight(i);
+        if (consumed + h > viewportHeight && i > offset) break;
+        consumed += h;
+        i++;
+      }
+      return i;
+    },
+    [items.length, getItemHeight, viewportHeight],
+  );
+
   useEffect(() => {
     if (selectedIndex < scrollOffset) {
       setScrollOffset(selectedIndex);
-    } else if (selectedIndex >= scrollOffset + viewportHeight) {
-      setScrollOffset(selectedIndex - viewportHeight + 1);
+    } else if (selectedIndex >= endIndexForOffset(scrollOffset)) {
+      let consumed = getItemHeight(selectedIndex);
+      let newOffset = selectedIndex;
+      while (newOffset > 0 && consumed + getItemHeight(newOffset - 1) <= viewportHeight) {
+        newOffset--;
+        consumed += getItemHeight(newOffset);
+      }
+      setScrollOffset(newOffset);
     }
-  }, [selectedIndex, viewportHeight, scrollOffset]);
+  }, [selectedIndex, viewportHeight, scrollOffset, endIndexForOffset, getItemHeight]);
+
+  const endIndex = useMemo(
+    () => endIndexForOffset(scrollOffset),
+    [endIndexForOffset, scrollOffset],
+  );
 
   const visibleItems = useMemo(
-    () => items.slice(scrollOffset, scrollOffset + viewportHeight),
-    [items, scrollOffset, viewportHeight],
+    () => items.slice(scrollOffset, endIndex),
+    [items, scrollOffset, endIndex],
   );
 
   if (items.length === 0) {
@@ -38,7 +74,7 @@ export function ScrollableList<T>({
   }
 
   const showScrollUp = scrollOffset > 0;
-  const showScrollDown = scrollOffset + viewportHeight < items.length;
+  const showScrollDown = endIndex < items.length;
 
   return (
     <Box flexDirection="column">
@@ -58,7 +94,7 @@ export function ScrollableList<T>({
       })}
       {showScrollDown && (
         <Text color={theme.muted}>
-          {"  ↓"} {items.length - scrollOffset - viewportHeight} more below
+          {"  ↓"} {items.length - endIndex} more below
         </Text>
       )}
     </Box>

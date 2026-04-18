@@ -92,6 +92,62 @@ describe("ScrollableList", () => {
     );
     expect(lastFrame()).toContain("No items");
   });
+
+  test("respects itemHeight for viewport calculation", () => {
+    const items = ["a", "b", "c", "d", "e"];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={4}
+        itemHeight={() => 2}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("a");
+    expect(frame).toContain("b");
+    expect(frame).not.toContain("c");
+    expect(frame).toContain("more below");
+  });
+
+  test("handles mixed item heights", () => {
+    const items = [
+      { text: "tall", height: 3 },
+      { text: "short", height: 1 },
+      { text: "medium", height: 2 },
+      { text: "hidden", height: 1 },
+    ];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={5}
+        itemHeight={(item) => item.height}
+        renderItem={(item) => <Text>{item.text}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("tall");
+    expect(frame).toContain("short");
+    expect(frame).not.toContain("medium");
+    expect(frame).toContain("more below");
+  });
+
+  test("shows at least one item even if it exceeds viewport height", () => {
+    const items = ["big", "small"];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={1}
+        itemHeight={() => 3}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("big");
+  });
 });
 
 // ---------------------------------------------------------------------------
