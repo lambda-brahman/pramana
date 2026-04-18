@@ -2,7 +2,7 @@ use crate::data_source::DataSource;
 use crate::error::TuiError;
 use pramana_engine::{ArtifactView, BuildReport, SearchResult, TenantInfo};
 use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 pub enum IoResponse {
     HealthCheck(bool),
@@ -12,6 +12,7 @@ pub enum IoResponse {
         result: Result<Vec<SearchResult>, TuiError>,
     },
     Get {
+        generation: u64,
         slug: String,
         result: Box<Result<Option<ArtifactView>, TuiError>>,
     },
@@ -31,7 +32,12 @@ pub enum IoResponse {
 
 pub struct IoHandle {
     data_source: Arc<Mutex<DataSource>>,
-    tx: mpsc::Sender<IoResponse>,
+    pub(crate) tx: mpsc::Sender<IoResponse>,
+}
+
+fn acquire(ds: &Mutex<DataSource>) -> Result<MutexGuard<'_, DataSource>, TuiError> {
+    ds.lock()
+        .map_err(|_| TuiError::General("data source lock poisoned".into()))
 }
 
 impl IoHandle {
@@ -56,7 +62,10 @@ impl IoHandle {
         let ds = self.data_source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = ds.lock().unwrap().list_tenants();
+            let result = match acquire(&ds) {
+                Ok(guard) => guard.list_tenants(),
+                Err(e) => Err(e),
+            };
             let _ = tx.send(IoResponse::Tenants(result));
         });
     }
@@ -65,17 +74,24 @@ impl IoHandle {
         let ds = self.data_source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = ds.lock().unwrap().search(&tenant, &query);
+            let result = match acquire(&ds) {
+                Ok(guard) => guard.search(&tenant, &query),
+                Err(e) => Err(e),
+            };
             let _ = tx.send(IoResponse::Search { generation, result });
         });
     }
 
-    pub fn spawn_get(&self, tenant: String, slug: String) {
+    pub fn spawn_get(&self, tenant: String, slug: String, generation: u64) {
         let ds = self.data_source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = ds.lock().unwrap().get(&tenant, &slug);
+            let result = match acquire(&ds) {
+                Ok(guard) => guard.get(&tenant, &slug),
+                Err(e) => Err(e),
+            };
             let _ = tx.send(IoResponse::Get {
+                generation,
                 slug,
                 result: Box::new(result),
             });
@@ -86,7 +102,10 @@ impl IoHandle {
         let ds = self.data_source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = ds.lock().unwrap().reload(&name);
+            let result = match acquire(&ds) {
+                Ok(mut guard) => guard.reload(&name),
+                Err(e) => Err(e),
+            };
             let _ = tx.send(IoResponse::Reload { name, result });
         });
     }
@@ -95,7 +114,10 @@ impl IoHandle {
         let ds = self.data_source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = ds.lock().unwrap().add_kb(&name, &source_dir);
+            let result = match acquire(&ds) {
+                Ok(mut guard) => guard.add_kb(&name, &source_dir),
+                Err(e) => Err(e),
+            };
             let _ = tx.send(IoResponse::AddKb { name, result });
         });
     }
@@ -104,7 +126,10 @@ impl IoHandle {
         let ds = self.data_source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = ds.lock().unwrap().remove_kb(&name);
+            let result = match acquire(&ds) {
+                Ok(mut guard) => guard.remove_kb(&name),
+                Err(e) => Err(e),
+            };
             let _ = tx.send(IoResponse::RemoveKb { name, result });
         });
     }

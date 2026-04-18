@@ -41,6 +41,7 @@ pub struct App {
     pub should_quit: bool,
     pub last_content_height: u16,
     search_generation: u64,
+    get_generation: u64,
     health_check_in_flight: bool,
 }
 
@@ -63,6 +64,7 @@ impl App {
             should_quit: false,
             last_content_height: 20,
             search_generation: 0,
+            get_generation: 0,
             health_check_in_flight: false,
         };
         app.refresh_tenants();
@@ -213,9 +215,13 @@ impl App {
     }
 
     fn navigate_to_artifact(&mut self, slug: &str) {
+        self.get_generation += 1;
         self.search.loading = true;
-        self.io
-            .spawn_get(self.active_tenant.clone(), slug.to_string());
+        self.io.spawn_get(
+            self.active_tenant.clone(),
+            slug.to_string(),
+            self.get_generation,
+        );
     }
 
     fn process_io_responses(&mut self) {
@@ -234,7 +240,9 @@ impl App {
                         }
                     }
                 }
-                IoResponse::Tenants(Err(_)) => {}
+                IoResponse::Tenants(Err(e)) => {
+                    self.kb_list.error_message = Some(format!("Failed to load tenants: {e}"));
+                }
                 IoResponse::Search { generation, result } => {
                     if generation == self.search_generation {
                         match result {
@@ -246,22 +254,32 @@ impl App {
                         }
                     }
                 }
-                IoResponse::Get { slug, result } => match *result {
-                    Ok(Some(artifact)) => {
-                        self.search.loading = false;
-                        self.detail = ArtifactDetailView::new();
-                        self.detail.set_artifact(artifact);
-                        self.push_view(View::ArtifactDetail { slug });
+                IoResponse::Get {
+                    generation,
+                    slug,
+                    result,
+                } => {
+                    if generation == self.get_generation {
+                        match *result {
+                            Ok(Some(artifact)) => {
+                                self.search.loading = false;
+                                self.detail = ArtifactDetailView::new();
+                                self.detail.set_artifact(artifact);
+                                self.push_view(View::ArtifactDetail { slug });
+                            }
+                            Ok(None) => {
+                                self.search.loading = false;
+                                self.search.error_message =
+                                    Some(format!("Artifact '{slug}' not found"));
+                            }
+                            Err(e) => {
+                                self.search.loading = false;
+                                self.search.error_message =
+                                    Some(format!("Failed to load '{slug}': {e}"));
+                            }
+                        }
                     }
-                    Ok(None) => {
-                        self.search.loading = false;
-                        self.search.error_message = Some(format!("Artifact '{slug}' not found"));
-                    }
-                    Err(e) => {
-                        self.search.loading = false;
-                        self.search.error_message = Some(format!("Failed to load '{slug}': {e}"));
-                    }
-                },
+                }
                 IoResponse::Reload { name, result } => {
                     match result {
                         Ok(report) => {
@@ -333,6 +351,10 @@ impl App {
                     .spawn_search(self.active_tenant.clone(), query, self.search_generation);
             }
         }
+    }
+
+    pub fn inject_response(&self, response: IoResponse) {
+        let _ = self.io.tx.send(response);
     }
 }
 
