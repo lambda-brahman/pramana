@@ -96,17 +96,6 @@ describe("CLI client mode", () => {
     }
   });
 
-  test("--standalone skips daemon even when running", async () => {
-    const { stdout, stderr, exitCode } = await runCli([
-      "list", "--source", FIXTURES_DIR, "--standalone",
-    ]);
-    expect(exitCode).toBe(0);
-    // Standalone mode prints ingestion summary to stderr
-    expect(stderr).toContain("Ingested");
-    const data = JSON.parse(stdout) as Array<unknown>;
-    expect(data.length).toBeGreaterThanOrEqual(4);
-  });
-
   test("missing slug exits with error", async () => {
     const { stderr, exitCode } = await runCli(["get"]);
     expect(exitCode).toBe(1);

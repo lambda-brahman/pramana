@@ -50,80 +50,22 @@ describe("CLI client E2E — daemon mode vs standalone", () => {
     return { stdout, stderr, exitCode };
   }
 
-  async function runStandalone(args: string[]): Promise<{ stdout: string; exitCode: number }> {
-    const proc = Bun.spawn(
-      ["bun", "run", CLI_PATH, ...args, "--source", FIXTURES_DIR, "--standalone"],
-      { stdout: "pipe", stderr: "pipe" }
-    );
-    const stdout = await new Response(proc.stdout).text();
-    const exitCode = await proc.exited;
-    return { stdout, exitCode };
-  }
-
-  test("get output matches between client and standalone", async () => {
-    const client = await runClient(["get", "order", "--tenant", FIXTURES_TENANT]);
-    const standalone = await runStandalone(["get", "order"]);
-
-    expect(client.exitCode).toBe(0);
-    expect(standalone.exitCode).toBe(0);
-
-    const clientData = JSON.parse(client.stdout);
-    const standaloneData = JSON.parse(standalone.stdout);
-
-    expect(clientData.slug).toBe(standaloneData.slug);
-    expect(clientData.title).toBe(standaloneData.title);
-    expect(clientData.tags).toEqual(standaloneData.tags);
-  });
-
-  test("list output matches between client and standalone", async () => {
-    const client = await runClient(["list", "--tenant", FIXTURES_TENANT]);
-    const standalone = await runStandalone(["list"]);
-
-    expect(client.exitCode).toBe(0);
-    expect(standalone.exitCode).toBe(0);
-
-    const clientData = JSON.parse(client.stdout) as Array<{ slug: string }>;
-    const standaloneData = JSON.parse(standalone.stdout) as Array<{ slug: string }>;
-
-    const clientSlugs = clientData.map((a) => a.slug).sort();
-    const standaloneSlugs = standaloneData.map((a) => a.slug).sort();
-    expect(clientSlugs).toEqual(standaloneSlugs);
-  });
-
-  test("search output matches between client and standalone", async () => {
-    const client = await runClient(["search", "purchase", "--tenant", FIXTURES_TENANT]);
-    const standalone = await runStandalone(["search", "purchase"]);
-
-    expect(client.exitCode).toBe(0);
-    expect(standalone.exitCode).toBe(0);
-
-    const clientData = JSON.parse(client.stdout) as Array<{ slug: string }>;
-    const standaloneData = JSON.parse(standalone.stdout) as Array<{ slug: string }>;
-
-    const clientSlugs = clientData.map((a) => a.slug).sort();
-    const standaloneSlugs = standaloneData.map((a) => a.slug).sort();
-    expect(clientSlugs).toEqual(standaloneSlugs);
-  });
-
   test("client mode does not print ingestion summary", async () => {
     const { stderr, exitCode } = await runClient(["list", "--tenant", FIXTURES_TENANT]);
     expect(exitCode).toBe(0);
     expect(stderr).not.toContain("Ingested");
   });
 
-  test("fallback to standalone when daemon is not reachable", async () => {
+  test("errors when daemon is not reachable", async () => {
     const proc = Bun.spawn(
-      ["bun", "run", CLI_PATH, "list", "--source", FIXTURES_DIR, "--port", "59999"],
+      ["bun", "run", CLI_PATH, "list", "--tenant", FIXTURES_TENANT, "--port", "59999"],
       { stdout: "pipe", stderr: "pipe" }
     );
-    const stdout = await new Response(proc.stdout).text();
     const stderr = await new Response(proc.stderr).text();
     const exitCode = await proc.exited;
 
-    expect(exitCode).toBe(0);
-    expect(stderr).toContain("Ingested");
-    const data = JSON.parse(stdout) as Array<unknown>;
-    expect(data.length).toBeGreaterThanOrEqual(4);
+    expect(exitCode).toBe(1);
+    expect(stderr).toContain("Pramana daemon not running. Start it with: pramana serve");
   });
 
   test("no --tenant returns error from server", async () => {
