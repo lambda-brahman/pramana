@@ -5,4 +5,5 @@ members = [
     "crates/pramana-cli",
     "crates/pramana-parser",
     "crates/pramana-embedder",
+    "crates/pramana-storage",
 ]
