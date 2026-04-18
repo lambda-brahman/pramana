@@ -311,6 +311,10 @@ fn parse_source(s: &str) -> (String, String) {
     (s.to_string(), name)
 }
 
+fn is_local_bind(host: &str) -> bool {
+    host == "127.0.0.1" || host == "::1" || host == "localhost"
+}
+
 fn cmd_serve(sources: Vec<String>, port: u16, host: &str, save: bool, no_config: bool) -> i32 {
     let cli_sources: Vec<(String, String)> = sources.iter().map(|s| parse_source(s)).collect();
 
@@ -382,6 +386,12 @@ fn cmd_serve(sources: Vec<String>, port: u16, host: &str, save: bool, no_config:
             }
         }
         eprintln!("Saved CLI sources to config");
+    }
+
+    if !is_local_bind(host) {
+        eprintln!(
+            "Warning: binding to {host} — API is accessible from the network without authentication"
+        );
     }
 
     match server::start(host, port, tm) {
@@ -1196,6 +1206,20 @@ mod tests {
             }
             _ => panic!("expected Search"),
         }
+    }
+
+    #[test]
+    fn local_bind_recognises_loopback_addresses() {
+        assert!(is_local_bind("127.0.0.1"));
+        assert!(is_local_bind("::1"));
+        assert!(is_local_bind("localhost"));
+    }
+
+    #[test]
+    fn local_bind_rejects_non_loopback() {
+        assert!(!is_local_bind("0.0.0.0"));
+        assert!(!is_local_bind("192.168.1.1"));
+        assert!(!is_local_bind("0.0.0.1"));
     }
 
     #[test]
