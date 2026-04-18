@@ -16,7 +16,12 @@ fn setup_with_fixtures() -> Storage {
     let storage = setup_storage();
     let builder = Builder::new(&storage);
     let report = builder.ingest(&fixtures_dir()).unwrap();
-    assert_eq!(report.failed.len(), 0, "fixture parse failures: {:?}", report.failed);
+    assert_eq!(
+        report.failed.len(),
+        0,
+        "fixture parse failures: {:?}",
+        report.failed
+    );
     assert!(report.succeeded > 0);
     storage
 }
@@ -134,7 +139,10 @@ fn traverse_depth_1_follows_direct_relationships() {
 
     assert!(slugs.contains(&"customer"), "order depends-on customer");
     assert!(slugs.contains(&"line-item"), "order depends-on line-item");
-    assert!(slugs.contains(&"shipping-info"), "order depends-on shipping-info");
+    assert!(
+        slugs.contains(&"shipping-info"),
+        "order depends-on shipping-info"
+    );
 }
 
 #[test]
@@ -315,11 +323,36 @@ fn tenant_name_validation_rejects_invalid() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();
 
-    assert!(mgr.mount(TenantConfig { name: "".into(), source_dir: dir.clone() }).is_err());
-    assert!(mgr.mount(TenantConfig { name: "1bad".into(), source_dir: dir.clone() }).is_err());
-    assert!(mgr.mount(TenantConfig { name: "Bad".into(), source_dir: dir.clone() }).is_err());
-    assert!(mgr.mount(TenantConfig { name: "get".into(), source_dir: dir.clone() }).is_err());
-    assert!(mgr.mount(TenantConfig { name: "search".into(), source_dir: dir }).is_err());
+    assert!(mgr
+        .mount(TenantConfig {
+            name: "".into(),
+            source_dir: dir.clone()
+        })
+        .is_err());
+    assert!(mgr
+        .mount(TenantConfig {
+            name: "1bad".into(),
+            source_dir: dir.clone()
+        })
+        .is_err());
+    assert!(mgr
+        .mount(TenantConfig {
+            name: "Bad".into(),
+            source_dir: dir.clone()
+        })
+        .is_err());
+    assert!(mgr
+        .mount(TenantConfig {
+            name: "get".into(),
+            source_dir: dir.clone()
+        })
+        .is_err());
+    assert!(mgr
+        .mount(TenantConfig {
+            name: "search".into(),
+            source_dir: dir
+        })
+        .is_err());
 }
 
 #[test]
@@ -358,8 +391,16 @@ fn tenant_list_and_names() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();
 
-    mgr.mount(TenantConfig { name: "alpha".into(), source_dir: dir.clone() }).unwrap();
-    mgr.mount(TenantConfig { name: "beta".into(), source_dir: dir }).unwrap();
+    mgr.mount(TenantConfig {
+        name: "alpha".into(),
+        source_dir: dir.clone(),
+    })
+    .unwrap();
+    mgr.mount(TenantConfig {
+        name: "beta".into(),
+        source_dir: dir,
+    })
+    .unwrap();
 
     let names = mgr.tenant_names();
     assert_eq!(names.len(), 2);
@@ -400,8 +441,16 @@ fn tenant_isolation_between_tenants() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();
 
-    mgr.mount(TenantConfig { name: "tenant-a".into(), source_dir: dir.clone() }).unwrap();
-    mgr.mount(TenantConfig { name: "tenant-b".into(), source_dir: dir }).unwrap();
+    mgr.mount(TenantConfig {
+        name: "tenant-a".into(),
+        source_dir: dir.clone(),
+    })
+    .unwrap();
+    mgr.mount(TenantConfig {
+        name: "tenant-b".into(),
+        source_dir: dir,
+    })
+    .unwrap();
 
     let reader_a = mgr.reader("tenant-a").unwrap();
     let reader_b = mgr.reader("tenant-b").unwrap();

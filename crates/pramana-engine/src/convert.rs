@@ -10,7 +10,11 @@ pub fn artifact_to_storage(ka: &KnowledgeArtifact) -> Artifact {
         tags: ka.tags.clone(),
         content: ka.content.clone(),
         hash: ka.hash.clone(),
-        relationships: ka.relationships.iter().map(relationship_to_storage).collect(),
+        relationships: ka
+            .relationships
+            .iter()
+            .map(relationship_to_storage)
+            .collect(),
         sections: ka.sections.iter().map(section_to_storage).collect(),
     }
 }
