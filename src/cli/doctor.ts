@@ -1,8 +1,18 @@
+import { statSync } from "node:fs";
+import { z } from "zod";
 import { loadConfig } from "../config/index.ts";
 import { err, ok, type Result } from "../lib/result.ts";
 import { NAME_REGEX, RESERVED_NAMES } from "../lib/tenant-names.ts";
 import { compareSemver, VERSION } from "../version.ts";
 import type { Severity } from "./lint.ts";
+
+const DaemonVersionSchema = z.object({ version: z.string() });
+const DaemonTenantSchema = z.object({
+  name: z.string(),
+  sourceDir: z.string(),
+  artifactCount: z.number(),
+});
+const DaemonTenantsSchema = z.array(DaemonTenantSchema);
 
 export type DoctorDiagnostic = {
   severity: Severity;
@@ -17,8 +27,7 @@ export type DoctorReport = {
 
 export type DoctorError = { type: "doctor"; message: string };
 
-type DaemonVersion = { version: string };
-type DaemonTenant = { name: string; sourceDir: string; artifactCount: number };
+type DaemonTenant = z.infer<typeof DaemonTenantSchema>;
 
 async function fetchDaemonVersion(port: number): Promise<Result<string, DoctorError>> {
   try {
@@ -33,8 +42,10 @@ async function fetchDaemonVersion(port: number): Promise<Result<string, DoctorEr
         type: "doctor",
         message: `Daemon returned HTTP ${res.status}`,
       });
-    const data = (await res.json()) as DaemonVersion;
-    return ok(data.version);
+    const parsed = DaemonVersionSchema.safeParse(await res.json());
+    if (!parsed.success)
+      return err({ type: "doctor", message: "Daemon returned unexpected version payload" });
+    return ok(parsed.data.version);
   } catch {
     return err({ type: "doctor", message: "Daemon is not reachable" });
   }
@@ -53,8 +64,10 @@ async function fetchDaemonTenants(port: number): Promise<Result<DaemonTenant[], 
         type: "doctor",
         message: `Daemon returned HTTP ${res.status}`,
       });
-    const data = (await res.json()) as DaemonTenant[];
-    return ok(data);
+    const parsed = DaemonTenantsSchema.safeParse(await res.json());
+    if (!parsed.success)
+      return err({ type: "doctor", message: "Daemon returned unexpected tenants payload" });
+    return ok(parsed.data);
   } catch {
     return err({
       type: "doctor",
@@ -64,8 +77,7 @@ async function fetchDaemonTenants(port: number): Promise<Result<DaemonTenant[], 
 }
 
 export function checkVersionMatch(daemonVersion: string): DoctorDiagnostic[] {
-  const clean = daemonVersion.replace(/^v/, "");
-  if (compareSemver(clean, VERSION) === 0) return [];
+  if (compareSemver(daemonVersion, VERSION) === 0) return [];
   return [
     {
       severity: "warn",
@@ -96,7 +108,6 @@ export function checkTenantNameValidity(tenantNames: string[]): DoctorDiagnostic
 }
 
 export function checkTenantPaths(tenants: Record<string, string>): DoctorDiagnostic[] {
-  const { statSync } = require("node:fs") as typeof import("node:fs");
   const diagnostics: DoctorDiagnostic[] = [];
   for (const [name, sourcePath] of Object.entries(tenants)) {
     try {
@@ -148,6 +159,15 @@ export function checkRuntimeTenantsMatch(
 }
 
 export async function runDoctor(port: number): Promise<Result<DoctorReport, DoctorError>> {
+  try {
+    return ok(await runDoctorChecks(port));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return err({ type: "doctor", message: `Unexpected error: ${message}` });
+  }
+}
+
+async function runDoctorChecks(port: number): Promise<DoctorReport> {
   const diagnostics: DoctorDiagnostic[] = [];
 
   // Check 1: Daemon reachable
@@ -158,7 +178,7 @@ export async function runDoctor(port: number): Promise<Result<DoctorReport, Doct
       check: "daemon-reachable",
       message: versionResult.error.message,
     });
-    return ok(buildReport(diagnostics));
+    return buildReport(diagnostics);
   }
 
   // Check 2: Version match
@@ -191,7 +211,7 @@ export async function runDoctor(port: number): Promise<Result<DoctorReport, Doct
     });
   }
 
-  return ok(buildReport(diagnostics));
+  return buildReport(diagnostics);
 }
 
 function buildReport(diagnostics: DoctorDiagnostic[]): DoctorReport {
