@@ -148,6 +148,56 @@ describe("ScrollableList", () => {
     const frame = lastFrame()!;
     expect(frame).toContain("big");
   });
+
+  test("scrolls down with variable heights — backward-walk computes correct offset", async () => {
+    // items each take 2 lines, viewport = 4 lines → shows 2 items at a time.
+    // Selecting item at index 2 triggers backward-walk: newOffset lands at 1.
+    // Viewport shows items 1 and 2 (not item 0).
+    const items = ["item-0", "item-1", "item-2", "item-3", "item-4"];
+    const { lastFrame, rerender } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={4}
+        itemHeight={() => 2}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    expect(lastFrame()).toContain("item-0");
+    expect(lastFrame()).not.toContain("item-2");
+
+    rerender(
+      <ScrollableList
+        items={items}
+        selectedIndex={2}
+        height={4}
+        itemHeight={() => 2}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    await delay(50);
+    const frame = lastFrame()!;
+    expect(frame).toContain("item-1");
+    expect(frame).toContain("item-2");
+    expect(frame).not.toContain("item-0");
+  });
+
+  test("scroll indicator 'more below' count reflects variable heights", () => {
+    // items: [2, 2, 2, 2] lines each, viewport = 4 lines
+    // offset=0 shows items 0 and 1. endIndex=2. "more below" = 4 - 2 = 2 items
+    const items = ["a", "b", "c", "d"];
+    const { lastFrame } = render(
+      <ScrollableList
+        items={items}
+        selectedIndex={0}
+        height={4}
+        itemHeight={() => 2}
+        renderItem={(item) => <Text>{item}</Text>}
+      />,
+    );
+    const frame = lastFrame()!;
+    expect(frame).toContain("2 more below");
+  });
 });
 
 // ---------------------------------------------------------------------------
