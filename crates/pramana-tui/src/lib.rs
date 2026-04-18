@@ -1,6 +1,7 @@
 pub mod app;
 pub mod data_source;
 pub mod error;
+pub mod io_worker;
 mod layout;
 mod theme;
 pub mod views;

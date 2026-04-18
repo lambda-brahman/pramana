@@ -9,7 +9,7 @@ pub enum DataSource {
 }
 
 impl DataSource {
-    pub fn mode_label(&self) -> &str {
+    pub fn mode_label(&self) -> &'static str {
         match self {
             DataSource::Standalone(_) => "standalone",
             DataSource::Daemon { .. } => "daemon",

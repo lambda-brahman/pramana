@@ -1,5 +1,6 @@
 use crate::data_source::DataSource;
 use crate::error::TuiError;
+use crate::io_worker::{IoHandle, IoResponse};
 use crate::views::artifact_detail::{
     handle_detail_input, render_artifact_detail, ArtifactDetailView, DetailAction,
 };
@@ -12,6 +13,7 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::widgets::Widget;
+use std::sync::mpsc;
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -26,7 +28,9 @@ struct NavEntry {
 }
 
 pub struct App {
-    pub data_source: DataSource,
+    io: IoHandle,
+    io_rx: mpsc::Receiver<IoResponse>,
+    mode_label: &'static str,
     pub active_tenant: String,
     pub port: u16,
     nav_stack: Vec<NavEntry>,
@@ -36,13 +40,20 @@ pub struct App {
     pub show_help: bool,
     pub should_quit: bool,
     pub last_content_height: u16,
+    search_generation: u64,
+    get_generation: u64,
+    health_check_in_flight: bool,
 }
 
 impl App {
     pub fn new(data_source: DataSource, port: u16, initial_tenant: Option<String>) -> Self {
+        let mode_label = data_source.mode_label();
+        let (io, io_rx) = IoHandle::new(data_source);
         let tenant = initial_tenant.unwrap_or_default();
         let mut app = Self {
-            data_source,
+            io,
+            io_rx,
+            mode_label,
             active_tenant: tenant,
             port,
             nav_stack: vec![NavEntry { view: View::KbList }],
@@ -52,6 +63,9 @@ impl App {
             show_help: false,
             should_quit: false,
             last_content_height: 20,
+            search_generation: 0,
+            get_generation: 0,
+            health_check_in_flight: false,
         };
         app.refresh_tenants();
         app
@@ -104,14 +118,7 @@ impl App {
     }
 
     pub fn refresh_tenants(&mut self) {
-        if let Ok(tenants) = self.data_source.list_tenants() {
-            self.kb_list.tenants = tenants;
-            if self.active_tenant.is_empty() {
-                if let Some(first) = self.kb_list.tenants.first() {
-                    self.active_tenant = first.name.clone();
-                }
-            }
-        }
+        self.io.spawn_list_tenants();
     }
 
     pub fn handle_event(&mut self, event: Event) {
@@ -153,51 +160,16 @@ impl App {
                 self.push_view(View::Search);
             }
             KbListAction::Reload(name) => {
-                match self.data_source.reload(&name) {
-                    Ok(report) => {
-                        self.kb_list.status_message = Some(format!(
-                            "Reloaded '{}': {}/{} files",
-                            name, report.succeeded, report.total
-                        ));
-                    }
-                    Err(e) => {
-                        self.kb_list.error_message = Some(format!("Reload failed: {e}"));
-                    }
-                }
-                self.refresh_tenants();
+                self.kb_list.status_message = Some(format!("Reloading '{name}'..."));
+                self.io.spawn_reload(name);
             }
             KbListAction::AddKb { name, source_dir } => {
-                match self.data_source.add_kb(&name, &source_dir) {
-                    Ok(report) => {
-                        self.kb_list.status_message = Some(format!(
-                            "Added '{}': {}/{} files",
-                            name, report.succeeded, report.total
-                        ));
-                    }
-                    Err(e) => {
-                        self.kb_list.error_message = Some(format!("Add failed: {e}"));
-                    }
-                }
-                self.refresh_tenants();
+                self.kb_list.status_message = Some(format!("Adding '{name}'..."));
+                self.io.spawn_add_kb(name, source_dir);
             }
             KbListAction::RemoveKb(name) => {
-                match self.data_source.remove_kb(&name) {
-                    Ok(()) => {
-                        self.kb_list.status_message = Some(format!("Removed '{name}'"));
-                        if self.active_tenant == name {
-                            self.active_tenant = self
-                                .kb_list
-                                .tenants
-                                .first()
-                                .map(|t| t.name.clone())
-                                .unwrap_or_default();
-                        }
-                    }
-                    Err(e) => {
-                        self.kb_list.error_message = Some(format!("Remove failed: {e}"));
-                    }
-                }
-                self.refresh_tenants();
+                self.kb_list.status_message = Some(format!("Removing '{name}'..."));
+                self.io.spawn_remove_kb(name);
             }
             KbListAction::OpenDir(dir) => {
                 let _ = open_directory(&dir);
@@ -243,47 +215,146 @@ impl App {
     }
 
     fn navigate_to_artifact(&mut self, slug: &str) {
+        self.get_generation += 1;
         self.search.loading = true;
-        match self.data_source.get(&self.active_tenant, slug) {
-            Ok(Some(artifact)) => {
-                self.search.loading = false;
-                self.detail = ArtifactDetailView::new();
-                self.detail.set_artifact(artifact);
-                self.push_view(View::ArtifactDetail {
-                    slug: slug.to_string(),
-                });
-            }
-            Ok(None) => {
-                self.search.loading = false;
-                self.search.error_message = Some(format!("Artifact '{slug}' not found"));
-            }
-            Err(e) => {
-                self.search.loading = false;
-                self.search.error_message = Some(format!("Failed to load '{slug}': {e}"));
+        self.io.spawn_get(
+            self.active_tenant.clone(),
+            slug.to_string(),
+            self.get_generation,
+        );
+    }
+
+    fn process_io_responses(&mut self) {
+        while let Ok(resp) = self.io_rx.try_recv() {
+            match resp {
+                IoResponse::HealthCheck(running) => {
+                    self.health_check_in_flight = false;
+                    self.kb_list.set_health_result(running);
+                    self.kb_list.status_message = None;
+                }
+                IoResponse::Tenants(Ok(tenants)) => {
+                    self.kb_list.tenants = tenants;
+                    if self.active_tenant.is_empty() {
+                        if let Some(first) = self.kb_list.tenants.first() {
+                            self.active_tenant = first.name.clone();
+                        }
+                    }
+                }
+                IoResponse::Tenants(Err(e)) => {
+                    self.kb_list.error_message = Some(format!("Failed to load tenants: {e}"));
+                }
+                IoResponse::Search { generation, result } => {
+                    if generation == self.search_generation {
+                        match result {
+                            Ok(results) => self.search.set_results(results),
+                            Err(e) => {
+                                self.search.set_results(Vec::new());
+                                self.search.error_message = Some(format!("Search failed: {e}"));
+                            }
+                        }
+                    }
+                }
+                IoResponse::Get {
+                    generation,
+                    slug,
+                    result,
+                } => {
+                    if generation == self.get_generation {
+                        match *result {
+                            Ok(Some(artifact)) => {
+                                self.search.loading = false;
+                                self.detail = ArtifactDetailView::new();
+                                self.detail.set_artifact(artifact);
+                                self.push_view(View::ArtifactDetail { slug });
+                            }
+                            Ok(None) => {
+                                self.search.loading = false;
+                                self.search.error_message =
+                                    Some(format!("Artifact '{slug}' not found"));
+                            }
+                            Err(e) => {
+                                self.search.loading = false;
+                                self.search.error_message =
+                                    Some(format!("Failed to load '{slug}': {e}"));
+                            }
+                        }
+                    }
+                }
+                IoResponse::Reload { name, result } => {
+                    match result {
+                        Ok(report) => {
+                            self.kb_list.status_message = Some(format!(
+                                "Reloaded '{}': {}/{} files",
+                                name, report.succeeded, report.total
+                            ));
+                        }
+                        Err(e) => {
+                            self.kb_list.error_message = Some(format!("Reload failed: {e}"));
+                        }
+                    }
+                    self.refresh_tenants();
+                }
+                IoResponse::AddKb { name, result } => {
+                    match result {
+                        Ok(report) => {
+                            self.kb_list.status_message = Some(format!(
+                                "Added '{}': {}/{} files",
+                                name, report.succeeded, report.total
+                            ));
+                        }
+                        Err(e) => {
+                            self.kb_list.error_message = Some(format!("Add failed: {e}"));
+                        }
+                    }
+                    self.refresh_tenants();
+                }
+                IoResponse::RemoveKb { name, result } => {
+                    match result {
+                        Ok(()) => {
+                            self.kb_list.status_message = Some(format!("Removed '{name}'"));
+                            if self.active_tenant == name {
+                                self.active_tenant = self
+                                    .kb_list
+                                    .tenants
+                                    .first()
+                                    .map(|t| t.name.clone())
+                                    .unwrap_or_default();
+                            }
+                        }
+                        Err(e) => {
+                            self.kb_list.error_message = Some(format!("Remove failed: {e}"));
+                        }
+                    }
+                    self.refresh_tenants();
+                }
             }
         }
     }
 
     pub fn tick(&mut self) {
-        if matches!(self.current_view(), View::KbList) && self.kb_list.needs_health_check() {
+        self.process_io_responses();
+
+        if matches!(self.current_view(), View::KbList)
+            && !self.health_check_in_flight
+            && self.kb_list.needs_health_check()
+        {
+            self.health_check_in_flight = true;
             self.kb_list.status_message = Some("Checking daemon...".into());
-            let running = DataSource::check_daemon(self.port);
-            self.kb_list.set_health_result(running);
-            self.kb_list.status_message = None;
+            self.io.spawn_health_check(self.port);
         }
 
         if matches!(self.current_view(), View::Search) && self.search.needs_search() {
             if let Some(query) = self.search.take_pending_query() {
+                self.search_generation += 1;
                 self.search.loading = true;
-                match self.data_source.search(&self.active_tenant, &query) {
-                    Ok(results) => self.search.set_results(results),
-                    Err(e) => {
-                        self.search.set_results(Vec::new());
-                        self.search.error_message = Some(format!("Search failed: {e}"));
-                    }
-                }
+                self.io
+                    .spawn_search(self.active_tenant.clone(), query, self.search_generation);
             }
         }
+    }
+
+    pub fn inject_response(&self, response: IoResponse) {
+        let _ = self.io.tx.send(response);
     }
 }
 
@@ -312,7 +383,7 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
     StatusBar::new(
         app.view_label(),
         &app.active_tenant,
-        app.data_source.mode_label(),
+        app.mode_label,
         app.nav_stack.len(),
     )
     .render(chunks[2], buf);
