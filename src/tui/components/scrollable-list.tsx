@@ -31,38 +31,60 @@ export function ScrollableList<T>({
   );
 
   const endIndexForOffset = useCallback(
-    (offset: number): number => {
+    (offset: number, limit: number): number => {
       let consumed = 0;
       let i = offset;
       while (i < items.length) {
         const h = getItemHeight(i);
-        if (consumed + h > viewportHeight && i > offset) break;
+        if (consumed + h > limit && i > offset) break;
         consumed += h;
         i++;
       }
       return i;
     },
-    [items.length, getItemHeight, viewportHeight],
+    [items.length, getItemHeight],
+  );
+
+  // Two-pass: reserve lines for visible scroll indicators before computing end index.
+  // Pass 1 uses height minus the scroll-up indicator (known from offset).
+  // Pass 2 subtracts the scroll-down indicator if one would appear.
+  const effectiveEndIndex = useCallback(
+    (offset: number): number => {
+      const scrollUpLines = offset > 0 ? 1 : 0;
+      const heightAfterUp = Math.max(1, viewportHeight - scrollUpLines);
+      const pass1End = endIndexForOffset(offset, heightAfterUp);
+      const scrollDownLines = pass1End < items.length ? 1 : 0;
+      const effectiveHeight = Math.max(1, heightAfterUp - scrollDownLines);
+      return endIndexForOffset(offset, effectiveHeight);
+    },
+    [viewportHeight, endIndexForOffset, items.length],
   );
 
   useEffect(() => {
     if (selectedIndex < 0) return;
     if (selectedIndex < scrollOffset) {
       setScrollOffset(selectedIndex);
-    } else if (selectedIndex >= endIndexForOffset(scrollOffset)) {
+    } else if (selectedIndex >= effectiveEndIndex(scrollOffset)) {
       let consumed = getItemHeight(selectedIndex);
       let newOffset = selectedIndex;
-      while (newOffset > 0 && consumed + getItemHeight(newOffset - 1) <= viewportHeight) {
+      while (newOffset > 0) {
+        const candidateOffset = newOffset - 1;
+        // Reserve indicator lines at the candidate offset:
+        // scroll-up if candidateOffset > 0; scroll-down if items follow selectedIndex.
+        const scrollUpLines = candidateOffset > 0 ? 1 : 0;
+        const scrollDownLines = selectedIndex < items.length - 1 ? 1 : 0;
+        const limit = Math.max(1, viewportHeight - scrollUpLines - scrollDownLines);
+        if (consumed + getItemHeight(candidateOffset) > limit) break;
         newOffset--;
         consumed += getItemHeight(newOffset);
       }
       setScrollOffset(newOffset);
     }
-  }, [selectedIndex, viewportHeight, scrollOffset, endIndexForOffset, getItemHeight]);
+  }, [selectedIndex, viewportHeight, scrollOffset, effectiveEndIndex, getItemHeight, items.length]);
 
   const endIndex = useMemo(
-    () => endIndexForOffset(scrollOffset),
-    [endIndexForOffset, scrollOffset],
+    () => effectiveEndIndex(scrollOffset),
+    [effectiveEndIndex, scrollOffset],
   );
 
   const visibleItems = useMemo(
