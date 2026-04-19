@@ -17,3 +17,4 @@ percent-encoding = "2"
 
 [dev-dependencies]
 insta = "1"
+pramana-storage = { path = "../pramana-storage" }

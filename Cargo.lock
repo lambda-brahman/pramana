@@ -1614,6 +1614,7 @@ dependencies = [
  "insta",
  "percent-encoding",
  "pramana-engine",
+ "pramana-storage",
  "ratatui",
  "serde_json",
  "thiserror 2.0.18",
