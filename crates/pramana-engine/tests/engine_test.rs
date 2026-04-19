@@ -1,4 +1,4 @@
-use pramana_engine::{Builder, ListFilter, Reader, TenantConfig, TenantManager};
+use pramana_engine::{Builder, ListFilter, PreparedTenant, Reader, TenantConfig, TenantManager};
 use pramana_storage::{Artifact, Relationship, Section, Storage};
 use std::path::{Path, PathBuf};
 
@@ -501,17 +501,17 @@ fn tenant_apply_reload_nonexistent() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();
 
-    let prepared = TenantManager::build_prepared(&dir).unwrap();
+    let prepared = PreparedTenant::build(&dir).unwrap();
     assert!(mgr.apply_reload("ghost", prepared).is_err());
 }
 
 #[test]
-fn tenant_build_prepared_deleted_dir() {
+fn tenant_prepared_build_deleted_dir() {
     let tmp = tempfile::tempdir().unwrap();
     let dir = tmp.path().to_string_lossy().into_owned();
     drop(tmp);
 
-    let err = TenantManager::build_prepared(&dir).unwrap_err();
+    let err = PreparedTenant::build(&dir).unwrap_err();
     assert!(
         format!("{err}").contains("source directory no longer exists"),
         "unexpected error: {err}"
