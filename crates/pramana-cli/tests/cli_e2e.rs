@@ -215,8 +215,8 @@ fn doctor_json_outputs_valid_json_with_expected_fields() {
     let out = run(&["doctor", "--json", "--port", &port.to_string()]);
     assert_eq!(out.status.code(), Some(2));
     let stdout = String::from_utf8_lossy(&out.stdout);
-    let parsed: serde_json::Value = serde_json::from_str(&stdout)
-        .unwrap_or_else(|_| panic!("invalid JSON: {stdout}"));
+    let parsed: serde_json::Value =
+        serde_json::from_str(&stdout).unwrap_or_else(|_| panic!("invalid JSON: {stdout}"));
     assert!(parsed.get("diagnostics").is_some(), "missing diagnostics");
     assert!(parsed.get("summary").is_some(), "missing summary");
 }
