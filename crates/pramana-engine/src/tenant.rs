@@ -63,10 +63,10 @@ impl TenantManager {
 
         let source_path = Path::new(&config.source_dir);
         if !source_path.is_dir() {
-            return Err(EngineError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("source directory does not exist: {}", config.source_dir),
-            )));
+            return Err(EngineError::InvalidTenantName {
+                name: config.name,
+                reason: format!("source directory does not exist: {}", config.source_dir),
+            });
         }
 
         let state = build_tenant_state(
@@ -159,7 +159,7 @@ fn build_tenant_state(
 
     #[cfg(feature = "embeddings")]
     if let Some(embedder) = embedder {
-        build_embeddings(&storage, embedder, DEFAULT_EMBED_BATCH_SIZE)?;
+        build_embeddings(&storage, embedder)?;
     }
 
     Ok(TenantState {
@@ -170,15 +170,11 @@ fn build_tenant_state(
 }
 
 #[cfg(feature = "embeddings")]
-const DEFAULT_EMBED_BATCH_SIZE: usize = 32;
-
-#[cfg(feature = "embeddings")]
-fn build_embeddings(
-    storage: &Storage,
-    embedder: &Embedder,
-    batch_size: usize,
-) -> Result<(), EngineError> {
+fn build_embeddings(storage: &Storage, embedder: &Embedder) -> Result<(), EngineError> {
     let artifacts = storage.list(None, None, None)?;
+    if artifacts.is_empty() {
+        return Ok(());
+    }
 
     let texts: Vec<String> = artifacts
         .iter()
@@ -195,17 +191,21 @@ fn build_embeddings(
         })
         .collect();
 
-    for chunk_start in (0..artifacts.len()).step_by(batch_size) {
-        let chunk_end = (chunk_start + batch_size).min(artifacts.len());
-        let text_refs: Vec<&str> = texts[chunk_start..chunk_end]
-            .iter()
-            .map(|s| s.as_str())
-            .collect();
+    let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
+    let vectors = embedder.embed_batch(&text_refs)?;
 
-        let vectors = embedder.embed_batch(&text_refs)?;
-        for (i, vec) in vectors.into_iter().enumerate() {
-            storage.insert_embedding(&artifacts[chunk_start + i].slug, &vec)?;
-        }
+    if vectors.len() != text_refs.len() {
+        return Err(EngineError::Embed(pramana_embedder::EmbedError::Inference(
+            format!(
+                "embed count mismatch: expected {}, got {}",
+                text_refs.len(),
+                vectors.len()
+            ),
+        )));
+    }
+
+    for (i, vec) in vectors.into_iter().enumerate() {
+        storage.insert_embedding(&artifacts[i].slug, &vec)?;
     }
 
     Ok(())
@@ -311,8 +311,16 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "embeddings")]
-    fn default_embed_batch_size_is_32() {
-        assert_eq!(super::DEFAULT_EMBED_BATCH_SIZE, 32);
+    fn build_empty_source_produces_no_artifacts() {
+        let dir = std::env::temp_dir().join("pramana-empty-build-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let state = build_tenant_state(
+            dir.to_str().unwrap(),
+            #[cfg(feature = "embeddings")]
+            None,
+        )
+        .unwrap();
+        assert_eq!(state.storage.count_artifacts().unwrap_or(0), 0);
+        std::fs::remove_dir(&dir).ok();
     }
 }
