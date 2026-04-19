@@ -433,12 +433,7 @@ impl App {
                         Ok(()) => {
                             self.kb_list.status_message = Some(format!("Removed '{name}'"));
                             if self.active_tenant == name {
-                                self.active_tenant = self
-                                    .kb_list
-                                    .tenants
-                                    .first()
-                                    .map(|t| t.name.clone())
-                                    .unwrap_or_default();
+                                self.active_tenant = String::new();
                             }
                         }
                         Err(e) => {

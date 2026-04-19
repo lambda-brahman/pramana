@@ -149,6 +149,110 @@ mod standalone_responses {
     }
 }
 
+mod remove_kb {
+    use super::*;
+    use pramana_tui::io_worker::IoResponse;
+
+    #[test]
+    fn active_tenant_cleared_on_remove_before_refresh() {
+        let ds = DataSource::Standalone(Box::new(pramana_engine::TenantManager::new()));
+        let mut app = App::new(ds, 5111, Some("alpha".into()));
+
+        app.kb_list.tenants = vec![
+            pramana_engine::TenantInfo {
+                name: "alpha".into(),
+                source_dir: "/tmp".into(),
+                artifact_count: 0,
+            },
+            pramana_engine::TenantInfo {
+                name: "beta".into(),
+                source_dir: "/tmp".into(),
+                artifact_count: 0,
+            },
+        ];
+        app.active_tenant = "alpha".into();
+
+        // Inject RemoveKb success — kb_list.tenants is still the stale list.
+        app.inject_response(IoResponse::RemoveKb {
+            name: "alpha".into(),
+            result: Ok(()),
+        });
+        app.tick();
+
+        // active_tenant must not reference the deleted KB.
+        assert!(
+            app.active_tenant.is_empty(),
+            "active_tenant should be empty after removing the active KB, got '{}'",
+            app.active_tenant
+        );
+    }
+
+    #[test]
+    fn active_tenant_repopulated_by_tenants_response() {
+        let ds = DataSource::Standalone(Box::new(pramana_engine::TenantManager::new()));
+        let mut app = App::new(ds, 5111, Some("alpha".into()));
+
+        app.kb_list.tenants = vec![pramana_engine::TenantInfo {
+            name: "alpha".into(),
+            source_dir: "/tmp".into(),
+            artifact_count: 0,
+        }];
+        app.active_tenant = "alpha".into();
+
+        // Remove clears active_tenant.
+        app.inject_response(IoResponse::RemoveKb {
+            name: "alpha".into(),
+            result: Ok(()),
+        });
+        app.tick();
+        assert!(app.active_tenant.is_empty());
+
+        // Refreshed tenant list arrives (only beta remains).
+        app.inject_response(IoResponse::Tenants(Ok(vec![pramana_engine::TenantInfo {
+            name: "beta".into(),
+            source_dir: "/tmp".into(),
+            artifact_count: 0,
+        }])));
+        app.tick();
+
+        assert_eq!(
+            app.active_tenant, "beta",
+            "active_tenant should be set to the first tenant in the refreshed list"
+        );
+    }
+
+    #[test]
+    fn non_active_tenant_remove_does_not_change_active_tenant() {
+        let ds = DataSource::Standalone(Box::new(pramana_engine::TenantManager::new()));
+        let mut app = App::new(ds, 5111, Some("alpha".into()));
+
+        app.kb_list.tenants = vec![
+            pramana_engine::TenantInfo {
+                name: "alpha".into(),
+                source_dir: "/tmp".into(),
+                artifact_count: 0,
+            },
+            pramana_engine::TenantInfo {
+                name: "beta".into(),
+                source_dir: "/tmp".into(),
+                artifact_count: 0,
+            },
+        ];
+        app.active_tenant = "alpha".into();
+
+        app.inject_response(IoResponse::RemoveKb {
+            name: "beta".into(),
+            result: Ok(()),
+        });
+        app.tick();
+
+        assert_eq!(
+            app.active_tenant, "alpha",
+            "active_tenant should be unchanged when a non-active KB is removed"
+        );
+    }
+}
+
 mod generation_counters {
     use super::*;
     use pramana_tui::io_worker::IoResponse;
