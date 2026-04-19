@@ -7,7 +7,7 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Widget};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum RelDirection {
@@ -20,6 +20,8 @@ pub struct GraphEntry {
     pub title: String,
     pub kind: String,
     pub direction: RelDirection,
+    pub depth_level: usize,
+    pub tree_prefix: String,
 }
 
 pub struct GraphView {
@@ -60,40 +62,41 @@ impl GraphView {
         self.selected_index = 0;
         self.scroll_state = ScrollableListState::new();
 
-        let title_map: HashMap<&str, &str> = traversed
-            .iter()
-            .map(|a| (a.slug.as_str(), a.title.as_str()))
-            .collect();
+        let traversed_map: HashMap<&str, &ArtifactView> =
+            traversed.iter().map(|a| (a.slug.as_str(), a)).collect();
 
         let mut entries = Vec::new();
+        let mut visited: HashSet<String> = HashSet::new();
+        visited.insert(root.slug.clone());
 
-        for rel in &root.relationships {
-            let target_slug = rel.target.split('#').next().unwrap_or(&rel.target);
-            let title = title_map
-                .get(target_slug)
-                .copied()
-                .unwrap_or(target_slug)
-                .to_owned();
-            entries.push(GraphEntry {
-                slug: target_slug.to_owned(),
-                title,
-                kind: rel.kind.clone(),
-                direction: RelDirection::Outbound,
-            });
-        }
+        let max_depth_level = self.depth.saturating_sub(1);
+        build_tree_entries(
+            root,
+            0,
+            max_depth_level,
+            "",
+            &traversed_map,
+            &mut visited,
+            &mut entries,
+        );
 
         for rel in &root.inverse_relationships {
             let target_slug = rel.target.split('#').next().unwrap_or(&rel.target);
-            let title = title_map
+            if visited.contains(target_slug) {
+                continue;
+            }
+            visited.insert(target_slug.to_owned());
+            let title = traversed_map
                 .get(target_slug)
-                .copied()
-                .unwrap_or(target_slug)
-                .to_owned();
+                .map(|a| a.title.clone())
+                .unwrap_or_else(|| target_slug.to_owned());
             entries.push(GraphEntry {
                 slug: target_slug.to_owned(),
                 title,
                 kind: rel.kind.clone(),
                 direction: RelDirection::Inbound,
+                depth_level: 0,
+                tree_prefix: String::new(),
             });
         }
 
@@ -104,6 +107,79 @@ impl GraphView {
         self.entries
             .get(self.selected_index)
             .map(|e| e.slug.as_str())
+    }
+}
+
+/// Recursively expand outbound relationships in DFS order, building tree_prefix strings
+/// using box-drawing characters for depth > 0 levels.
+fn build_tree_entries<'a>(
+    artifact: &'a ArtifactView,
+    depth_level: usize,
+    max_depth_level: usize,
+    continuation: &str,
+    traversed_map: &HashMap<&str, &'a ArtifactView>,
+    visited: &mut HashSet<String>,
+    entries: &mut Vec<GraphEntry>,
+) {
+    let children: Vec<(&str, String)> = artifact
+        .relationships
+        .iter()
+        .filter_map(|rel| {
+            let slug = rel.target.split('#').next().unwrap_or(&rel.target);
+            if visited.contains(slug) {
+                None
+            } else {
+                Some((slug, rel.kind.clone()))
+            }
+        })
+        .collect();
+
+    for (i, (slug, kind)) in children.iter().enumerate() {
+        visited.insert(slug.to_string());
+        let is_last = i == children.len() - 1;
+
+        let (tree_prefix, child_continuation) = if depth_level == 0 {
+            (String::new(), String::new())
+        } else {
+            let connector = if is_last {
+                "\u{2514}\u{2500}"
+            } else {
+                "\u{251C}\u{2500}"
+            };
+            let cont_segment = if is_last { "   " } else { "\u{2502}  " };
+            (
+                format!("{continuation}{connector}"),
+                format!("{continuation}{cont_segment}"),
+            )
+        };
+
+        let title = traversed_map
+            .get(*slug)
+            .map(|a| a.title.clone())
+            .unwrap_or_else(|| slug.to_string());
+
+        entries.push(GraphEntry {
+            slug: slug.to_string(),
+            title,
+            kind: kind.clone(),
+            direction: RelDirection::Outbound,
+            depth_level,
+            tree_prefix,
+        });
+
+        if depth_level < max_depth_level {
+            if let Some(child_artifact) = traversed_map.get(*slug) {
+                build_tree_entries(
+                    child_artifact,
+                    depth_level + 1,
+                    max_depth_level,
+                    &child_continuation,
+                    traversed_map,
+                    visited,
+                    entries,
+                );
+            }
+        }
     }
 }
 
@@ -241,7 +317,10 @@ pub fn render_graph(view: &mut GraphView, area: Rect, buf: &mut Buffer) {
                 RelDirection::Inbound => ("\u{2190}", THEME.relates_to),
             };
             vec![Line::from(vec![
-                Span::styled(format!("  {arrow} "), Style::default().fg(color)),
+                Span::styled(
+                    format!("  {}{arrow} ", entry.tree_prefix),
+                    Style::default().fg(color),
+                ),
                 Span::styled(&entry.slug, Style::default().fg(THEME.primary)),
                 Span::styled(
                     format!("  [{}]", entry.kind),
