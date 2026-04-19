@@ -526,7 +526,8 @@ fn rrf_accuracy_known_corpus() {
 #[test]
 fn list_with_limit_and_offset() {
     let s = test_storage();
-    for i in 0..5u8 {
+    // Insert in reverse order to verify ORDER BY slug, not insertion order
+    for i in (0..5u8).rev() {
         s.insert_artifact(&sample_artifact(
             &format!("slug-{i}"),
             &format!("Title {i}"),
@@ -537,30 +538,45 @@ fn list_with_limit_and_offset() {
 
     let page1 = s.list(None, Some(2), None).unwrap();
     assert_eq!(page1.len(), 2);
+    assert_eq!(page1[0].slug, "slug-0");
+    assert_eq!(page1[1].slug, "slug-1");
 
     let page2 = s.list(None, Some(2), Some(2)).unwrap();
     assert_eq!(page2.len(), 2);
+    assert_eq!(page2[0].slug, "slug-2");
+    assert_eq!(page2[1].slug, "slug-3");
 
-    // Pages must be disjoint
-    let p1_slugs: Vec<&str> = page1.iter().map(|a| a.slug.as_str()).collect();
-    for a in &page2 {
-        assert!(!p1_slugs.contains(&a.slug.as_str()));
-    }
+    let page3 = s.list(None, Some(2), Some(4)).unwrap();
+    assert_eq!(page3.len(), 1);
+    assert_eq!(page3[0].slug, "slug-4");
 
     let all = s.list(None, None, None).unwrap();
     assert_eq!(all.len(), 5);
+    let all_slugs: Vec<&str> = all.iter().map(|a| a.slug.as_str()).collect();
+    assert_eq!(
+        all_slugs,
+        ["slug-0", "slug-1", "slug-2", "slug-3", "slug-4"]
+    );
 }
 
 #[test]
 fn list_limit_with_tag_filter() {
     let s = test_storage();
-    for i in 0..4u8 {
+    // Insert in reverse order to verify ORDER BY slug
+    for i in (0..4u8).rev() {
         let mut a = sample_artifact(&format!("slug-{i}"), &format!("T{i}"), "c");
         a.tags = vec!["tagged".into()];
         s.insert_artifact(&a).unwrap();
     }
-    let limited = s.list(Some(&["tagged".into()]), Some(2), None).unwrap();
-    assert_eq!(limited.len(), 2);
+    let page1 = s.list(Some(&["tagged".into()]), Some(2), None).unwrap();
+    assert_eq!(page1.len(), 2);
+    assert_eq!(page1[0].slug, "slug-0");
+    assert_eq!(page1[1].slug, "slug-1");
+
+    let page2 = s.list(Some(&["tagged".into()]), Some(2), Some(2)).unwrap();
+    assert_eq!(page2.len(), 2);
+    assert_eq!(page2[0].slug, "slug-2");
+    assert_eq!(page2[1].slug, "slug-3");
 }
 
 #[test]
