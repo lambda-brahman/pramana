@@ -36,10 +36,30 @@ struct TenantState {
 
 /// Opaque handle to a fully-built tenant state, ready for [`TenantManager::apply_reload`].
 ///
-/// Created via [`TenantManager::prepare_reload`] or [`TenantManager::build_prepared`].
+/// Created via [`TenantManager::prepare_reload`] or [`PreparedTenant::build`].
 /// The caller is responsible for ensuring the prepared state is applied to the
 /// correct tenant — no name validation is performed in `apply_reload`.
 pub struct PreparedTenant(TenantState);
+
+impl PreparedTenant {
+    /// Builds tenant state from `source_dir` without requiring a `TenantManager` reference.
+    ///
+    /// Use when building outside a lock boundary where no `&self` borrow is available.
+    pub fn build(
+        source_dir: &str,
+        #[cfg(feature = "embeddings")] embedder: Option<&Embedder>,
+    ) -> Result<PreparedTenant, EngineError> {
+        if !Path::new(source_dir).is_dir() {
+            return Err(EngineError::SourceDirNotFound(source_dir.to_owned()));
+        }
+        let state = build_tenant_state(
+            source_dir,
+            #[cfg(feature = "embeddings")]
+            embedder,
+        )?;
+        Ok(PreparedTenant(state))
+    }
+}
 
 impl std::fmt::Debug for PreparedTenant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -110,24 +130,6 @@ impl TenantManager {
         self.embedder.clone()
     }
 
-    /// Builds tenant state from `source_dir` without requiring a `TenantManager` reference.
-    ///
-    /// Use when building outside a lock boundary where no `&self` borrow is available.
-    pub fn build_prepared(
-        source_dir: &str,
-        #[cfg(feature = "embeddings")] embedder: Option<&Embedder>,
-    ) -> Result<PreparedTenant, EngineError> {
-        if !Path::new(source_dir).is_dir() {
-            return Err(EngineError::SourceDirNotFound(source_dir.to_owned()));
-        }
-        let state = build_tenant_state(
-            source_dir,
-            #[cfg(feature = "embeddings")]
-            embedder,
-        )?;
-        Ok(PreparedTenant(state))
-    }
-
     /// Builds a new [`PreparedTenant`] for `name` using `&self` (shared borrow).
     ///
     /// The expensive build (disk I/O, embeddings) happens here. Follow with
@@ -138,7 +140,7 @@ impl TenantManager {
     /// in that case.
     pub fn prepare_reload(&self, name: &str) -> Result<PreparedTenant, EngineError> {
         let source_dir = self.tenant_source_dir(name)?;
-        Self::build_prepared(
+        PreparedTenant::build(
             &source_dir,
             #[cfg(feature = "embeddings")]
             self.embedder.as_deref(),
