@@ -1,0 +1,20 @@
+name: Embedder Integration Tests
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"  # every Monday at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  embedder-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache model artifacts
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pramana/models
+          key: embedder-models-gte-small
+      - name: Run ignored integration tests
+        run: cargo test -p pramana-embedder --test integration_test -- --ignored
