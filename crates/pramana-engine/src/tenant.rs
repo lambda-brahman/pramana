@@ -58,21 +58,22 @@ impl TenantManager {
         validate_tenant_name(&config.name)?;
 
         if self.tenants.contains_key(&config.name) {
-            return Err(EngineError::Tenant(format!(
-                "tenant '{}' already exists",
-                config.name
-            )));
+            return Err(EngineError::TenantAlreadyExists(config.name));
         }
 
         let source_path = Path::new(&config.source_dir);
         if !source_path.is_dir() {
-            return Err(EngineError::Tenant(format!(
-                "source directory does not exist: {}",
-                config.source_dir
+            return Err(EngineError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("source directory does not exist: {}", config.source_dir),
             )));
         }
 
-        let state = self.build_tenant(&config.source_dir)?;
+        let state = build_tenant_state(
+            &config.source_dir,
+            #[cfg(feature = "embeddings")]
+            self.embedder.as_ref(),
+        )?;
         let report = state.report.clone();
         self.tenants.insert(config.name, state);
         Ok(report)
@@ -83,9 +84,13 @@ impl TenantManager {
             .tenants
             .get(name)
             .map(|s| s.source_dir.clone())
-            .ok_or_else(|| EngineError::Tenant(format!("tenant '{name}' not found")))?;
+            .ok_or_else(|| EngineError::TenantNotFound(name.to_owned()))?;
 
-        let new_state = self.build_tenant(&source_dir)?;
+        let new_state = build_tenant_state(
+            &source_dir,
+            #[cfg(feature = "embeddings")]
+            self.embedder.as_ref(),
+        )?;
 
         if let Some(old) = self.tenants.remove(name) {
             let _ = old.storage.close();
@@ -100,7 +105,7 @@ impl TenantManager {
         let state = self
             .tenants
             .get(name)
-            .ok_or_else(|| EngineError::Tenant(format!("tenant '{name}' not found")))?;
+            .ok_or_else(|| EngineError::TenantNotFound(name.to_owned()))?;
         Ok(Reader::new(&state.storage))
     }
 
@@ -126,7 +131,7 @@ impl TenantManager {
         let state = self
             .tenants
             .remove(name)
-            .ok_or_else(|| EngineError::Tenant(format!("tenant '{name}' not found")))?;
+            .ok_or_else(|| EngineError::TenantNotFound(name.to_owned()))?;
         let _ = state.storage.close();
         Ok(())
     }
@@ -140,31 +145,44 @@ impl TenantManager {
             let _ = state.storage.close();
         }
     }
+}
 
-    fn build_tenant(&self, source_dir: &str) -> Result<TenantState, EngineError> {
-        let storage = Storage::open(":memory:")?;
-        storage.initialize()?;
+fn build_tenant_state(
+    source_dir: &str,
+    #[cfg(feature = "embeddings")] embedder: Option<&Embedder>,
+) -> Result<TenantState, EngineError> {
+    let storage = Storage::open(":memory:")?;
+    storage.initialize()?;
 
-        let builder = Builder::new(&storage);
-        let report = builder.ingest(Path::new(source_dir))?;
-
-        #[cfg(feature = "embeddings")]
-        if let Some(ref embedder) = self.embedder {
-            self.build_embeddings(&storage, embedder)?;
-        }
-
-        Ok(TenantState {
-            source_dir: source_dir.to_owned(),
-            storage,
-            report,
-        })
-    }
+    let builder = Builder::new(&storage);
+    let report = builder.ingest(Path::new(source_dir))?;
 
     #[cfg(feature = "embeddings")]
-    fn build_embeddings(&self, storage: &Storage, embedder: &Embedder) -> Result<(), EngineError> {
-        let artifacts = storage.list(None, None, None)?;
+    if let Some(embedder) = embedder {
+        build_embeddings(&storage, embedder, DEFAULT_EMBED_BATCH_SIZE)?;
+    }
 
-        for artifact in &artifacts {
+    Ok(TenantState {
+        source_dir: source_dir.to_owned(),
+        storage,
+        report,
+    })
+}
+
+#[cfg(feature = "embeddings")]
+const DEFAULT_EMBED_BATCH_SIZE: usize = 32;
+
+#[cfg(feature = "embeddings")]
+fn build_embeddings(
+    storage: &Storage,
+    embedder: &Embedder,
+    batch_size: usize,
+) -> Result<(), EngineError> {
+    let artifacts = storage.list(None, None, None)?;
+
+    let texts: Vec<String> = artifacts
+        .iter()
+        .map(|artifact| {
             let mut text = artifact.title.clone();
             if let Some(ref summary) = artifact.summary {
                 text.push(' ');
@@ -173,15 +191,24 @@ impl TenantManager {
             text.push(' ');
             let content_prefix: String = artifact.content.chars().take(512).collect();
             text.push_str(&content_prefix);
+            text
+        })
+        .collect();
 
-            let vectors = embedder.embed_batch(&[&text])?;
-            if let Some(vec) = vectors.into_iter().next() {
-                storage.insert_embedding(&artifact.slug, &vec)?;
-            }
+    for chunk_start in (0..artifacts.len()).step_by(batch_size) {
+        let chunk_end = (chunk_start + batch_size).min(artifacts.len());
+        let text_refs: Vec<&str> = texts[chunk_start..chunk_end]
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
+
+        let vectors = embedder.embed_batch(&text_refs)?;
+        for (i, vec) in vectors.into_iter().enumerate() {
+            storage.insert_embedding(&artifacts[chunk_start + i].slug, &vec)?;
         }
-
-        Ok(())
     }
+
+    Ok(())
 }
 
 impl Default for TenantManager {
@@ -192,26 +219,34 @@ impl Default for TenantManager {
 
 fn validate_tenant_name(name: &str) -> Result<(), EngineError> {
     if name.is_empty() {
-        return Err(EngineError::Tenant("tenant name cannot be empty".into()));
+        return Err(EngineError::InvalidTenantName {
+            name: name.to_owned(),
+            reason: "tenant name cannot be empty".into(),
+        });
     }
 
     let mut chars = name.chars();
     let first = chars.next().unwrap();
     if !first.is_ascii_lowercase() {
-        return Err(EngineError::Tenant(format!(
-            "tenant name must start with a lowercase letter: '{name}'"
-        )));
+        return Err(EngineError::InvalidTenantName {
+            name: name.to_owned(),
+            reason: "must start with a lowercase letter".into(),
+        });
     }
     for ch in chars {
         if !ch.is_ascii_lowercase() && !ch.is_ascii_digit() && ch != '-' {
-            return Err(EngineError::Tenant(format!(
-                "tenant name contains invalid character '{ch}': '{name}'"
-            )));
+            return Err(EngineError::InvalidTenantName {
+                name: name.to_owned(),
+                reason: format!("contains invalid character '{ch}'"),
+            });
         }
     }
 
     if RESERVED_NAMES.contains(&name) {
-        return Err(EngineError::Tenant(format!("'{name}' is a reserved name")));
+        return Err(EngineError::InvalidTenantName {
+            name: name.to_owned(),
+            reason: "reserved name".into(),
+        });
     }
 
     Ok(())
@@ -249,5 +284,35 @@ mod tests {
     fn version_is_reserved() {
         // /v1/version is a top-level route; a tenant named "version" would shadow it
         assert!(validate_tenant_name("version").is_err());
+    }
+
+    #[test]
+    fn structured_error_not_found() {
+        let err = EngineError::TenantNotFound("test".into());
+        assert_eq!(err.to_string(), "tenant 'test' not found");
+    }
+
+    #[test]
+    fn structured_error_already_exists() {
+        let err = EngineError::TenantAlreadyExists("test".into());
+        assert_eq!(err.to_string(), "tenant 'test' already exists");
+    }
+
+    #[test]
+    fn structured_error_invalid_name() {
+        let err = EngineError::InvalidTenantName {
+            name: "1bad".into(),
+            reason: "must start with a lowercase letter".into(),
+        };
+        assert_eq!(
+            err.to_string(),
+            "invalid tenant name '1bad': must start with a lowercase letter"
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "embeddings")]
+    fn default_embed_batch_size_is_32() {
+        assert_eq!(super::DEFAULT_EMBED_BATCH_SIZE, 32);
     }
 }
