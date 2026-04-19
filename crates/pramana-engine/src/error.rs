@@ -9,6 +9,10 @@ pub enum EngineError {
     Embed(#[from] pramana_embedder::EmbedError),
     #[error("io: {0}")]
     Io(#[from] std::io::Error),
-    #[error("tenant: {0}")]
-    Tenant(String),
+    #[error("tenant '{0}' not found")]
+    TenantNotFound(String),
+    #[error("tenant '{0}' already exists")]
+    TenantAlreadyExists(String),
+    #[error("invalid tenant name '{name}': {reason}")]
+    InvalidTenantName { name: String, reason: String },
 }
