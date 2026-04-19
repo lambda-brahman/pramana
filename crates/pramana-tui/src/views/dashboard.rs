@@ -12,7 +12,7 @@ pub struct DashboardView {
     pub port: u16,
     pub daemon_status: String,
     pub tenants: Vec<TenantInfo>,
-    scroll_offset: usize,
+    pub scroll_offset: usize,
     content_height: usize,
 }
 
