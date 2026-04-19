@@ -34,6 +34,11 @@ struct TenantState {
     report: BuildReport,
 }
 
+/// Opaque handle to a fully-built tenant state, ready for [`TenantManager::apply_reload`].
+///
+/// Created via [`TenantManager::prepare_reload`] or [`TenantManager::build_prepared`].
+/// The caller is responsible for ensuring the prepared state is applied to the
+/// correct tenant — no name validation is performed in `apply_reload`.
 pub struct PreparedTenant(TenantState);
 
 impl std::fmt::Debug for PreparedTenant {
@@ -91,6 +96,7 @@ impl TenantManager {
         Ok(report)
     }
 
+    /// Returns the source directory path for the named tenant.
     pub fn tenant_source_dir(&self, name: &str) -> Result<String, EngineError> {
         self.tenants
             .get(name)
@@ -98,20 +104,21 @@ impl TenantManager {
             .ok_or_else(|| EngineError::TenantNotFound(name.to_owned()))
     }
 
+    /// Returns a shared handle to the embedder, if initialized.
     #[cfg(feature = "embeddings")]
     pub fn embedder(&self) -> Option<Arc<Embedder>> {
         self.embedder.clone()
     }
 
+    /// Builds tenant state from `source_dir` without requiring a `TenantManager` reference.
+    ///
+    /// Use when building outside a lock boundary where no `&self` borrow is available.
     pub fn build_prepared(
         source_dir: &str,
         #[cfg(feature = "embeddings")] embedder: Option<&Embedder>,
     ) -> Result<PreparedTenant, EngineError> {
         if !Path::new(source_dir).is_dir() {
-            return Err(EngineError::InvalidTenantName {
-                name: String::new(),
-                reason: format!("source directory no longer exists: {source_dir}"),
-            });
+            return Err(EngineError::SourceDirNotFound(source_dir.to_owned()));
         }
         let state = build_tenant_state(
             source_dir,
@@ -121,6 +128,14 @@ impl TenantManager {
         Ok(PreparedTenant(state))
     }
 
+    /// Builds a new [`PreparedTenant`] for `name` using `&self` (shared borrow).
+    ///
+    /// The expensive build (disk I/O, embeddings) happens here. Follow with
+    /// [`apply_reload`](Self::apply_reload) to swap the state under `&mut self`.
+    ///
+    /// Between `prepare_reload` and `apply_reload`, the tenant could be unmounted
+    /// by another caller — `apply_reload` returns [`EngineError::TenantNotFound`]
+    /// in that case.
     pub fn prepare_reload(&self, name: &str) -> Result<PreparedTenant, EngineError> {
         let source_dir = self.tenant_source_dir(name)?;
         Self::build_prepared(
@@ -130,6 +145,11 @@ impl TenantManager {
         )
     }
 
+    /// Swaps the old tenant state for `prepared`, closing the old storage.
+    ///
+    /// Returns [`EngineError::TenantNotFound`] if the tenant was removed between
+    /// [`prepare_reload`](Self::prepare_reload) and this call. The caller is
+    /// responsible for matching the prepared state to the correct tenant name.
     pub fn apply_reload(
         &mut self,
         name: &str,
