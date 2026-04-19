@@ -15,4 +15,6 @@ pub enum EngineError {
     TenantAlreadyExists(String),
     #[error("invalid tenant name '{name}': {reason}")]
     InvalidTenantName { name: String, reason: String },
+    #[error("source directory no longer exists: {0}")]
+    SourceDirNotFound(String),
 }
