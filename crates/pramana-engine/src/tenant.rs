@@ -21,6 +21,7 @@ pub struct TenantConfig {
 #[serde(rename_all = "camelCase")]
 pub struct TenantInfo {
     pub name: String,
+    #[serde(default)]
     pub source_dir: String,
     pub artifact_count: usize,
 }
