@@ -1610,6 +1610,7 @@ version = "0.14.1"
 dependencies = [
  "crossterm",
  "insta",
+ "percent-encoding",
  "pramana-engine",
  "ratatui",
  "serde_json",

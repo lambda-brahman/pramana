@@ -29,17 +29,13 @@ pub enum View {
     Dashboard,
 }
 
-struct NavEntry {
-    view: View,
-}
-
 pub struct App {
     io: IoHandle,
     io_rx: mpsc::Receiver<IoResponse>,
     mode_label: &'static str,
     pub active_tenant: String,
     pub port: u16,
-    nav_stack: Vec<NavEntry>,
+    nav_stack: Vec<View>,
     pub kb_list: KbListView,
     pub search: SearchView,
     pub detail: ArtifactDetailView,
@@ -65,7 +61,7 @@ impl App {
             mode_label,
             active_tenant: tenant,
             port,
-            nav_stack: vec![NavEntry { view: View::KbList }],
+            nav_stack: vec![View::KbList],
             kb_list: KbListView::new(),
             search: SearchView::new(),
             detail: ArtifactDetailView::new(),
@@ -84,15 +80,13 @@ impl App {
     }
 
     pub fn current_view(&self) -> &View {
-        &self
-            .nav_stack
+        self.nav_stack
             .last()
             .expect("nav stack should never be empty")
-            .view
     }
 
     fn push_view(&mut self, view: View) {
-        self.nav_stack.push(NavEntry { view });
+        self.nav_stack.push(view);
     }
 
     fn pop_view(&mut self) {
@@ -105,8 +99,8 @@ impl App {
 
     fn breadcrumb_segments(&self) -> Vec<String> {
         let mut segments = vec!["pramana".to_string()];
-        for entry in &self.nav_stack {
-            match &entry.view {
+        for view in &self.nav_stack {
+            match view {
                 View::KbList => segments.push("kb-list".into()),
                 View::Search => {
                     segments.push(self.active_tenant.clone());
@@ -114,11 +108,11 @@ impl App {
                 }
                 View::ArtifactDetail { slug } => {
                     segments.push(self.active_tenant.clone());
-                    segments.push(slug.clone());
+                    segments.push(truncate_segment(slug, 30));
                 }
                 View::Graph { from } => {
                     segments.push(self.active_tenant.clone());
-                    segments.push(format!("graph:{from}"));
+                    segments.push(truncate_segment(&format!("graph:{from}"), 36));
                 }
                 View::Dashboard => {
                     segments.push("dashboard".into());
@@ -162,13 +156,19 @@ impl App {
                 return;
             }
 
-            let current = self.current_view().clone();
-            match current {
-                View::KbList => self.handle_kb_list_event(key),
-                View::Search => self.handle_search_event(key),
-                View::ArtifactDetail { .. } => self.handle_detail_event(key),
-                View::Graph { .. } => self.handle_graph_event(key),
-                View::Dashboard => self.handle_dashboard_event(key),
+            let view_tag: u8 = match self.current_view() {
+                View::KbList => 0,
+                View::Search => 1,
+                View::ArtifactDetail { .. } => 2,
+                View::Graph { .. } => 3,
+                View::Dashboard => 4,
+            };
+            match view_tag {
+                0 => self.handle_kb_list_event(key),
+                1 => self.handle_search_event(key),
+                2 => self.handle_detail_event(key),
+                3 => self.handle_graph_event(key),
+                _ => self.handle_dashboard_event(key),
             }
         }
     }
@@ -206,8 +206,6 @@ impl App {
                     crate::views::kb_list::DaemonState::Checking => "checking...",
                     crate::views::kb_list::DaemonState::Running => "running",
                     crate::views::kb_list::DaemonState::Stopped => "stopped",
-                    crate::views::kb_list::DaemonState::Starting => "starting...",
-                    crate::views::kb_list::DaemonState::Stopping => "stopping...",
                 };
                 self.dashboard.populate(
                     self.mode_label,
@@ -558,6 +556,19 @@ pub fn render_app(app: &mut App, area: Rect, buf: &mut Buffer) {
             View::Dashboard => vec![("j/k", "Scroll"), ("Esc/q", "Back"), ("?", "Toggle help")],
         };
         HelpOverlay::new(&bindings).render(area, buf);
+    }
+}
+
+fn truncate_segment(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_string()
+    } else {
+        let end = s
+            .char_indices()
+            .nth(max.saturating_sub(3))
+            .map(|(i, _)| i)
+            .unwrap_or(s.len());
+        format!("{}...", &s[..end])
     }
 }
 
