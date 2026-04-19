@@ -7,7 +7,7 @@ use pramana_storage::Storage;
 use std::collections::HashMap;
 use std::path::Path;
 
-const RESERVED_NAMES: &[&str] = &[
+pub const RESERVED_NAMES: &[&str] = &[
     "get", "search", "traverse", "list", "tenants", "reload", "version",
 ];
 
@@ -21,6 +21,7 @@ pub struct TenantConfig {
 #[serde(rename_all = "camelCase")]
 pub struct TenantInfo {
     pub name: String,
+    #[serde(default)]
     pub source_dir: String,
     pub artifact_count: usize,
 }
