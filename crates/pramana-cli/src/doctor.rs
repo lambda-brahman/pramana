@@ -4,8 +4,15 @@ use serde::Serialize;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Severity {
+    Error,
+    Warn,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct DoctorDiagnostic {
-    pub severity: String,
+    pub severity: Severity,
     pub check: String,
     pub message: String,
 }
@@ -31,7 +38,7 @@ pub fn run_doctor(port: u16) -> Result<DoctorReport, CliError> {
         Ok(v) => Some(v),
         Err(msg) => {
             diagnostics.push(DoctorDiagnostic {
-                severity: "error".into(),
+                severity: Severity::Error,
                 check: "daemon-reachable".into(),
                 message: msg,
             });
@@ -60,7 +67,7 @@ pub fn run_doctor(port: u16) -> Result<DoctorReport, CliError> {
                     }
                     Err(msg) => {
                         diagnostics.push(DoctorDiagnostic {
-                            severity: "error".into(),
+                            severity: Severity::Error,
                             check: "runtime-tenants-match".into(),
                             message: msg,
                         });
@@ -70,7 +77,7 @@ pub fn run_doctor(port: u16) -> Result<DoctorReport, CliError> {
         }
         Err(e) => {
             diagnostics.push(DoctorDiagnostic {
-                severity: "error".into(),
+                severity: Severity::Error,
                 check: "tenant-config-integrity".into(),
                 message: format!("could not load config: {e}"),
             });
@@ -129,7 +136,7 @@ fn check_version_match(daemon_version: &str, diagnostics: &mut Vec<DoctorDiagnos
     match (cli_ver, daemon_ver) {
         (Some(c), Some(d)) if c != d => {
             diagnostics.push(DoctorDiagnostic {
-                severity: "warn".into(),
+                severity: Severity::Warn,
                 check: "version-match".into(),
                 message: format!(
                     "CLI version {VERSION} does not match daemon version {daemon_version}"
@@ -155,13 +162,13 @@ fn check_tenant_name_validity(names: &[&str], diagnostics: &mut Vec<DoctorDiagno
     for name in names {
         if !is_valid_tenant_name(name) {
             diagnostics.push(DoctorDiagnostic {
-                severity: "error".into(),
+                severity: Severity::Error,
                 check: "tenant-name-validity".into(),
                 message: format!("Tenant \"{name}\" does not match /^[a-z][a-z0-9-]*$/"),
             });
         } else if reserved.contains(name) {
             diagnostics.push(DoctorDiagnostic {
-                severity: "error".into(),
+                severity: Severity::Error,
                 check: "tenant-name-validity".into(),
                 message: format!("Tenant \"{name}\" is a reserved name"),
             });
@@ -177,13 +184,13 @@ fn check_tenant_paths(
         let p = std::path::Path::new(path);
         if !p.exists() {
             diagnostics.push(DoctorDiagnostic {
-                severity: "error".into(),
+                severity: Severity::Error,
                 check: "tenant-config-integrity".into(),
                 message: format!("Tenant \"{name}\" source path does not exist: {path}"),
             });
         } else if !p.is_dir() {
             diagnostics.push(DoctorDiagnostic {
-                severity: "error".into(),
+                severity: Severity::Error,
                 check: "tenant-config-integrity".into(),
                 message: format!("Tenant \"{name}\" source path is not a directory: {path}"),
             });
@@ -213,7 +220,7 @@ fn check_runtime_tenants_match(
 
     if !in_config_only.is_empty() {
         diagnostics.push(DoctorDiagnostic {
-            severity: "warn".into(),
+            severity: Severity::Warn,
             check: "runtime-tenants-match".into(),
             message: format!(
                 "Tenants in config but not running: {}",
@@ -223,7 +230,7 @@ fn check_runtime_tenants_match(
     }
     if !in_runtime_only.is_empty() {
         diagnostics.push(DoctorDiagnostic {
-            severity: "warn".into(),
+            severity: Severity::Warn,
             check: "runtime-tenants-match".into(),
             message: format!(
                 "Tenants running but not in config: {}",
@@ -234,8 +241,14 @@ fn check_runtime_tenants_match(
 }
 
 fn build_report(diagnostics: Vec<DoctorDiagnostic>) -> DoctorReport {
-    let errors = diagnostics.iter().filter(|d| d.severity == "error").count();
-    let warnings = diagnostics.iter().filter(|d| d.severity == "warn").count();
+    let errors = diagnostics
+        .iter()
+        .filter(|d| matches!(d.severity, Severity::Error))
+        .count();
+    let warnings = diagnostics
+        .iter()
+        .filter(|d| matches!(d.severity, Severity::Warn))
+        .count();
     DoctorReport {
         diagnostics,
         summary: DoctorSummary { errors, warnings },
@@ -258,7 +271,7 @@ pub fn format_doctor_report(report: &DoctorReport) -> String {
     for (check, diags) in &grouped {
         lines.push(format!("{check}:"));
         for d in diags {
-            let (color, label) = if d.severity == "error" {
+            let (color, label) = if matches!(d.severity, Severity::Error) {
                 (red, "ERROR")
             } else {
                 (yellow, "WARN")
@@ -290,5 +303,83 @@ pub fn doctor_exit_code(report: &DoctorReport) -> i32 {
         1
     } else {
         0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_diag(severity: Severity, check: &str, message: &str) -> DoctorDiagnostic {
+        DoctorDiagnostic {
+            severity,
+            check: check.into(),
+            message: message.into(),
+        }
+    }
+
+    #[test]
+    fn build_report_counts_errors_and_warnings() {
+        let diags = vec![
+            make_diag(Severity::Error, "daemon-reachable", "not running"),
+            make_diag(Severity::Warn, "version-match", "mismatch"),
+            make_diag(Severity::Warn, "runtime-tenants-match", "drift"),
+        ];
+        let report = build_report(diags);
+        assert_eq!(report.summary.errors, 1);
+        assert_eq!(report.summary.warnings, 2);
+    }
+
+    #[test]
+    fn build_report_all_pass() {
+        let report = build_report(vec![]);
+        assert_eq!(report.summary.errors, 0);
+        assert_eq!(report.summary.warnings, 0);
+    }
+
+    #[test]
+    fn doctor_exit_code_returns_2_for_errors() {
+        let report = build_report(vec![make_diag(
+            Severity::Error,
+            "daemon-reachable",
+            "not running",
+        )]);
+        assert_eq!(doctor_exit_code(&report), 2);
+    }
+
+    #[test]
+    fn doctor_exit_code_returns_1_for_warnings_only() {
+        let report = build_report(vec![make_diag(Severity::Warn, "version-match", "mismatch")]);
+        assert_eq!(doctor_exit_code(&report), 1);
+    }
+
+    #[test]
+    fn doctor_exit_code_returns_0_for_clean() {
+        let report = build_report(vec![]);
+        assert_eq!(doctor_exit_code(&report), 0);
+    }
+
+    #[test]
+    fn severity_serialises_as_lowercase() {
+        assert_eq!(
+            serde_json::to_string(&Severity::Error).unwrap(),
+            "\"error\""
+        );
+        assert_eq!(serde_json::to_string(&Severity::Warn).unwrap(), "\"warn\"");
+    }
+
+    #[test]
+    fn is_valid_tenant_name_accepts_valid() {
+        assert!(is_valid_tenant_name("abc"));
+        assert!(is_valid_tenant_name("my-tenant"));
+        assert!(is_valid_tenant_name("tenant1"));
+    }
+
+    #[test]
+    fn is_valid_tenant_name_rejects_invalid() {
+        assert!(!is_valid_tenant_name(""));
+        assert!(!is_valid_tenant_name("1bad"));
+        assert!(!is_valid_tenant_name("Bad"));
+        assert!(!is_valid_tenant_name("has space"));
     }
 }

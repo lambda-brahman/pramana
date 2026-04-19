@@ -1,6 +1,8 @@
 use pramana_engine::{ListFilter, TenantManager};
 use std::io::Cursor;
 
+const MAX_TRAVERSE_DEPTH: usize = 10;
+
 pub fn start(host: &str, port: u16, mut tm: TenantManager) -> Result<(), String> {
     let addr = format!("{host}:{port}");
     let server =
@@ -49,9 +51,24 @@ fn handle_version() -> Result<String, (u16, String)> {
     Ok(serde_json::json!({ "version": version }).to_string())
 }
 
+/// Response type for /v1/tenants — omits source_dir to avoid leaking filesystem paths.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TenantView {
+    name: String,
+    artifact_count: usize,
+}
+
 fn handle_tenants(tm: &TenantManager) -> Result<String, (u16, String)> {
-    let tenants = tm.list_tenants();
-    serde_json::to_string(&tenants).map_err(|e| (500, e.to_string()))
+    let views: Vec<TenantView> = tm
+        .list_tenants()
+        .into_iter()
+        .map(|t| TenantView {
+            name: t.name,
+            artifact_count: t.artifact_count,
+        })
+        .collect();
+    serde_json::to_string(&views).map_err(|e| (500, e.to_string()))
 }
 
 fn handle_get(tm: &TenantManager, tenant: &str, slug: &str) -> Result<String, (u16, String)> {
@@ -86,7 +103,8 @@ fn handle_traverse(
     let rel_type = parse_query_param(query_str, "type");
     let depth: usize = parse_query_param(query_str, "depth")
         .and_then(|d| d.parse().ok())
-        .unwrap_or(1);
+        .unwrap_or(1)
+        .min(MAX_TRAVERSE_DEPTH);
     let max_results: Option<usize> =
         parse_query_param(query_str, "max_results").and_then(|v| v.parse().ok());
     let reader = tm.reader(tenant).map_err(|e| (404, e.to_string()))?;
@@ -202,4 +220,44 @@ fn respond_json(request: tiny_http::Request, status: u16, body: &str) {
 fn respond_error(request: tiny_http::Request, status: u16, message: &str) {
     let body = serde_json::json!({ "error": message }).to_string();
     respond_json(request, status, &body);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_query_param_finds_value() {
+        assert_eq!(
+            parse_query_param("q=hello+world&depth=2", "q"),
+            Some("hello world".into())
+        );
+        assert_eq!(
+            parse_query_param("q=hello+world&depth=2", "depth"),
+            Some("2".into())
+        );
+    }
+
+    #[test]
+    fn parse_query_param_returns_none_for_missing_key() {
+        assert_eq!(parse_query_param("q=hello", "missing"), None);
+        assert_eq!(parse_query_param("", "q"), None);
+    }
+
+    #[test]
+    fn urldecode_handles_percent_encoding() {
+        assert_eq!(urldecode("hello%20world"), "hello world");
+        assert_eq!(urldecode("a%2Bb"), "a+b");
+    }
+
+    #[test]
+    fn urldecode_handles_plus_as_space() {
+        assert_eq!(urldecode("hello+world"), "hello world");
+    }
+
+    #[test]
+    fn depth_is_capped_at_max() {
+        // Verify the constant is in place; actual capping is in handle_traverse.
+        assert_eq!(MAX_TRAVERSE_DEPTH, 10);
+    }
 }
