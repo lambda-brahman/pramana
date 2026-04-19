@@ -455,11 +455,12 @@ fn tenant_reload_deleted_source_dir() {
     let dir = tmp.path().to_string_lossy().into_owned();
 
     let mut mgr = TenantManager::new();
-    mgr.mount(TenantConfig {
-        name: "volatile".into(),
-        source_dir: dir.clone(),
-    })
-    .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "volatile".into(),
+            source_dir: dir.clone(),
+        })
+        .unwrap();
 
     fs::remove_dir_all(&dir).unwrap();
     let err = mgr.reload("volatile").unwrap_err();
@@ -467,6 +468,70 @@ fn tenant_reload_deleted_source_dir() {
         format!("{err}").contains("source directory no longer exists"),
         "unexpected error: {err}"
     );
+}
+
+#[test]
+fn tenant_prepare_and_apply_reload() {
+    let mut mgr = TenantManager::new();
+    let dir = fixtures_dir().to_string_lossy().into_owned();
+
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "splittable".into(),
+            source_dir: dir,
+        })
+        .unwrap();
+
+    let prepared = mgr.prepare_reload("splittable").unwrap();
+    let report = mgr.apply_reload("splittable", prepared).unwrap();
+    assert_eq!(report.succeeded, 4);
+
+    let reader = mgr.reader("splittable").unwrap();
+    assert!(reader.get("order").unwrap().is_some());
+}
+
+#[test]
+fn tenant_prepare_reload_nonexistent() {
+    let mgr = TenantManager::new();
+    assert!(mgr.prepare_reload("ghost").is_err());
+}
+
+#[test]
+fn tenant_apply_reload_nonexistent() {
+    let mut mgr = TenantManager::new();
+    let dir = fixtures_dir().to_string_lossy().into_owned();
+
+    let prepared = TenantManager::build_prepared(&dir).unwrap();
+    assert!(mgr.apply_reload("ghost", prepared).is_err());
+}
+
+#[test]
+fn tenant_build_prepared_deleted_dir() {
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().to_string_lossy().into_owned();
+    drop(tmp);
+
+    let err = TenantManager::build_prepared(&dir).unwrap_err();
+    assert!(
+        format!("{err}").contains("source directory no longer exists"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn tenant_source_dir_returns_path() {
+    let mut mgr = TenantManager::new();
+    let dir = fixtures_dir().to_string_lossy().into_owned();
+
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "dircheck".into(),
+            source_dir: dir.clone(),
+        })
+        .unwrap();
+
+    assert_eq!(mgr.tenant_source_dir("dircheck").unwrap(), dir);
+    assert!(mgr.tenant_source_dir("missing").is_err());
 }
 
 #[test]

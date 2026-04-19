@@ -6,6 +6,8 @@ use pramana_embedder::Embedder;
 use pramana_storage::Storage;
 use std::collections::HashMap;
 use std::path::Path;
+#[cfg(feature = "embeddings")]
+use std::sync::Arc;
 
 pub const RESERVED_NAMES: &[&str] = &[
     "get", "search", "traverse", "list", "tenants", "reload", "version",
@@ -32,10 +34,20 @@ struct TenantState {
     report: BuildReport,
 }
 
+pub struct PreparedTenant(TenantState);
+
+impl std::fmt::Debug for PreparedTenant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PreparedTenant")
+            .field("source_dir", &self.0.source_dir)
+            .finish_non_exhaustive()
+    }
+}
+
 pub struct TenantManager {
     tenants: HashMap<String, TenantState>,
     #[cfg(feature = "embeddings")]
-    embedder: Option<Embedder>,
+    embedder: Option<Arc<Embedder>>,
 }
 
 impl TenantManager {
@@ -50,7 +62,7 @@ impl TenantManager {
     #[cfg(feature = "embeddings")]
     pub fn init_embedder(&mut self, model_id: &str) -> Result<(), EngineError> {
         let embedder = Embedder::load(model_id)?;
-        self.embedder = Some(embedder);
+        self.embedder = Some(Arc::new(embedder));
         Ok(())
     }
 
@@ -72,40 +84,70 @@ impl TenantManager {
         let state = build_tenant_state(
             &config.source_dir,
             #[cfg(feature = "embeddings")]
-            self.embedder.as_ref(),
+            self.embedder.as_deref(),
         )?;
         let report = state.report.clone();
         self.tenants.insert(config.name, state);
         Ok(report)
     }
 
-    pub fn reload(&mut self, name: &str) -> Result<BuildReport, EngineError> {
-        let source_dir = self
-            .tenants
+    pub fn tenant_source_dir(&self, name: &str) -> Result<String, EngineError> {
+        self.tenants
             .get(name)
             .map(|s| s.source_dir.clone())
-            .ok_or_else(|| EngineError::TenantNotFound(name.to_owned()))?;
+            .ok_or_else(|| EngineError::TenantNotFound(name.to_owned()))
+    }
 
-        if !Path::new(&source_dir).is_dir() {
+    #[cfg(feature = "embeddings")]
+    pub fn embedder(&self) -> Option<Arc<Embedder>> {
+        self.embedder.clone()
+    }
+
+    pub fn build_prepared(
+        source_dir: &str,
+        #[cfg(feature = "embeddings")] embedder: Option<&Embedder>,
+    ) -> Result<PreparedTenant, EngineError> {
+        if !Path::new(source_dir).is_dir() {
             return Err(EngineError::InvalidTenantName {
-                name: name.to_owned(),
+                name: String::new(),
                 reason: format!("source directory no longer exists: {source_dir}"),
             });
         }
+        let state = build_tenant_state(
+            source_dir,
+            #[cfg(feature = "embeddings")]
+            embedder,
+        )?;
+        Ok(PreparedTenant(state))
+    }
 
-        let new_state = build_tenant_state(
+    pub fn prepare_reload(&self, name: &str) -> Result<PreparedTenant, EngineError> {
+        let source_dir = self.tenant_source_dir(name)?;
+        Self::build_prepared(
             &source_dir,
             #[cfg(feature = "embeddings")]
-            self.embedder.as_ref(),
-        )?;
+            self.embedder.as_deref(),
+        )
+    }
 
-        if let Some(old) = self.tenants.remove(name) {
-            let _ = old.storage.close();
-        }
-
-        let report = new_state.report.clone();
-        self.tenants.insert(name.to_owned(), new_state);
+    pub fn apply_reload(
+        &mut self,
+        name: &str,
+        prepared: PreparedTenant,
+    ) -> Result<BuildReport, EngineError> {
+        let old = self
+            .tenants
+            .remove(name)
+            .ok_or_else(|| EngineError::TenantNotFound(name.to_owned()))?;
+        let _ = old.storage.close();
+        let report = prepared.0.report.clone();
+        self.tenants.insert(name.to_owned(), prepared.0);
         Ok(report)
+    }
+
+    pub fn reload(&mut self, name: &str) -> Result<BuildReport, EngineError> {
+        let prepared = self.prepare_reload(name)?;
+        self.apply_reload(name, prepared)
     }
 
     pub fn reader(&self, name: &str) -> Result<Reader<'_>, EngineError> {
