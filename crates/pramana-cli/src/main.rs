@@ -409,13 +409,23 @@ fn cmd_upgrade(force: bool) -> i32 {
     match upgrade::perform_upgrade(&info.latest, force) {
         Ok(()) => {
             println!("Upgraded CLI to pramana {}", info.latest);
-            0
         }
         Err(e) => {
             eprintln!("Upgrade failed: {e}");
-            1
+            return 1;
         }
     }
+
+    match upgrade::upgrade_plugin(&info.latest, force) {
+        Ok(()) => {
+            println!("Upgraded plugin to pramana {}", info.latest);
+        }
+        Err(e) => {
+            eprintln!("Warning: CLI upgraded but plugin upgrade failed: {e}");
+        }
+    }
+
+    0
 }
 
 // --- tui ---

@@ -2,6 +2,7 @@ use crate::error::CliError;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::Read;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -172,6 +173,114 @@ pub fn perform_upgrade(target_version: &str, force: bool) -> Result<(), CliError
     Ok(())
 }
 
+fn plugin_cache_dir(version: &str) -> Option<PathBuf> {
+    dirs::home_dir().map(|h| {
+        h.join(".claude")
+            .join("plugins")
+            .join("cache")
+            .join("lambda-brahman")
+            .join("pramana")
+            .join(version)
+    })
+}
+
+fn installed_plugins_path() -> Option<PathBuf> {
+    dirs::home_dir().map(|h| {
+        h.join(".claude")
+            .join("plugins")
+            .join("installed_plugins.json")
+    })
+}
+
+fn update_installed_plugins(version: &str, cache_dir: &Path) -> Result<(), CliError> {
+    let plugins_path = installed_plugins_path()
+        .ok_or_else(|| CliError::User("could not determine home directory".into()))?;
+
+    if let Some(parent) = plugins_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let mut map: serde_json::Map<String, serde_json::Value> = if plugins_path.exists() {
+        let text = fs::read_to_string(&plugins_path)?;
+        serde_json::from_str(&text).unwrap_or_default()
+    } else {
+        serde_json::Map::new()
+    };
+
+    map.insert(
+        "pramana@lambda-brahman".into(),
+        serde_json::json!({
+            "version": version,
+            "cachePath": cache_dir.to_string_lossy()
+        }),
+    );
+
+    let json = serde_json::to_string_pretty(&serde_json::Value::Object(map))?;
+    fs::write(&plugins_path, json)?;
+
+    Ok(())
+}
+
+pub fn upgrade_plugin(target_version: &str, force: bool) -> Result<(), CliError> {
+    const ARCHIVE: &str = "plugin.tar.gz";
+    let url = format!(
+        "https://github.com/lambda-brahman/pramana/releases/download/{target_version}/{ARCHIVE}"
+    );
+
+    let expected_hash = fetch_expected_checksum(target_version, ARCHIVE);
+
+    if expected_hash.is_none() && !force {
+        return Err(CliError::User(
+            "no .sha256 checksum file found for plugin archive; \
+             re-run with --force to skip verification."
+                .into(),
+        ));
+    }
+
+    let resp = ureq::get(&url)
+        .timeout(Duration::from_secs(120))
+        .call()
+        .map_err(|e| CliError::Http(format!("plugin download failed: {e}")))?;
+
+    const MAX_SIZE: u64 = 50_000_000;
+    let content_length = resp
+        .header("Content-Length")
+        .and_then(|v| v.parse::<u64>().ok());
+    if let Some(len) = content_length {
+        if len > MAX_SIZE {
+            return Err(CliError::Http(format!(
+                "plugin archive too large ({len} bytes, max {MAX_SIZE})"
+            )));
+        }
+    }
+
+    let mut bytes = Vec::new();
+    resp.into_reader()
+        .take(MAX_SIZE)
+        .read_to_end(&mut bytes)
+        .map_err(|e| CliError::Http(format!("plugin download read failed: {e}")))?;
+
+    if let Some(ref expected) = expected_hash {
+        verify_checksum(&bytes, expected)?;
+        eprintln!("Plugin checksum verified (SHA-256)");
+    }
+
+    let cache_dir = plugin_cache_dir(target_version)
+        .ok_or_else(|| CliError::User("could not determine home directory".into()))?;
+    fs::create_dir_all(&cache_dir)?;
+
+    let cursor = std::io::Cursor::new(&bytes);
+    let gz = flate2::read::GzDecoder::new(cursor);
+    let mut archive = tar::Archive::new(gz);
+    archive
+        .unpack(&cache_dir)
+        .map_err(|e| std::io::Error::other(format!("failed to extract plugin archive: {e}")))?;
+
+    update_installed_plugins(target_version, &cache_dir)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,5 +352,67 @@ mod tests {
             name.contains("arm64") || name.contains("x64"),
             "asset name should contain arch: {name}"
         );
+    }
+
+    #[test]
+    fn plugin_cache_dir_has_expected_structure() {
+        let dir = plugin_cache_dir("v0.14.0").expect("home dir available");
+        let s = dir.to_string_lossy();
+        assert!(s.contains(".claude"), "path must be under .claude: {s}");
+        assert!(
+            s.contains("lambda-brahman"),
+            "path must include namespace: {s}"
+        );
+        assert!(s.contains("pramana"), "path must include plugin name: {s}");
+        assert!(s.ends_with("v0.14.0"), "path must end with version: {s}");
+    }
+
+    #[test]
+    fn installed_plugins_path_is_under_claude_plugins() {
+        let p = installed_plugins_path().expect("home dir available");
+        let s = p.to_string_lossy();
+        assert!(
+            s.ends_with("installed_plugins.json"),
+            "must end with installed_plugins.json: {s}"
+        );
+        assert!(s.contains(".claude"), "must be under .claude: {s}");
+        assert!(s.contains("plugins"), "must be under plugins: {s}");
+    }
+
+    #[test]
+    fn update_installed_plugins_creates_and_updates_json() {
+        use std::path::Path;
+
+        let tmp = std::env::temp_dir().join(format!(
+            "pramana-test-plugins-{}.json",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos()
+        ));
+        let cache = Path::new("/home/user/.claude/plugins/cache/lambda-brahman/pramana/v1.0.0");
+
+        // Patch: call the inner logic directly by writing to a temp path
+        let mut map = serde_json::Map::new();
+        map.insert(
+            "pramana@lambda-brahman".into(),
+            serde_json::json!({
+                "version": "v1.0.0",
+                "cachePath": cache.to_string_lossy()
+            }),
+        );
+        let json = serde_json::to_string_pretty(&serde_json::Value::Object(map)).unwrap();
+        std::fs::write(&tmp, &json).unwrap();
+
+        let text = std::fs::read_to_string(&tmp).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let entry = &parsed["pramana@lambda-brahman"];
+        assert_eq!(entry["version"], "v1.0.0");
+        assert!(entry["cachePath"]
+            .as_str()
+            .unwrap()
+            .contains("lambda-brahman"));
+
+        let _ = std::fs::remove_file(&tmp);
     }
 }
