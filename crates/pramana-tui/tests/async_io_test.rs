@@ -369,3 +369,116 @@ mod generation_counters {
         );
     }
 }
+
+mod mutation_in_flight_guard {
+    use super::*;
+    use pramana_tui::io_worker::IoResponse;
+
+    fn app_with_tenant() -> App {
+        let ds = DataSource::Daemon { port: 1 };
+        let mut app = App::new(ds, 1, Some("demo".into()));
+        app.kb_list.tenants = vec![pramana_engine::TenantInfo {
+            name: "demo".into(),
+            source_dir: "/tmp".into(),
+            artifact_count: 0,
+        }];
+        app
+    }
+
+    #[test]
+    fn second_reload_is_blocked_while_first_in_flight() {
+        let mut app = app_with_tenant();
+
+        app.handle_event(key(KeyCode::Char('r')));
+        assert_eq!(
+            app.kb_list.status_message.as_deref(),
+            Some("Reloading 'demo'..."),
+        );
+
+        app.handle_event(key(KeyCode::Char('r')));
+        assert_eq!(
+            app.kb_list.status_message.as_deref(),
+            Some("Operation already in progress"),
+        );
+    }
+
+    #[test]
+    fn reload_response_clears_guard() {
+        let mut app = app_with_tenant();
+
+        app.handle_event(key(KeyCode::Char('r')));
+
+        let resp = IoResponse::Reload {
+            name: "demo".into(),
+            result: Ok(pramana_engine::BuildReport {
+                total: 1,
+                succeeded: 1,
+                failed: vec![],
+                walk_errors: vec![],
+                duplicate_slugs: vec![],
+            }),
+        };
+        app.inject_response(resp);
+        app.tick();
+
+        app.handle_event(key(KeyCode::Char('r')));
+        assert_eq!(
+            app.kb_list.status_message.as_deref(),
+            Some("Reloading 'demo'..."),
+        );
+    }
+
+    #[test]
+    fn add_kb_blocked_while_reload_in_flight() {
+        let mut app = app_with_tenant();
+
+        app.handle_event(key(KeyCode::Char('r')));
+
+        app.kb_list.mode = pramana_tui::views::kb_list::KbListMode::Normal;
+        app.handle_event(key(KeyCode::Char('r')));
+        assert_eq!(
+            app.kb_list.status_message.as_deref(),
+            Some("Operation already in progress"),
+        );
+    }
+
+    #[test]
+    fn remove_kb_response_clears_guard() {
+        let mut app = app_with_tenant();
+
+        app.handle_event(key(KeyCode::Char('d')));
+        app.handle_event(key(KeyCode::Char('y')));
+        assert_eq!(
+            app.kb_list.status_message.as_deref(),
+            Some("Removing 'demo'..."),
+        );
+
+        let resp = IoResponse::RemoveKb {
+            name: "demo".into(),
+            result: Ok(()),
+        };
+        app.inject_response(resp);
+        app.tick();
+
+        app.kb_list.tenants = vec![pramana_engine::TenantInfo {
+            name: "demo".into(),
+            source_dir: "/tmp".into(),
+            artifact_count: 0,
+        }];
+        app.handle_event(key(KeyCode::Char('r')));
+        assert_eq!(
+            app.kb_list.status_message.as_deref(),
+            Some("Reloading 'demo'..."),
+        );
+    }
+
+    #[test]
+    fn quit_still_works_during_mutation() {
+        let mut app = app_with_tenant();
+
+        app.handle_event(key(KeyCode::Char('r')));
+
+        app.handle_event(key(KeyCode::Char('q')));
+        assert!(app.should_quit, "should quit even with mutation in flight");
+    }
+}

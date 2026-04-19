@@ -48,6 +48,7 @@ pub struct App {
     get_generation: u64,
     graph_generation: u64,
     health_check_in_flight: bool,
+    mutation_in_flight: bool,
 }
 
 impl App {
@@ -74,6 +75,7 @@ impl App {
             get_generation: 0,
             graph_generation: 0,
             health_check_in_flight: false,
+            mutation_in_flight: false,
         };
         app.refresh_tenants();
         app
@@ -183,16 +185,31 @@ impl App {
                 self.push_view(View::Search);
             }
             KbListAction::Reload(name) => {
-                self.kb_list.status_message = Some(format!("Reloading '{name}'..."));
-                self.io.spawn_reload(name);
+                if self.mutation_in_flight {
+                    self.kb_list.status_message = Some("Operation already in progress".into());
+                } else {
+                    self.mutation_in_flight = true;
+                    self.kb_list.status_message = Some(format!("Reloading '{name}'..."));
+                    self.io.spawn_reload(name);
+                }
             }
             KbListAction::AddKb { name, source_dir } => {
-                self.kb_list.status_message = Some(format!("Adding '{name}'..."));
-                self.io.spawn_add_kb(name, source_dir);
+                if self.mutation_in_flight {
+                    self.kb_list.status_message = Some("Operation already in progress".into());
+                } else {
+                    self.mutation_in_flight = true;
+                    self.kb_list.status_message = Some(format!("Adding '{name}'..."));
+                    self.io.spawn_add_kb(name, source_dir);
+                }
             }
             KbListAction::RemoveKb(name) => {
-                self.kb_list.status_message = Some(format!("Removing '{name}'..."));
-                self.io.spawn_remove_kb(name);
+                if self.mutation_in_flight {
+                    self.kb_list.status_message = Some("Operation already in progress".into());
+                } else {
+                    self.mutation_in_flight = true;
+                    self.kb_list.status_message = Some(format!("Removing '{name}'..."));
+                    self.io.spawn_remove_kb(name);
+                }
             }
             KbListAction::OpenDir(dir) => {
                 let _ = open_directory(&dir);
@@ -377,6 +394,7 @@ impl App {
                     }
                 }
                 IoResponse::Reload { name, result } => {
+                    self.mutation_in_flight = false;
                     match result {
                         Ok(report) => {
                             self.kb_list.status_message = Some(format!(
@@ -391,6 +409,7 @@ impl App {
                     self.refresh_tenants();
                 }
                 IoResponse::AddKb { name, result } => {
+                    self.mutation_in_flight = false;
                     match result {
                         Ok(report) => {
                             self.kb_list.status_message = Some(format!(
@@ -429,6 +448,7 @@ impl App {
                     }
                 }
                 IoResponse::RemoveKb { name, result } => {
+                    self.mutation_in_flight = false;
                     match result {
                         Ok(()) => {
                             self.kb_list.status_message = Some(format!("Removed '{name}'"));
