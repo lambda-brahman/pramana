@@ -161,6 +161,33 @@ fn hex_val(b: u8) -> Option<u8> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use pramana_engine::RESERVED_NAMES;
+
+    // Every fixed string literal matched in handle_request() that sits in the
+    // tenant-name position (or would shadow one) must appear here.
+    const ROUTE_SEGMENTS: &[&str] = &[
+        "version",  // GET /v1/version
+        "tenants",  // GET /v1/tenants
+        "get",      // GET /v1/{tenant}/get/{slug}
+        "search",   // GET /v1/{tenant}/search
+        "traverse", // GET /v1/{tenant}/traverse/{slug}
+        "list",     // GET /v1/{tenant}/list
+        "reload",   // POST /v1/{tenant}/reload
+    ];
+
+    #[test]
+    fn all_route_segments_are_reserved() {
+        for seg in ROUTE_SEGMENTS {
+            assert!(
+                RESERVED_NAMES.contains(seg),
+                "route segment '{seg}' is not in RESERVED_NAMES — add it to tenant.rs"
+            );
+        }
+    }
+}
+
 fn respond_json(request: tiny_http::Request, status: u16, body: &str) {
     let response = tiny_http::Response::new(
         tiny_http::StatusCode(status),
