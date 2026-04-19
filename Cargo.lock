@@ -1528,7 +1528,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-cli"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "clap",
  "dirs",
@@ -1549,11 +1549,11 @@ dependencies = [
 
 [[package]]
 name = "pramana-core"
-version = "0.14.4"
+version = "0.14.5"
 
 [[package]]
 name = "pramana-embedder"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "ndarray",
  "ort",
@@ -1566,7 +1566,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-engine"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "pramana-embedder",
  "pramana-parser",
@@ -1579,7 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-mcp"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "pramana-engine",
  "rmcp",
@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-parser"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "regex",
  "serde_yaml",
@@ -1600,7 +1600,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-storage"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "rusqlite",
  "serde",
@@ -1611,7 +1611,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-tui"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "crossterm",
  "insta",
