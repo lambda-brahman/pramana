@@ -1572,6 +1572,7 @@ dependencies = [
  "pramana-parser",
  "pramana-storage",
  "serde",
+ "tempfile",
  "thiserror 2.0.18",
  "walkdir",
 ]

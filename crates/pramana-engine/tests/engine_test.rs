@@ -449,6 +449,27 @@ fn tenant_reload_nonexistent() {
 }
 
 #[test]
+fn tenant_reload_deleted_source_dir() {
+    use std::fs;
+    let tmp = tempfile::tempdir().unwrap();
+    let dir = tmp.path().to_string_lossy().into_owned();
+
+    let mut mgr = TenantManager::new();
+    mgr.mount(TenantConfig {
+        name: "volatile".into(),
+        source_dir: dir.clone(),
+    })
+    .unwrap();
+
+    fs::remove_dir_all(&dir).unwrap();
+    let err = mgr.reload("volatile").unwrap_err();
+    assert!(
+        format!("{err}").contains("source directory no longer exists"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
 fn tenant_isolation_between_tenants() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();

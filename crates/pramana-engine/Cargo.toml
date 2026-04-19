@@ -15,3 +15,6 @@ pramana-embedder = { path = "../pramana-embedder", optional = true }
 walkdir = "2"
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
