@@ -1,6 +1,7 @@
 use crate::data_source::DataSource;
 use crate::error::TuiError;
 use pramana_engine::{ArtifactView, BuildReport, SearchResult, TenantInfo};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -36,18 +37,10 @@ pub enum IoResponse {
     },
 }
 
+#[derive(Clone)]
 enum IoSource {
     Standalone(Arc<Mutex<DataSource>>),
     Daemon { port: u16 },
-}
-
-impl Clone for IoSource {
-    fn clone(&self) -> Self {
-        match self {
-            IoSource::Standalone(ds) => IoSource::Standalone(ds.clone()),
-            IoSource::Daemon { port } => IoSource::Daemon { port: *port },
-        }
-    }
 }
 
 fn acquire(ds: &Mutex<DataSource>) -> Result<MutexGuard<'_, DataSource>, TuiError> {
@@ -56,7 +49,7 @@ fn acquire(ds: &Mutex<DataSource>) -> Result<MutexGuard<'_, DataSource>, TuiErro
 }
 
 impl IoSource {
-    fn read<F, T>(&self, f: F) -> Result<T, TuiError>
+    fn with<F, T>(&self, f: F) -> Result<T, TuiError>
     where
         F: FnOnce(&DataSource) -> Result<T, TuiError>,
     {
@@ -66,7 +59,7 @@ impl IoSource {
         }
     }
 
-    fn write<F, T>(&self, f: F) -> Result<T, TuiError>
+    fn with_mut<F, T>(&self, f: F) -> Result<T, TuiError>
     where
         F: FnOnce(&mut DataSource) -> Result<T, TuiError>,
     {
@@ -77,9 +70,20 @@ impl IoSource {
     }
 }
 
+const MAX_IN_FLIGHT: usize = 8;
+
+struct InFlightGuard(Arc<AtomicUsize>);
+
+impl Drop for InFlightGuard {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::Release);
+    }
+}
+
 pub struct IoHandle {
     source: IoSource,
     pub(crate) tx: mpsc::Sender<IoResponse>,
+    in_flight: Arc<AtomicUsize>,
 }
 
 impl IoHandle {
@@ -89,8 +93,22 @@ impl IoHandle {
             ds @ DataSource::Standalone(_) => IoSource::Standalone(Arc::new(Mutex::new(ds))),
             DataSource::Daemon { port } => IoSource::Daemon { port },
         };
-        let handle = Self { source, tx };
+        let handle = Self {
+            source,
+            tx,
+            in_flight: Arc::new(AtomicUsize::new(0)),
+        };
         (handle, rx)
+    }
+
+    fn try_acquire_slot(&self) -> Option<InFlightGuard> {
+        let counter = Arc::clone(&self.in_flight);
+        let prev = counter.fetch_add(1, Ordering::Acquire);
+        if prev >= MAX_IN_FLIGHT {
+            counter.fetch_sub(1, Ordering::Release);
+            return None;
+        }
+        Some(InFlightGuard(counter))
     }
 
     pub fn spawn_health_check(&self, port: u16) {
@@ -105,30 +123,38 @@ impl IoHandle {
         let src = self.source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = src.read(|ds| ds.list_tenants());
+            let result = src.with(|ds| ds.list_tenants());
             let _ = tx.send(IoResponse::Tenants(result));
         });
     }
 
     pub fn spawn_search(&self, tenant: String, query: String, generation: u64) {
+        let Some(slot) = self.try_acquire_slot() else {
+            return;
+        };
         let src = self.source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = src.read(|ds| ds.search(&tenant, &query));
+            let result = src.with(|ds| ds.search(&tenant, &query));
             let _ = tx.send(IoResponse::Search { generation, result });
+            drop(slot);
         });
     }
 
     pub fn spawn_get(&self, tenant: String, slug: String, generation: u64) {
+        let Some(slot) = self.try_acquire_slot() else {
+            return;
+        };
         let src = self.source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = src.read(|ds| ds.get(&tenant, &slug));
+            let result = src.with(|ds| ds.get(&tenant, &slug));
             let _ = tx.send(IoResponse::Get {
                 generation,
                 slug,
                 result: Box::new(result),
             });
+            drop(slot);
         });
     }
 
@@ -136,7 +162,7 @@ impl IoHandle {
         let src = self.source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = src.write(|ds| ds.reload(&name));
+            let result = src.with_mut(|ds| ds.reload(&name));
             let _ = tx.send(IoResponse::Reload { name, result });
         });
     }
@@ -145,7 +171,7 @@ impl IoHandle {
         let src = self.source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = src.write(|ds| ds.add_kb(&name, &source_dir));
+            let result = src.with_mut(|ds| ds.add_kb(&name, &source_dir));
             let _ = tx.send(IoResponse::AddKb { name, result });
         });
     }
@@ -157,11 +183,14 @@ impl IoHandle {
         depth: usize,
         generation: u64,
     ) {
+        let Some(slot) = self.try_acquire_slot() else {
+            return;
+        };
         let src = self.source.clone();
         let tx = self.tx.clone();
         let slug_clone = slug.clone();
         std::thread::spawn(move || {
-            let result = src.read(|ds| {
+            let result = src.with(|ds| {
                 let root = ds.get(&tenant, &slug_clone)?.ok_or_else(|| {
                     TuiError::General(format!("Artifact '{slug_clone}' not found"))
                 })?;
@@ -174,6 +203,7 @@ impl IoHandle {
                 depth,
                 result: Box::new(result),
             });
+            drop(slot);
         });
     }
 
@@ -181,8 +211,54 @@ impl IoHandle {
         let src = self.source.clone();
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let result = src.write(|ds| ds.remove_kb(&name));
+            let result = src.with_mut(|ds| ds.remove_kb(&name));
             let _ = tx.send(IoResponse::RemoveKb { name, result });
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn try_acquire_slot_caps_at_max_in_flight() {
+        let (handle, _rx) = IoHandle::new(DataSource::Daemon { port: 9999 });
+        let mut guards = Vec::new();
+        for _ in 0..MAX_IN_FLIGHT {
+            guards.push(handle.try_acquire_slot().expect("should acquire slot"));
+        }
+        assert!(handle.try_acquire_slot().is_none());
+        assert_eq!(handle.in_flight.load(Ordering::Relaxed), MAX_IN_FLIGHT);
+
+        drop(guards);
+        assert_eq!(handle.in_flight.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn daemon_with_allows_concurrent_access() {
+        use std::sync::Barrier;
+
+        let src = IoSource::Daemon { port: 0 };
+        let n = 4;
+        let barrier = Arc::new(Barrier::new(n));
+        let mut handles = Vec::new();
+
+        for _ in 0..n {
+            let s = src.clone();
+            let b = Arc::clone(&barrier);
+            handles.push(std::thread::spawn(move || {
+                // If `with` serialized through a mutex, only one thread could
+                // enter at a time and the barrier (needing all 4) would deadlock.
+                s.with(|_ds| {
+                    b.wait();
+                    Ok(())
+                })
+            }));
+        }
+
+        for h in handles {
+            h.join().unwrap().unwrap();
+        }
     }
 }
