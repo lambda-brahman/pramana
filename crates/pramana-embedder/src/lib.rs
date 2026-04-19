@@ -162,9 +162,11 @@ fn run_inference(
         }
     }
 
+    let mask_f = mask.mapv(|x| x as f32);
+
     let input_ids = Tensor::from_array(ids)
         .map_err(|e| EmbedError::Inference(format!("input_ids tensor: {e}")))?;
-    let attention_mask = Tensor::from_array(mask.clone())
+    let attention_mask = Tensor::from_array(mask)
         .map_err(|e| EmbedError::Inference(format!("attention_mask tensor: {e}")))?;
     let token_type_ids = Tensor::from_array(type_ids)
         .map_err(|e| EmbedError::Inference(format!("token_type_ids tensor: {e}")))?;
@@ -204,7 +206,6 @@ fn run_inference(
 
     let hidden_states = Array::from_shape_vec((batch, seq, hidden), raw.to_vec())
         .map_err(|e| EmbedError::Inference(format!("reshape: {e}")))?;
-    let mask_f = mask.mapv(|x| x as f32);
 
     let mut embeddings = Vec::with_capacity(batch);
     for b in 0..batch {
