@@ -202,6 +202,7 @@ impl Storage {
                      FROM artifacts \
                      WHERE (SELECT COUNT(DISTINCT jt.value) FROM json_each(tags) jt \
                             WHERE jt.value IN (SELECT value FROM json_each(?1))) = ?2 \
+                     ORDER BY slug \
                      LIMIT ?3 OFFSET ?4",
                 )?;
                 let rows: Vec<ArtifactRow> = stmt
@@ -215,6 +216,7 @@ impl Storage {
             _ => {
                 let mut stmt = self.conn.prepare(
                     "SELECT slug, title, summary, aliases, tags, content, hash FROM artifacts \
+                     ORDER BY slug \
                      LIMIT ?1 OFFSET ?2",
                 )?;
                 let rows: Vec<ArtifactRow> = stmt
