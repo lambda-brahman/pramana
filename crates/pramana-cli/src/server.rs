@@ -179,8 +179,25 @@ fn hex_val(b: u8) -> Option<u8> {
     }
 }
 
+fn respond_json(request: tiny_http::Request, status: u16, body: &str) {
+    let response = tiny_http::Response::new(
+        tiny_http::StatusCode(status),
+        vec![tiny_http::Header::from_bytes(b"Content-Type", b"application/json").unwrap()],
+        Cursor::new(body.as_bytes().to_vec()),
+        Some(body.len()),
+        None,
+    );
+    let _ = request.respond(response);
+}
+
+fn respond_error(request: tiny_http::Request, status: u16, message: &str) {
+    let body = serde_json::json!({ "error": message }).to_string();
+    respond_json(request, status, &body);
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use pramana_engine::RESERVED_NAMES;
 
     // Every fixed string literal matched in handle_request() that sits in the
@@ -204,27 +221,6 @@ mod tests {
             );
         }
     }
-}
-
-fn respond_json(request: tiny_http::Request, status: u16, body: &str) {
-    let response = tiny_http::Response::new(
-        tiny_http::StatusCode(status),
-        vec![tiny_http::Header::from_bytes(b"Content-Type", b"application/json").unwrap()],
-        Cursor::new(body.as_bytes().to_vec()),
-        Some(body.len()),
-        None,
-    );
-    let _ = request.respond(response);
-}
-
-fn respond_error(request: tiny_http::Request, status: u16, message: &str) {
-    let body = serde_json::json!({ "error": message }).to_string();
-    respond_json(request, status, &body);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 
     #[test]
     fn parse_query_param_finds_value() {
