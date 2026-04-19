@@ -18,6 +18,19 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
+      - name: Check ratatui panic hook
+        run: |
+          failed=0
+          while IFS= read -r f; do
+            if ! grep -q 'panic::set_hook' "$f"; then
+              echo "::error file=$f::$f calls ratatui::init() without a panic hook (panic::set_hook)"
+              failed=1
+            fi
+          done < <(find . -name '*.rs' -exec grep -l 'ratatui::init()' {} + 2>/dev/null || true)
+          if [ "$failed" -eq 1 ]; then
+            echo "Fix: call std::panic::set_hook before ratatui::init() to restore the terminal on panic."
+            exit 1
+          fi
       - name: Test (default features)
         run: cargo test
   features:
