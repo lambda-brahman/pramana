@@ -25,8 +25,6 @@ pub enum DaemonState {
     Checking,
     Running,
     Stopped,
-    Starting,
-    Stopping,
 }
 
 pub struct KbListView {
@@ -110,14 +108,19 @@ pub enum KbListAction {
 }
 
 pub fn handle_kb_list_input(view: &mut KbListView, key: KeyEvent) -> KbListAction {
-    match &view.mode.clone() {
-        KbListMode::Normal => handle_normal_input(view, key),
-        KbListMode::AddingName => handle_adding_name_input(view, key),
-        KbListMode::AddingDir { .. } => handle_adding_dir_input(view, key),
-        KbListMode::ConfirmingDelete { name } => {
-            let name = name.clone();
-            handle_confirming_delete_input(view, key, &name)
-        }
+    let delete_name = if let KbListMode::ConfirmingDelete { ref name } = view.mode {
+        Some(name.clone())
+    } else {
+        None
+    };
+    if matches!(view.mode, KbListMode::Normal) {
+        handle_normal_input(view, key)
+    } else if matches!(view.mode, KbListMode::AddingName) {
+        handle_adding_name_input(view, key)
+    } else if matches!(view.mode, KbListMode::AddingDir { .. }) {
+        handle_adding_dir_input(view, key)
+    } else {
+        handle_confirming_delete_input(view, key, &delete_name.expect("delete_name is set"))
     }
 }
 
@@ -322,8 +325,6 @@ pub fn render_kb_list(view: &mut KbListView, area: Rect, buf: &mut Buffer, activ
         DaemonState::Checking => "checking...",
         DaemonState::Running => "daemon: running",
         DaemonState::Stopped => "daemon: stopped",
-        DaemonState::Starting => "daemon: starting...",
-        DaemonState::Stopping => "daemon: stopping...",
     };
 
     let title = format!(" Knowledge Bases ({}) ", view.tenants.len());

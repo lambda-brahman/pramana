@@ -1,7 +1,18 @@
 use crate::error::TuiError;
+use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use pramana_engine::{
     ArtifactView, BuildReport, ListFilter, SearchResult, TenantConfig, TenantInfo, TenantManager,
 };
+
+const UNRESERVED: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'-')
+    .remove(b'_')
+    .remove(b'.')
+    .remove(b'~');
+
+fn pct(s: &str) -> String {
+    utf8_percent_encode(s, UNRESERVED).to_string()
+}
 
 pub enum DataSource {
     Standalone(Box<TenantManager>),
@@ -50,11 +61,12 @@ impl DataSource {
                 if let Some(offset) = filter.and_then(|f| f.offset) {
                     params.push(format!("offset={offset}"));
                 }
+                let tenant_enc = pct(tenant);
                 let url = if params.is_empty() {
-                    format!("http://localhost:{port}/v1/{tenant}/list")
+                    format!("http://localhost:{port}/v1/{tenant_enc}/list")
                 } else {
                     format!(
-                        "http://localhost:{port}/v1/{tenant}/list?{}",
+                        "http://localhost:{port}/v1/{tenant_enc}/list?{}",
                         params.join("&")
                     )
                 };
@@ -73,14 +85,18 @@ impl DataSource {
                 Ok(reader.get(slug)?)
             }
             DataSource::Daemon { port } => {
-                let url = format!("http://localhost:{port}/v1/{tenant}/get/{slug}");
-                match daemon_get(&url) {
-                    Ok(body) => {
+                let url = format!(
+                    "http://localhost:{port}/v1/{}/get/{}",
+                    pct(tenant),
+                    pct(slug)
+                );
+                match daemon_get_optional(&url)? {
+                    Some(body) => {
                         let artifact: ArtifactView = serde_json::from_str(&body)
                             .map_err(|e| TuiError::Http(e.to_string()))?;
                         Ok(Some(artifact))
                     }
-                    Err(_) => Ok(None),
+                    None => Ok(None),
                 }
             }
         }
@@ -93,8 +109,11 @@ impl DataSource {
                 Ok(reader.search(query, None)?)
             }
             DataSource::Daemon { port } => {
-                let encoded = urlencoded(query);
-                let url = format!("http://localhost:{port}/v1/{tenant}/search?q={encoded}");
+                let url = format!(
+                    "http://localhost:{port}/v1/{}/search?q={}",
+                    pct(tenant),
+                    pct(query)
+                );
                 let body = daemon_get(&url)?;
                 let results: Vec<SearchResult> =
                     serde_json::from_str(&body).map_err(|e| TuiError::Http(e.to_string()))?;
@@ -107,7 +126,7 @@ impl DataSource {
         match self {
             DataSource::Standalone(tm) => Ok(tm.reload(tenant)?),
             DataSource::Daemon { port } => {
-                let url = format!("http://localhost:{}/v1/{tenant}/reload", port);
+                let url = format!("http://localhost:{port}/v1/{}/reload", pct(tenant));
                 let body = daemon_post(&url)?;
                 let report: BuildReport =
                     serde_json::from_str(&body).map_err(|e| TuiError::Http(e.to_string()))?;
@@ -153,10 +172,13 @@ impl DataSource {
                 Ok(reader.traverse(from, rel_type, depth, None)?)
             }
             DataSource::Daemon { port } => {
-                let mut url =
-                    format!("http://localhost:{port}/v1/{tenant}/traverse/{from}?depth={depth}");
+                let mut url = format!(
+                    "http://localhost:{port}/v1/{}/traverse/{}?depth={depth}",
+                    pct(tenant),
+                    pct(from)
+                );
                 if let Some(rt) = rel_type {
-                    url.push_str(&format!("&type={}", urlencoded(rt)));
+                    url.push_str(&format!("&type={}", pct(rt)));
                 }
                 let body = daemon_get(&url)?;
                 let artifacts: Vec<ArtifactView> =
@@ -183,6 +205,20 @@ fn daemon_get(url: &str) -> Result<String, TuiError> {
         .map_err(|e| TuiError::Http(e.to_string()))
 }
 
+fn daemon_get_optional(url: &str) -> Result<Option<String>, TuiError> {
+    match ureq::get(url)
+        .timeout(std::time::Duration::from_secs(30))
+        .call()
+    {
+        Ok(resp) => resp
+            .into_string()
+            .map(Some)
+            .map_err(|e| TuiError::Http(e.to_string())),
+        Err(ureq::Error::Status(404, _)) => Ok(None),
+        Err(e) => Err(TuiError::Http(e.to_string())),
+    }
+}
+
 fn daemon_post(url: &str) -> Result<String, TuiError> {
     let resp = ureq::post(url)
         .timeout(std::time::Duration::from_secs(30))
@@ -190,21 +226,4 @@ fn daemon_post(url: &str) -> Result<String, TuiError> {
         .map_err(|e| TuiError::Http(e.to_string()))?;
     resp.into_string()
         .map_err(|e| TuiError::Http(e.to_string()))
-}
-
-fn urlencoded(s: &str) -> String {
-    let mut result = String::with_capacity(s.len() * 3);
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                result.push(b as char);
-            }
-            _ => {
-                result.push('%');
-                result.push(char::from(b"0123456789ABCDEF"[(b >> 4) as usize]));
-                result.push(char::from(b"0123456789ABCDEF"[(b & 0xf) as usize]));
-            }
-        }
-    }
-    result
 }
