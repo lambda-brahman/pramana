@@ -350,6 +350,226 @@ mod graph_view {
     }
 }
 
+#[test]
+fn graph_view_tree_depth2() {
+    use pramana_tui::views::graph::{render_graph, GraphView};
+
+    let mut view = GraphView::new();
+    view.depth = 2;
+
+    let root = pramana_engine::ArtifactView {
+        slug: "root".into(),
+        title: "Root".into(),
+        summary: None,
+        aliases: None,
+        tags: vec![],
+        relationships: vec![
+            pramana_engine::Relationship {
+                target: "a".into(),
+                kind: "depends-on".into(),
+                line: None,
+                section: None,
+            },
+            pramana_engine::Relationship {
+                target: "b".into(),
+                kind: "uses".into(),
+                line: None,
+                section: None,
+            },
+        ],
+        inverse_relationships: vec![],
+        sections: vec![],
+        content: String::new(),
+        hash: "r".into(),
+        focused_section: None,
+    };
+
+    let a = pramana_engine::ArtifactView {
+        slug: "a".into(),
+        title: "Node A".into(),
+        summary: None,
+        aliases: None,
+        tags: vec![],
+        relationships: vec![pramana_engine::Relationship {
+            target: "c".into(),
+            kind: "calls".into(),
+            line: None,
+            section: None,
+        }],
+        inverse_relationships: vec![],
+        sections: vec![],
+        content: String::new(),
+        hash: "aa".into(),
+        focused_section: None,
+    };
+
+    let b = pramana_engine::ArtifactView {
+        slug: "b".into(),
+        title: "Node B".into(),
+        summary: None,
+        aliases: None,
+        tags: vec![],
+        relationships: vec![],
+        inverse_relationships: vec![],
+        sections: vec![],
+        content: String::new(),
+        hash: "bb".into(),
+        focused_section: None,
+    };
+
+    let c = pramana_engine::ArtifactView {
+        slug: "c".into(),
+        title: "Node C".into(),
+        summary: None,
+        aliases: None,
+        tags: vec![],
+        relationships: vec![],
+        inverse_relationships: vec![],
+        sections: vec![],
+        content: String::new(),
+        hash: "cc".into(),
+        focused_section: None,
+    };
+
+    view.set_root(&root, &[a, b, c]);
+
+    // DFS order: a (depth 0), c (depth 1, under a), b (depth 0)
+    assert_eq!(view.entries.len(), 3);
+    assert_eq!(view.entries[0].slug, "a");
+    assert_eq!(view.entries[0].depth_level, 0);
+    assert!(view.entries[0].tree_prefix.is_empty());
+    assert_eq!(view.entries[1].slug, "c");
+    assert_eq!(view.entries[1].depth_level, 1);
+    assert!(
+        view.entries[1].tree_prefix.contains('\u{2514}'),
+        "grandchild should use └ connector (last child)"
+    );
+    assert_eq!(view.entries[2].slug, "b");
+    assert_eq!(view.entries[2].depth_level, 0);
+    assert!(view.entries[2].tree_prefix.is_empty());
+
+    // Render and verify box-drawing chars appear in output
+    let area = Rect::new(0, 0, 80, 15);
+    let mut buf = Buffer::empty(area);
+    render_graph(&mut view, area, &mut buf);
+
+    let mut output = String::new();
+    for y in 0..15 {
+        for x in 0..80 {
+            let cell = &buf[(x, y)];
+            output.push_str(cell.symbol());
+        }
+        output.push('\n');
+    }
+
+    assert!(output.contains('a'), "should contain slug a");
+    assert!(output.contains('b'), "should contain slug b");
+    assert!(output.contains('c'), "should contain slug c");
+    assert!(
+        output.contains('\u{2514}'),
+        "rendered output should contain └ box-drawing char"
+    );
+}
+
+#[test]
+fn graph_view_tree_branch_connectors() {
+    use pramana_tui::views::graph::GraphView;
+
+    let mut view = GraphView::new();
+    view.depth = 2;
+
+    // root → a, b; a → c, d (two children so ├ and └ both appear)
+    let root = pramana_engine::ArtifactView {
+        slug: "root".into(),
+        title: "Root".into(),
+        summary: None,
+        aliases: None,
+        tags: vec![],
+        relationships: vec![pramana_engine::Relationship {
+            target: "a".into(),
+            kind: "depends-on".into(),
+            line: None,
+            section: None,
+        }],
+        inverse_relationships: vec![],
+        sections: vec![],
+        content: String::new(),
+        hash: "r".into(),
+        focused_section: None,
+    };
+
+    let a = pramana_engine::ArtifactView {
+        slug: "a".into(),
+        title: "Node A".into(),
+        summary: None,
+        aliases: None,
+        tags: vec![],
+        relationships: vec![
+            pramana_engine::Relationship {
+                target: "c".into(),
+                kind: "uses".into(),
+                line: None,
+                section: None,
+            },
+            pramana_engine::Relationship {
+                target: "d".into(),
+                kind: "uses".into(),
+                line: None,
+                section: None,
+            },
+        ],
+        inverse_relationships: vec![],
+        sections: vec![],
+        content: String::new(),
+        hash: "aa".into(),
+        focused_section: None,
+    };
+
+    let c = pramana_engine::ArtifactView {
+        slug: "c".into(),
+        title: "Node C".into(),
+        summary: None,
+        aliases: None,
+        tags: vec![],
+        relationships: vec![],
+        inverse_relationships: vec![],
+        sections: vec![],
+        content: String::new(),
+        hash: "cc".into(),
+        focused_section: None,
+    };
+
+    let d = pramana_engine::ArtifactView {
+        slug: "d".into(),
+        title: "Node D".into(),
+        summary: None,
+        aliases: None,
+        tags: vec![],
+        relationships: vec![],
+        inverse_relationships: vec![],
+        sections: vec![],
+        content: String::new(),
+        hash: "dd".into(),
+        focused_section: None,
+    };
+
+    view.set_root(&root, &[a, c, d]);
+
+    // entries: a (depth 0), c (depth 1, not last → ├─), d (depth 1, last → └─)
+    assert_eq!(view.entries.len(), 3);
+    assert_eq!(view.entries[0].slug, "a");
+    assert_eq!(view.entries[1].slug, "c");
+    assert!(
+        view.entries[1].tree_prefix.contains('\u{251C}'),
+        "non-last child should use ├ connector"
+    );
+    assert_eq!(view.entries[2].slug, "d");
+    assert!(
+        view.entries[2].tree_prefix.contains('\u{2514}'),
+        "last child should use └ connector"
+    );
+}
+
 mod keybinding_parity {
     /// Verify all expected keybindings exist in the kb-list handler.
     #[test]
