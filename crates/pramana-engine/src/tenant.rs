@@ -86,6 +86,13 @@ impl TenantManager {
             .map(|s| s.source_dir.clone())
             .ok_or_else(|| EngineError::TenantNotFound(name.to_owned()))?;
 
+        if !Path::new(&source_dir).is_dir() {
+            return Err(EngineError::InvalidTenantName {
+                name: name.to_owned(),
+                reason: format!("source directory no longer exists: {source_dir}"),
+            });
+        }
+
         let new_state = build_tenant_state(
             &source_dir,
             #[cfg(feature = "embeddings")]
