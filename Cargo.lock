@@ -1555,6 +1555,8 @@ version = "0.14.1"
 dependencies = [
  "ndarray",
  "ort",
+ "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "tokenizers",
  "ureq 2.12.1",
