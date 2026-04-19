@@ -1,3 +1,9 @@
+#[cfg(not(target_endian = "little"))]
+compile_error!(
+    "pramana-storage requires a little-endian target; \
+     sqlite-vec encodes f32 embeddings as little-endian bytes"
+);
+
 use crate::error::{StorageError, StorageResult};
 use crate::fts::{or_query, NoOpFilter, StopWordFilter};
 use crate::model::{Artifact, RankedResult, Relationship, SearchResult, Section};
@@ -10,6 +16,8 @@ use zerocopy::AsBytes;
 const DEFAULT_VEC_LIMIT: usize = 20;
 const DEFAULT_RRF_K: usize = 10;
 const BATCH_CHUNK: usize = 900;
+const BUSY_TIMEOUT_MS: u32 = 5_000;
+const SCHEMA_VERSION: i32 = 1;
 
 pub struct Storage {
     conn: Connection,
@@ -37,10 +45,32 @@ impl Storage {
     }
 
     pub fn initialize(&self) -> StorageResult<()> {
-        self.conn.execute_batch("PRAGMA journal_mode=WAL;")?;
-        self.conn.execute_batch(schema::DDL)?;
         self.conn
-            .execute_batch(&schema::vec0_ddl(self.embedding_dim))?;
+            .execute_batch(&format!("PRAGMA busy_timeout = {BUSY_TIMEOUT_MS};"))?;
+
+        // WAL mode improves concurrent read throughput; verify it was accepted.
+        // In-memory databases stay in "memory" mode — that is expected and fine.
+        let mode: String = self
+            .conn
+            .query_row("PRAGMA journal_mode=WAL", [], |r| r.get(0))?;
+        if mode != "wal" && mode != "memory" {
+            return Err(StorageError::WalModeUnavailable);
+        }
+
+        self.conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+
+        let current_version: i32 = self
+            .conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+
+        if current_version < SCHEMA_VERSION {
+            self.conn.execute_batch(schema::DDL)?;
+            self.conn
+                .execute_batch(&schema::vec0_ddl(self.embedding_dim))?;
+            self.conn
+                .execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION};"))?;
+        }
+
         Ok(())
     }
 
@@ -138,21 +168,28 @@ impl Storage {
     }
 
     pub fn get(&self, slug: &str) -> StorageResult<Option<Artifact>> {
-        let mut stmt = self.conn.prepare(
+        match self.conn.query_row(
             "SELECT slug, title, summary, aliases, tags, content, hash \
              FROM artifacts WHERE slug = ?",
-        )?;
-        let rows: Vec<ArtifactRow> = stmt
-            .query_map(params![slug], map_artifact_row)?
-            .collect::<Result<_, _>>()?;
-
-        match rows.into_iter().next() {
-            Some(row) => Ok(Some(self.hydrate_artifact(row)?)),
-            None => Ok(None),
+            params![slug],
+            map_artifact_row,
+        ) {
+            Ok(row) => self.hydrate_artifact(row).map(Some),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(StorageError::Sqlite(e)),
         }
     }
 
-    pub fn list(&self, tags: Option<&[String]>) -> StorageResult<Vec<Artifact>> {
+    pub fn list(
+        &self,
+        tags: Option<&[String]>,
+        limit: Option<usize>,
+        offset: Option<usize>,
+    ) -> StorageResult<Vec<Artifact>> {
+        // SQLite treats LIMIT -1 as no limit.
+        let limit_val: i64 = limit.map(|n| n as i64).unwrap_or(-1);
+        let offset_val: i64 = offset.unwrap_or(0) as i64;
+
         let rows: Vec<ArtifactRow> = match tags {
             Some(filter_tags) if !filter_tags.is_empty() => {
                 let mut unique: Vec<&str> = filter_tags.iter().map(|s| s.as_str()).collect();
@@ -164,19 +201,24 @@ impl Storage {
                     "SELECT slug, title, summary, aliases, tags, content, hash \
                      FROM artifacts \
                      WHERE (SELECT COUNT(DISTINCT jt.value) FROM json_each(tags) jt \
-                            WHERE jt.value IN (SELECT value FROM json_each(?1))) = ?2",
+                            WHERE jt.value IN (SELECT value FROM json_each(?1))) = ?2 \
+                     LIMIT ?3 OFFSET ?4",
                 )?;
-                let rows = stmt
-                    .query_map(params![tags_json, tag_count], map_artifact_row)?
+                let rows: Vec<ArtifactRow> = stmt
+                    .query_map(
+                        params![tags_json, tag_count, limit_val, offset_val],
+                        map_artifact_row,
+                    )?
                     .collect::<Result<_, _>>()?;
                 rows
             }
             _ => {
                 let mut stmt = self.conn.prepare(
-                    "SELECT slug, title, summary, aliases, tags, content, hash FROM artifacts",
+                    "SELECT slug, title, summary, aliases, tags, content, hash FROM artifacts \
+                     LIMIT ?1 OFFSET ?2",
                 )?;
-                let rows = stmt
-                    .query_map([], map_artifact_row)?
+                let rows: Vec<ArtifactRow> = stmt
+                    .query_map(params![limit_val, offset_val], map_artifact_row)?
                     .collect::<Result<_, _>>()?;
                 rows
             }
@@ -254,15 +296,20 @@ impl Storage {
                 got: query_vec.len(),
             });
         }
+        if query_vec.iter().any(|v| !v.is_finite()) {
+            return Err(StorageError::NonFiniteEmbedding);
+        }
         let mut stmt = self.conn.prepare(
             "SELECT slug, distance FROM artifacts_vec \
              WHERE embedding MATCH ? AND k = ? \
              ORDER BY distance",
         )?;
         let rows = stmt.query_map(params![query_vec.as_bytes(), limit as i64], |row| {
+            // Cosine distance ∈ [0, 2]; clamp to keep similarity score in [0, 1].
+            let distance: f64 = row.get(1)?;
             Ok(RankedResult {
                 slug: row.get(0)?,
-                score: 1.0 - row.get::<_, f64>(1)?,
+                score: (1.0_f64 - distance).clamp(0.0, 1.0),
             })
         })?;
         rows.collect::<Result<_, _>>().map_err(StorageError::from)
@@ -296,6 +343,19 @@ impl Storage {
         let fts_map: HashMap<&str, &SearchResult> =
             fts_results.iter().map(|r| (r.slug.as_str(), r)).collect();
 
+        // Batch-fetch artifacts that appear in vec results but not FTS results,
+        // avoiding one self.get() call per vec-only result.
+        let vec_only_slugs: Vec<&str> = fused
+            .iter()
+            .filter(|item| !fts_map.contains_key(item.slug.as_str()))
+            .map(|item| item.slug.as_str())
+            .collect();
+        let vec_only_map = if vec_only_slugs.is_empty() {
+            HashMap::new()
+        } else {
+            self.get_batch(&vec_only_slugs)?
+        };
+
         let mut results = Vec::new();
         for (i, item) in fused.iter().enumerate() {
             if let Some(fts_hit) = fts_map.get(item.slug.as_str()) {
@@ -306,15 +366,15 @@ impl Storage {
                     snippet: fts_hit.snippet.clone(),
                     rank: (i + 1) as f64,
                 });
-            } else if let Some(a) = self.get(&item.slug)? {
+            } else if let Some(a) = vec_only_map.get(&item.slug) {
                 let snippet = a
                     .summary
                     .clone()
                     .unwrap_or_else(|| a.content.chars().take(200).collect());
                 results.push(SearchResult {
                     slug: item.slug.clone(),
-                    title: a.title,
-                    summary: a.summary,
+                    title: a.title.clone(),
+                    summary: a.summary.clone(),
                     snippet,
                     rank: (i + 1) as f64,
                 });
@@ -331,11 +391,21 @@ impl Storage {
                 got: vector.len(),
             });
         }
+        if vector.iter().any(|v| !v.is_finite()) {
+            return Err(StorageError::NonFiniteEmbedding);
+        }
         self.conn.execute(
             "INSERT OR REPLACE INTO artifacts_vec (slug, embedding) VALUES (?, ?)",
             params![slug, vector.as_bytes()],
         )?;
         Ok(())
+    }
+
+    pub fn schema_version(&self) -> StorageResult<i32> {
+        let v: i32 = self
+            .conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+        Ok(v)
     }
 
     pub fn count_artifacts(&self) -> StorageResult<usize> {

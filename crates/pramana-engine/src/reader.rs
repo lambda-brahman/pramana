@@ -139,21 +139,15 @@ impl<'a> Reader<'a> {
 
     pub fn list(&self, filter: Option<&ListFilter>) -> Result<Vec<ArtifactView>, EngineError> {
         let tags = filter.and_then(|f| f.tags.as_deref());
-        let artifacts = self.storage.list(tags)?;
-
-        let offset = filter.and_then(|f| f.offset).unwrap_or(0);
         let limit = filter.and_then(|f| f.limit);
+        let offset = filter.and_then(|f| f.offset);
+        let artifacts = self.storage.list(tags, limit, offset)?;
 
-        let page: Vec<_> = match limit {
-            Some(n) => artifacts.into_iter().skip(offset).take(n).collect(),
-            None => artifacts.into_iter().skip(offset).collect(),
-        };
-
-        let slugs: Vec<&str> = page.iter().map(|a| a.slug.as_str()).collect();
+        let slugs: Vec<&str> = artifacts.iter().map(|a| a.slug.as_str()).collect();
         let mut inverse_map = self.storage.get_inverse_batch(&slugs)?;
 
-        let mut views = Vec::with_capacity(page.len());
-        for artifact in page {
+        let mut views = Vec::with_capacity(artifacts.len());
+        for artifact in artifacts {
             let inverse = inverse_map.remove(&artifact.slug).unwrap_or_default();
             views.push(to_view(artifact, inverse, None));
         }

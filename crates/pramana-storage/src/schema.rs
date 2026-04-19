@@ -15,7 +15,7 @@ pub const DDL: &str = "\
     type TEXT NOT NULL,
     line INTEGER,
     section TEXT,
-    FOREIGN KEY (source) REFERENCES artifacts(slug)
+    FOREIGN KEY (source) REFERENCES artifacts(slug) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS sections (
@@ -24,7 +24,7 @@ pub const DDL: &str = "\
     heading TEXT NOT NULL,
     level INTEGER NOT NULL,
     line INTEGER NOT NULL,
-    FOREIGN KEY (artifact_slug) REFERENCES artifacts(slug)
+    FOREIGN KEY (artifact_slug) REFERENCES artifacts(slug) ON DELETE CASCADE
   );
 
   CREATE VIRTUAL TABLE IF NOT EXISTS artifacts_fts USING fts5(

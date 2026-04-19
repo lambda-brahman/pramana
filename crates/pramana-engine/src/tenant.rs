@@ -161,7 +161,7 @@ impl TenantManager {
 
     #[cfg(feature = "embeddings")]
     fn build_embeddings(&self, storage: &Storage, embedder: &Embedder) -> Result<(), EngineError> {
-        let artifacts = storage.list(None)?;
+        let artifacts = storage.list(None, None, None)?;
 
         for artifact in &artifacts {
             let mut text = artifact.title.clone();

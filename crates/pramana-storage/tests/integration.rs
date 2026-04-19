@@ -118,7 +118,7 @@ fn list_all_artifacts() {
     let s = test_storage();
     s.insert_artifact(&sample_artifact("a", "A", "a")).unwrap();
     s.insert_artifact(&sample_artifact("b", "B", "b")).unwrap();
-    let all = s.list(None).unwrap();
+    let all = s.list(None, None, None).unwrap();
     assert_eq!(all.len(), 2);
 }
 
@@ -132,14 +132,16 @@ fn list_filters_by_tag() {
     s.insert_artifact(&a1).unwrap();
     s.insert_artifact(&a2).unwrap();
 
-    let rust_only = s.list(Some(&["rust".into()])).unwrap();
+    let rust_only = s.list(Some(&["rust".into()]), None, None).unwrap();
     assert_eq!(rust_only.len(), 1);
     assert_eq!(rust_only[0].slug, "a");
 
-    let both_tags = s.list(Some(&["rust".into(), "guide".into()])).unwrap();
+    let both_tags = s
+        .list(Some(&["rust".into(), "guide".into()]), None, None)
+        .unwrap();
     assert_eq!(both_tags.len(), 1);
 
-    let no_match = s.list(Some(&["java".into()])).unwrap();
+    let no_match = s.list(Some(&["java".into()]), None, None).unwrap();
     assert!(no_match.is_empty());
 }
 
@@ -517,4 +519,105 @@ fn rrf_accuracy_known_corpus() {
         slugs.contains(&"hybrid-search"),
         "hybrid-search doc should appear in results"
     );
+}
+
+// -- Hardening tests (issue #126) --
+
+#[test]
+fn list_with_limit_and_offset() {
+    let s = test_storage();
+    for i in 0..5u8 {
+        s.insert_artifact(&sample_artifact(
+            &format!("slug-{i}"),
+            &format!("Title {i}"),
+            "content",
+        ))
+        .unwrap();
+    }
+
+    let page1 = s.list(None, Some(2), None).unwrap();
+    assert_eq!(page1.len(), 2);
+
+    let page2 = s.list(None, Some(2), Some(2)).unwrap();
+    assert_eq!(page2.len(), 2);
+
+    // Pages must be disjoint
+    let p1_slugs: Vec<&str> = page1.iter().map(|a| a.slug.as_str()).collect();
+    for a in &page2 {
+        assert!(!p1_slugs.contains(&a.slug.as_str()));
+    }
+
+    let all = s.list(None, None, None).unwrap();
+    assert_eq!(all.len(), 5);
+}
+
+#[test]
+fn list_limit_with_tag_filter() {
+    let s = test_storage();
+    for i in 0..4u8 {
+        let mut a = sample_artifact(&format!("slug-{i}"), &format!("T{i}"), "c");
+        a.tags = vec!["tagged".into()];
+        s.insert_artifact(&a).unwrap();
+    }
+    let limited = s.list(Some(&["tagged".into()]), Some(2), None).unwrap();
+    assert_eq!(limited.len(), 2);
+}
+
+#[test]
+fn insert_embedding_rejects_nan() {
+    let s = test_storage_with_dim(3);
+    let err = s.insert_embedding("slug", &[1.0, f32::NAN, 0.0]);
+    assert!(matches!(err, Err(StorageError::NonFiniteEmbedding)));
+}
+
+#[test]
+fn insert_embedding_rejects_infinity() {
+    let s = test_storage_with_dim(3);
+    let err = s.insert_embedding("slug", &[1.0, f32::INFINITY, 0.0]);
+    assert!(matches!(err, Err(StorageError::NonFiniteEmbedding)));
+}
+
+#[test]
+fn vec_search_rejects_nan_query() {
+    let s = test_storage_with_dim(3);
+    let err = s.vec_search(&[1.0, f32::NAN, 0.0], 5);
+    assert!(matches!(err, Err(StorageError::NonFiniteEmbedding)));
+}
+
+#[test]
+fn schema_user_version_set_after_initialize() {
+    let s = Storage::open(":memory:").unwrap();
+    s.initialize().unwrap();
+    assert_eq!(s.schema_version().unwrap(), 1);
+}
+
+#[test]
+fn initialize_is_idempotent() {
+    let s = Storage::open(":memory:").unwrap();
+    s.initialize().unwrap();
+    s.initialize().unwrap();
+    assert_eq!(s.schema_version().unwrap(), 1);
+}
+
+#[test]
+fn model_types_implement_partial_eq() {
+    let a = sample_artifact("slug", "Title", "content");
+    let b = a.clone();
+    assert_eq!(a, b);
+
+    let rel = Relationship {
+        target: "t".into(),
+        kind: "references".into(),
+        line: None,
+        section: None,
+    };
+    assert_eq!(rel.clone(), rel);
+
+    let sec = Section {
+        id: "s".into(),
+        heading: "H".into(),
+        level: 1,
+        line: 1,
+    };
+    assert_eq!(sec.clone(), sec);
 }

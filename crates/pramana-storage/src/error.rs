@@ -5,6 +5,8 @@ pub enum StorageError {
     Sqlite(rusqlite::Error),
     Json(serde_json::Error),
     InvalidDimension { expected: usize, got: usize },
+    NonFiniteEmbedding,
+    WalModeUnavailable,
 }
 
 impl fmt::Display for StorageError {
@@ -18,6 +20,12 @@ impl fmt::Display for StorageError {
                     "invalid embedding dimension: expected {expected}, got {got}"
                 )
             }
+            StorageError::NonFiniteEmbedding => {
+                write!(f, "embedding contains NaN or infinite values")
+            }
+            StorageError::WalModeUnavailable => {
+                write!(f, "WAL journal mode could not be enabled for this database")
+            }
         }
     }
 }
@@ -28,6 +36,8 @@ impl std::error::Error for StorageError {
             StorageError::Sqlite(e) => Some(e),
             StorageError::Json(e) => Some(e),
             StorageError::InvalidDimension { .. } => None,
+            StorageError::NonFiniteEmbedding => None,
+            StorageError::WalModeUnavailable => None,
         }
     }
 }
