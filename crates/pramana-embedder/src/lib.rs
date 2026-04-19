@@ -19,6 +19,8 @@ pub const DEFAULT_BATCH_SIZE: usize = 64;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EmbedError {
+    #[error("unknown model '{model_id}'; supported: {supported}")]
+    UnknownModel { model_id: String, supported: String },
     #[error("model download failed: {0}")]
     Download(String),
     #[error("tokenizer error: {0}")]
@@ -37,7 +39,7 @@ pub struct Embedder {
 
 impl Embedder {
     pub fn load(model_id: &str) -> Result<Self, EmbedError> {
-        let config = ModelConfig::for_model(model_id);
+        let config = ModelConfig::for_model(model_id)?;
         let cache_dir = download::model_cache_dir(model_id)?;
         download::ensure_model_files(&cache_dir, model_id, config.onnx_file)?;
 
@@ -334,14 +336,14 @@ mod tests {
 
     #[test]
     fn model_config_pad_defaults() {
-        let cfg = ModelConfig::for_model("Xenova/gte-small");
+        let cfg = ModelConfig::for_model("Xenova/gte-small").unwrap();
         assert_eq!(cfg.pad_id, 0);
         assert_eq!(cfg.pad_token, "[PAD]");
     }
 
     #[test]
     fn model_config_output_index_default() {
-        let cfg = ModelConfig::for_model("Xenova/gte-small");
+        let cfg = ModelConfig::for_model("Xenova/gte-small").unwrap();
         assert_eq!(cfg.output_index, 0);
     }
 }
