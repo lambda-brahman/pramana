@@ -1532,6 +1532,7 @@ version = "0.14.1"
 dependencies = [
  "clap",
  "dirs",
+ "flate2",
  "pramana-engine",
  "pramana-mcp",
  "pramana-tui",
@@ -1539,6 +1540,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "tar",
  "thiserror 2.0.18",
  "tiny_http",
  "tokio",
