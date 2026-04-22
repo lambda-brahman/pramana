@@ -1,0 +1,52 @@
+name: Smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build binary
+        run: cargo build --release -p pramana-cli
+
+      - name: Install binary
+        run: |
+          sudo cp target/release/pramana /usr/local/bin/pramana
+          pramana --version
+
+      - name: Set up fixture KB
+        run: cp -r test/fixtures /tmp/smoke-kb
+
+      - name: Configure pramana
+        run: |
+          mkdir -p ~/.pramana
+          echo '{"version":1,"tenants":{"kastrup":"/tmp/does-not-exist","smoke":"/tmp/smoke-kb"}}' \
+            > ~/.pramana/config.json
+
+      - name: Start daemon
+        run: |
+          pramana serve &
+          timeout 30 bash -c \
+            'until curl -sf http://localhost:5111/v1/version >/dev/null 2>&1; do sleep 1; done'
+
+      - name: Run smoke suite
+        env:
+          SMOKE_LIVE_TENANT: smoke
+          SMOKE_DEAD_TENANT: kastrup
+        run: |
+          set -o pipefail
+          test/smoke/run.sh --json | tee smoke-results.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-results
+          path: smoke-results.json
