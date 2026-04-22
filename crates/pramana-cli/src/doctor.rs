@@ -54,25 +54,27 @@ pub fn run_doctor(port: u16) -> Result<DoctorReport, CliError> {
         Ok(cfg) => {
             let config_names: Vec<&str> = cfg.tenants.keys().map(|s| s.as_str()).collect();
             check_tenant_name_validity(&config_names, &mut diagnostics);
-            check_tenant_paths(&cfg.tenants, &mut diagnostics);
 
-            if daemon_version.is_some() {
+            let runtime_names: Option<Vec<String>> = if daemon_version.is_some() {
                 match fetch_daemon_tenants(port) {
-                    Ok(runtime_names) => {
-                        check_runtime_tenants_match(
-                            &config_names,
-                            &runtime_names,
-                            &mut diagnostics,
-                        );
-                    }
+                    Ok(names) => Some(names),
                     Err(msg) => {
                         diagnostics.push(DoctorDiagnostic {
                             severity: Severity::Error,
                             check: "runtime-tenants-match".into(),
                             message: msg,
                         });
+                        None
                     }
                 }
+            } else {
+                None
+            };
+
+            check_tenant_paths(&cfg.tenants, runtime_names.as_deref(), &mut diagnostics);
+
+            if let Some(ref names) = runtime_names {
+                check_runtime_tenants_match(&config_names, names, &mut diagnostics);
             }
         }
         Err(e) => {
@@ -178,19 +180,29 @@ fn check_tenant_name_validity(names: &[&str], diagnostics: &mut Vec<DoctorDiagno
 
 fn check_tenant_paths(
     tenants: &std::collections::BTreeMap<String, String>,
+    runtime_names: Option<&[String]>,
     diagnostics: &mut Vec<DoctorDiagnostic>,
 ) {
+    let runtime_set: Option<std::collections::HashSet<&str>> =
+        runtime_names.map(|names| names.iter().map(|s| s.as_str()).collect());
+
     for (name, path) in tenants {
         let p = std::path::Path::new(path);
+        // Daemon already skipped this tenant gracefully — downgrade to WARN.
+        // Without daemon info we can't confirm graceful handling, so keep ERROR.
+        let severity = match &runtime_set {
+            Some(running) if !running.contains(name.as_str()) => Severity::Warn,
+            _ => Severity::Error,
+        };
         if !p.exists() {
             diagnostics.push(DoctorDiagnostic {
-                severity: Severity::Error,
+                severity,
                 check: "tenant-config-integrity".into(),
                 message: format!("Tenant \"{name}\" source path does not exist: {path}"),
             });
         } else if !p.is_dir() {
             diagnostics.push(DoctorDiagnostic {
-                severity: Severity::Error,
+                severity,
                 check: "tenant-config-integrity".into(),
                 message: format!("Tenant \"{name}\" source path is not a directory: {path}"),
             });
@@ -381,5 +393,46 @@ mod tests {
         assert!(!is_valid_tenant_name("1bad"));
         assert!(!is_valid_tenant_name("Bad"));
         assert!(!is_valid_tenant_name("has space"));
+    }
+
+    #[test]
+    fn check_tenant_paths_error_when_no_daemon_info() {
+        let mut tenants = std::collections::BTreeMap::new();
+        tenants.insert("ghost".into(), "/no/such/path/exists/xyz".into());
+        let mut diags = Vec::new();
+        check_tenant_paths(&tenants, None, &mut diags);
+        assert_eq!(diags.len(), 1);
+        assert!(matches!(diags[0].severity, Severity::Error));
+        assert_eq!(diags[0].check, "tenant-config-integrity");
+    }
+
+    #[test]
+    fn check_tenant_paths_warn_when_daemon_already_skipped() {
+        let mut tenants = std::collections::BTreeMap::new();
+        tenants.insert("ghost".into(), "/no/such/path/exists/xyz".into());
+        let runtime_names: Vec<String> = vec!["other-tenant".into()];
+        let mut diags = Vec::new();
+        check_tenant_paths(&tenants, Some(&runtime_names), &mut diags);
+        assert_eq!(diags.len(), 1);
+        assert!(matches!(diags[0].severity, Severity::Warn));
+        assert_eq!(diags[0].check, "tenant-config-integrity");
+    }
+
+    #[test]
+    fn check_tenant_paths_error_when_bad_path_but_tenant_running() {
+        // If a tenant is somehow in the runtime set despite a bad path, keep ERROR.
+        let tmp = std::env::temp_dir();
+        // Use a file path (exists but not a dir) to trigger the is_dir branch.
+        let file_path = tmp.join("pramana_test_not_a_dir.txt");
+        std::fs::write(&file_path, b"x").unwrap();
+        let path_str = file_path.to_string_lossy().into_owned();
+        let mut tenants = std::collections::BTreeMap::new();
+        tenants.insert("active".into(), path_str);
+        let runtime_names: Vec<String> = vec!["active".into()];
+        let mut diags = Vec::new();
+        check_tenant_paths(&tenants, Some(&runtime_names), &mut diags);
+        let _ = std::fs::remove_file(&file_path);
+        assert_eq!(diags.len(), 1);
+        assert!(matches!(diags[0].severity, Severity::Error));
     }
 }
