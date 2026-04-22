@@ -293,11 +293,12 @@ mod tests {
         let dir = std::env::temp_dir().join("pramana-readyz-test");
         std::fs::create_dir_all(&dir).unwrap();
         let mut tm = TenantManager::new();
-        tm.mount(TenantConfig {
-            name: "test".into(),
-            source_dir: dir.to_str().unwrap().into(),
-        })
-        .unwrap();
+        let _ = tm
+            .mount(TenantConfig {
+                name: "test".into(),
+                source_dir: dir.to_str().unwrap().into(),
+            })
+            .unwrap();
         let result = handle_readyz(&tm);
         assert!(result.is_ok());
         let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();

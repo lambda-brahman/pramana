@@ -1,4 +1,4 @@
 #!/bin/sh
 # Rust-only pre-commit: fmt check + clippy + fast unit tests.
 # Run from workspace root.
-cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace --lib
+cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace --lib

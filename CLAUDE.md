@@ -59,7 +59,7 @@ Every issue and PR should have at least one label.
 ## Testing
 - `cargo test --workspace` — full test suite
 - `cargo test --workspace --lib` — fast unit subset (pre-commit hook runs this)
-- `cargo fmt --check` + `cargo clippy --workspace -- -D warnings` — format + lint
+- `cargo fmt --check` + `cargo clippy --workspace --all-targets -- -D warnings` — format + lint (test targets included)
 - Pre-commit hook (`.githooks/pre-commit`): runs the Rust triple (fmt + clippy + lib tests)
 - Commit-msg hook (`.githooks/commit-msg`): validates conventional commit format
 - Install hooks: `git config core.hooksPath .githooks`
