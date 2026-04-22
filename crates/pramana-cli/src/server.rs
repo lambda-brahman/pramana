@@ -24,6 +24,8 @@ fn handle_request(request: tiny_http::Request, tm: &mut TenantManager) {
     let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
 
     let result = match (method, segments.as_slice()) {
+        (tiny_http::Method::Get, ["healthz"]) => handle_healthz(),
+        (tiny_http::Method::Get, ["readyz"]) => handle_readyz(tm),
         (tiny_http::Method::Get, ["v1", "version"]) => handle_version(),
         (tiny_http::Method::Get, ["v1", "tenants"]) => handle_tenants(tm),
         (tiny_http::Method::Get, ["v1", tenant, "get", slug]) => handle_get(tm, tenant, slug),
@@ -44,6 +46,18 @@ fn handle_request(request: tiny_http::Request, tm: &mut TenantManager) {
         Ok(json) => respond_json(request, 200, &json),
         Err((status, msg)) => respond_error(request, status, &msg),
     }
+}
+
+fn handle_healthz() -> Result<String, (u16, String)> {
+    Ok(serde_json::json!({ "status": "ok" }).to_string())
+}
+
+fn handle_readyz(tm: &TenantManager) -> Result<String, (u16, String)> {
+    let count = tm.tenant_count();
+    if count == 0 {
+        return Err((503, "no tenants loaded".into()));
+    }
+    Ok(serde_json::json!({ "status": "ready", "tenants": count }).to_string())
 }
 
 fn handle_version() -> Result<String, (u16, String)> {
@@ -198,7 +212,7 @@ fn respond_error(request: tiny_http::Request, status: u16, message: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pramana_engine::RESERVED_NAMES;
+    use pramana_engine::{TenantConfig, TenantManager, RESERVED_NAMES};
 
     // Every fixed string literal matched in handle_request() that sits in the
     // tenant-name position (or would shadow one) must appear here.
@@ -255,5 +269,40 @@ mod tests {
     fn depth_is_capped_at_max() {
         // Verify the constant is in place; actual capping is in handle_traverse.
         assert_eq!(MAX_TRAVERSE_DEPTH, 10);
+    }
+
+    #[test]
+    fn healthz_returns_ok_status() {
+        let result = handle_healthz();
+        assert!(result.is_ok());
+        let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        assert_eq!(json["status"], "ok");
+    }
+
+    #[test]
+    fn readyz_returns_503_when_no_tenants() {
+        let tm = TenantManager::new();
+        let result = handle_readyz(&tm);
+        assert!(result.is_err());
+        let (status, _msg) = result.unwrap_err();
+        assert_eq!(status, 503);
+    }
+
+    #[test]
+    fn readyz_returns_200_with_count_when_tenants_loaded() {
+        let dir = std::env::temp_dir().join("pramana-readyz-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut tm = TenantManager::new();
+        tm.mount(TenantConfig {
+            name: "test".into(),
+            source_dir: dir.to_str().unwrap().into(),
+        })
+        .unwrap();
+        let result = handle_readyz(&tm);
+        assert!(result.is_ok());
+        let json: serde_json::Value = serde_json::from_str(&result.unwrap()).unwrap();
+        assert_eq!(json["status"], "ready");
+        assert_eq!(json["tenants"], 1);
+        std::fs::remove_dir(&dir).ok();
     }
 }
