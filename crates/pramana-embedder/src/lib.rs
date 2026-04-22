@@ -331,7 +331,6 @@ mod tests {
 
     #[test]
     fn default_batch_size_is_positive() {
-        assert!(DEFAULT_BATCH_SIZE > 0);
         assert_eq!(DEFAULT_BATCH_SIZE, 64);
     }
 
