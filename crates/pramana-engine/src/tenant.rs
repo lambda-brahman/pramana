@@ -184,6 +184,10 @@ impl TenantManager {
         self.tenants.keys().cloned().collect()
     }
 
+    pub fn tenant_count(&self) -> usize {
+        self.tenants.len()
+    }
+
     pub fn list_tenants(&self) -> Vec<TenantInfo> {
         self.tenants
             .iter()
