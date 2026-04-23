@@ -10,7 +10,7 @@ jobs:
   rust:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -57,7 +57,7 @@ jobs:
           - "--no-default-features --features tui"
           - "--all-features"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - name: Test (${{ matrix.features }})
         run: cargo test -p pramana-cli ${{ matrix.features }}
