@@ -375,6 +375,64 @@ fn tenant_nonexistent_source_dir() {
 }
 
 #[test]
+fn failed_tenants_recorded_on_missing_source_dir() {
+    let mut mgr = TenantManager::new();
+    assert!(mgr.failed_tenants().is_empty());
+
+    let err = mgr
+        .mount(TenantConfig {
+            name: "kastrup".into(),
+            source_dir: "/tmp/kastrup-kb-nonexistent-test-246".into(),
+        })
+        .unwrap_err();
+
+    // mount() returns Err; caller records the failure
+    mgr.record_mount_failure(
+        "kastrup".into(),
+        "/tmp/kastrup-kb-nonexistent-test-246".into(),
+        err.to_string(),
+    );
+
+    let failed = mgr.failed_tenants();
+    assert_eq!(failed.len(), 1);
+    assert_eq!(failed[0].name, "kastrup");
+    assert_eq!(failed[0].source_dir, "/tmp/kastrup-kb-nonexistent-test-246");
+    assert!(
+        failed[0].reason.contains("does not exist"),
+        "unexpected reason: {}",
+        failed[0].reason
+    );
+}
+
+#[test]
+fn failed_tenants_independent_from_live_tenants() {
+    let mut mgr = TenantManager::new();
+    let dir = fixtures_dir().to_string_lossy().into_owned();
+
+    let _ = mgr.mount(TenantConfig {
+        name: "good".into(),
+        source_dir: dir,
+    })
+    .unwrap();
+
+    let err = mgr
+        .mount(TenantConfig {
+            name: "broken".into(),
+            source_dir: "/nonexistent/broken-246".into(),
+        })
+        .unwrap_err();
+    mgr.record_mount_failure(
+        "broken".into(),
+        "/nonexistent/broken-246".into(),
+        err.to_string(),
+    );
+
+    assert_eq!(mgr.tenant_count(), 1, "only the good tenant should be live");
+    assert_eq!(mgr.failed_tenants().len(), 1);
+    assert_eq!(mgr.failed_tenants()[0].name, "broken");
+}
+
+#[test]
 fn tenant_unmount() {
     let mut mgr = TenantManager::new();
     let _ = mgr
@@ -465,7 +523,7 @@ fn tenant_reload_deleted_source_dir() {
     fs::remove_dir_all(&dir).unwrap();
     let err = mgr.reload("volatile").unwrap_err();
     assert!(
-        format!("{err}").contains("source directory no longer exists"),
+        format!("{err}").contains("does not exist"),
         "unexpected error: {err}"
     );
 }
@@ -513,7 +571,7 @@ fn tenant_prepared_build_deleted_dir() {
 
     let err = PreparedTenant::build(&dir).unwrap_err();
     assert!(
-        format!("{err}").contains("source directory no longer exists"),
+        format!("{err}").contains("does not exist"),
         "unexpected error: {err}"
     );
 }

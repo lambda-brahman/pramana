@@ -8,4 +8,6 @@ pub use builder::{BuildFailure, BuildReport, Builder};
 pub use error::EngineError;
 pub use pramana_storage::{Relationship, SearchResult};
 pub use reader::{ArtifactView, FocusedSection, ListFilter, Reader};
-pub use tenant::{PreparedTenant, TenantConfig, TenantInfo, TenantManager, RESERVED_NAMES};
+pub use tenant::{
+    FailedMount, PreparedTenant, TenantConfig, TenantInfo, TenantManager, RESERVED_NAMES,
+};
