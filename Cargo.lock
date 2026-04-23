@@ -1528,7 +1528,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-cli"
-version = "0.14.6"
+version = "0.14.7"
 dependencies = [
  "clap",
  "dirs",
@@ -1549,11 +1549,11 @@ dependencies = [
 
 [[package]]
 name = "pramana-core"
-version = "0.14.6"
+version = "0.14.7"
 
 [[package]]
 name = "pramana-embedder"
-version = "0.14.6"
+version = "0.14.7"
 dependencies = [
  "ndarray",
  "ort",
@@ -1566,7 +1566,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-engine"
-version = "0.14.6"
+version = "0.14.7"
 dependencies = [
  "pramana-embedder",
  "pramana-parser",
@@ -1579,7 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-mcp"
-version = "0.14.6"
+version = "0.14.7"
 dependencies = [
  "pramana-engine",
  "rmcp",
@@ -1591,7 +1591,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-parser"
-version = "0.14.6"
+version = "0.14.7"
 dependencies = [
  "regex",
  "serde_yaml",
@@ -1600,7 +1600,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-storage"
-version = "0.14.6"
+version = "0.14.7"
 dependencies = [
  "rusqlite",
  "serde",
@@ -1611,7 +1611,7 @@ dependencies = [
 
 [[package]]
 name = "pramana-tui"
-version = "0.14.6"
+version = "0.14.7"
 dependencies = [
  "crossterm",
  "insta",
@@ -1902,9 +1902,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.38"
+version = "0.23.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69f9466fb2c14ea04357e91413efb882e2a6d4a406e625449bc0a5d360d53a21"
+checksum = "7c2c118cb077cca2822033836dfb1b975355dfb784b5e8da48f7b6c5db74e60e"
 dependencies = [
  "log",
  "once_cell",
