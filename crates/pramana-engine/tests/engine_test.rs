@@ -409,11 +409,12 @@ fn failed_tenants_independent_from_live_tenants() {
     let mut mgr = TenantManager::new();
     let dir = fixtures_dir().to_string_lossy().into_owned();
 
-    let _ = mgr.mount(TenantConfig {
-        name: "good".into(),
-        source_dir: dir,
-    })
-    .unwrap();
+    let _ = mgr
+        .mount(TenantConfig {
+            name: "good".into(),
+            source_dir: dir,
+        })
+        .unwrap();
 
     let err = mgr
         .mount(TenantConfig {
