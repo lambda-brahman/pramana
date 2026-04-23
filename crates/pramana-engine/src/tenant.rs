@@ -14,6 +14,13 @@ pub const RESERVED_NAMES: &[&str] = &[
 ];
 
 #[derive(Debug, Clone)]
+pub struct FailedMount {
+    pub name: String,
+    pub source_dir: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct TenantConfig {
     pub name: String,
     pub source_dir: String,
@@ -71,6 +78,7 @@ impl std::fmt::Debug for PreparedTenant {
 
 pub struct TenantManager {
     tenants: HashMap<String, TenantState>,
+    failed_tenants: Vec<FailedMount>,
     #[cfg(feature = "embeddings")]
     embedder: Option<Arc<Embedder>>,
 }
@@ -79,6 +87,7 @@ impl TenantManager {
     pub fn new() -> Self {
         Self {
             tenants: HashMap::new(),
+            failed_tenants: Vec::new(),
             #[cfg(feature = "embeddings")]
             embedder: None,
         }
@@ -100,10 +109,7 @@ impl TenantManager {
 
         let source_path = Path::new(&config.source_dir);
         if !source_path.is_dir() {
-            return Err(EngineError::InvalidTenantName {
-                name: config.name,
-                reason: format!("source directory does not exist: {}", config.source_dir),
-            });
+            return Err(EngineError::SourceDirNotFound(config.source_dir));
         }
 
         let state = build_tenant_state(
@@ -186,6 +192,18 @@ impl TenantManager {
 
     pub fn tenant_count(&self) -> usize {
         self.tenants.len()
+    }
+
+    pub fn failed_tenants(&self) -> &[FailedMount] {
+        &self.failed_tenants
+    }
+
+    pub fn record_mount_failure(&mut self, name: String, source_dir: String, reason: String) {
+        self.failed_tenants.push(FailedMount {
+            name,
+            source_dir,
+            reason,
+        });
     }
 
     pub fn list_tenants(&self) -> Vec<TenantInfo> {

@@ -80,8 +80,10 @@ pub fn cmd_serve(sources: Vec<String>, port: u16, host: &str, save: bool, no_con
                 mounted.push(name.clone());
             }
             Err(e) => {
+                let reason = e.to_string();
+                eprintln!("[WARN] tenant \"{name}\" skipped: {reason}");
+                tm.record_mount_failure(name.clone(), path.clone(), reason);
                 skipped.push(name.clone());
-                eprintln!("Warning: skipping \"{name}\": {e}");
             }
         }
     }
